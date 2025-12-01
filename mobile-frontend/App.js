@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MainProvider } from "./contexts/MainContext";
+import { isRunningInExpoGo } from 'expo';
 
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
@@ -35,6 +36,7 @@ import Blocked from "./screens/Blocked";
 import Service from "./screens/Service";
 import ClientAccepted from "./screens/ClientAccepted";
 import Chat from "./screens/Chat";
+import ChatList from "./screens/ChatList";
 import ProfileReviews from "./screens/ProfileReviews";
 import OrderDetails from "./screens/records/OrderDetails";
 import BlockedWorker from "./screens/BlockedWorker";
@@ -89,14 +91,16 @@ const PROVIDER_ONLY_ROLES = ["Service Provider"];
 // Note: RoleGuard is now used directly in Stack.Screen components (matching web App.jsx pattern)
 // No need for withRoleGuard HOC - using direct RoleGuard wrapper like web version
 
-// Configure notification behavior when app is foregrounded
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+// Configure notification behavior when app is foregrounded (only if not in Expo Go)
+if (!isRunningInExpoGo()) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: false,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -138,17 +142,19 @@ export default function App() {
   }
 
   useEffect(() => {
-    registerForPushNotificationsAsync();
+    if (!isRunningInExpoGo()) {
+      registerForPushNotificationsAsync();
 
-    // Listener fired when a notification is received while app is foregrounded
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log("Notification received:", notification);
-    });
+      // Listener fired when a notification is received while app is foregrounded
+      notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+        console.log("Notification received:", notification);
+      });
 
-    // Listener fired when user interacts with a notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log("Notification response:", response);
-    });
+      // Listener fired when user interacts with a notification
+      responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+        console.log("Notification response:", response);
+      });
+    }
 
     return () => {
       notificationListener.current?.remove();
@@ -329,6 +335,31 @@ export default function App() {
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
                   <Chat {...props} />
+                </RoleGuard>
+              )}
+            </Stack.Screen>
+            <Stack.Screen
+              name="ChatList"
+              options={({ navigation }) => ({
+                headerTitle: "Accepted Requests",
+                headerTitleStyle: { fontSize: 17 },
+                headerLeft: () => (
+                  <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={{ marginLeft: 10 }}
+                  >
+                    <Ionicons name="chevron-back" size={24} color="#000" />
+                  </TouchableOpacity>
+                ),
+              })}
+            >
+              {(props) => (
+                <RoleGuard
+                  navigation={props.navigation}
+                  allowedRoles={PROVIDER_ONLY_ROLES}
+                  fallbackRoute="Home"
+                >
+                  <ChatList {...props} />
                 </RoleGuard>
               )}
             </Stack.Screen>

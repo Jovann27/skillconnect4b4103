@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import {View,Text,StyleSheet,ScrollView,TouchableOpacity,Switch,Alert,Modal,FlatList,SafeAreaView,Image,ActivityIndicator,Platform,UIManager,
+import {View,Text,StyleSheet,ScrollView,TouchableOpacity,Switch,Alert,Modal,FlatList,Image,ActivityIndicator,Platform,UIManager,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import MapView, { Marker } from "react-native-maps";
@@ -44,7 +45,34 @@ export default function MyServiceScreen({ navigation }) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [requestsError, setRequestsError] = useState('');
 
-
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [services, requests] = await Promise.all([fetchAvailableServices(), fetchServiceRequests()]);
+      const filteredRequests = requests.filter(request => services.some(s => s.name === request.typeOfWork));
+      const clientsData = filteredRequests.map(request => ({
+        id: request._id,
+        name: request.requester?.firstName + ' ' + request.requester?.lastName || 'Unknown',
+        email: request.requester?.email || '',
+        phone: request.requester?.phone || '',
+        service: request.typeOfWork,
+        budget: `₱${request.budget}`,
+        date: new Date(request.createdAt).toLocaleDateString(),
+        time: request.time,
+        location: request.address,
+        coords: request.location,
+        note: request.notes,
+        profilePic: null,
+        requestData: request
+      }));
+      setClients(clientsData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setClients([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSelectService = async (serviceName) => {
     if (!serviceName) {
@@ -96,16 +124,15 @@ export default function MyServiceScreen({ navigation }) {
 
   useEffect(() => {
     if (!isLoggedIn || !user) return;
-    fetchServiceRequests();
+    loadData();
     fetchServiceProfile();
-    fetchAvailableServices();
     requestLocationPermission();
 
     // Socket listeners for real-time updates
     if (socket && typeof socket.on === 'function') {
       socket.on("service-request-updated", (data) => {
         console.log("Service request updated:", data);
-        fetchServiceRequests();
+        loadData();
       });
     }
 
@@ -131,31 +158,16 @@ export default function MyServiceScreen({ navigation }) {
   };
 
   const fetchServiceRequests = async () => {
-    setIsLoading(true);
     try {
       const response = await serviceRequestAPI.getServiceRequests();
 
       if (response.data.success) {
         // Filter out requests from the current user
         const filteredRequests = response.data.requests.filter(request => request.requester?._id !== user._id);
-        const requests = filteredRequests.map(request => ({
-          id: request._id,
-          name: request.requester?.firstName + ' ' + request.requester?.lastName || 'Unknown',
-          email: request.requester?.email || '',
-          phone: request.requester?.phone || '',
-          service: request.typeOfWork,
-          budget: `₱${request.budget}`,
-          date: new Date(request.createdAt).toLocaleDateString(),
-          time: request.time,
-          location: request.address,
-          coords: request.location, // Include coordinates for map
-          note: request.notes,
-          profilePic: null, // Could be added later
-          requestData: request // Keep full request data for acceptance
-        }));
-        setClients(requests);
+        return filteredRequests;
       } else {
         Alert.alert("Error", "Failed to load service requests");
+        return [];
       }
     } catch (error) {
       console.error('Error fetching service requests:', error);
@@ -164,10 +176,7 @@ export default function MyServiceScreen({ navigation }) {
       } else {
         setRequestsError('No matching requests found.');
       }
-      setClients([]);
-      Alert.alert("Error", "Failed to load service requests. Please try again.");
-    } finally {
-      setIsLoading(false);
+      return [];
     }
   };
 
@@ -199,10 +208,12 @@ export default function MyServiceScreen({ navigation }) {
       if (response.data.success) {
         const services = response.data.services || [];
         setAvailableServices(services);
+        return services;
       }
     } catch (error) {
       console.error('Error fetching available services:', error);
     }
+    return [];
   };
 
   const updateOnlineStatus = async (online) => {
@@ -220,6 +231,21 @@ export default function MyServiceScreen({ navigation }) {
   const getCurrentLocation = async () => {
     setLocationLoading(true);
     try {
+      // Check if location services are enabled
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        Alert.alert(
+          "Location Services Disabled",
+          "Location services are disabled. Please enable location services in your device settings to share your location.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Location.requestForegroundPermissionsAsync() }
+          ]
+        );
+        setLocationLoading(false);
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert("Permission denied", "Location access is needed to share your location.");
@@ -229,6 +255,7 @@ export default function MyServiceScreen({ navigation }) {
 
       const locationResult = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
+        timeout: 15000, // 15 seconds timeout
       });
 
       const { latitude, longitude } = locationResult.coords;
@@ -237,7 +264,17 @@ export default function MyServiceScreen({ navigation }) {
       Alert.alert("Success", "Your location has been updated for better service matching.");
     } catch (error) {
       console.error('Error getting location:', error);
-      Alert.alert("Error", "Failed to get your location. Please try again.");
+
+      let errorMessage = "Failed to get your location. Please try again.";
+      if (error.message.includes('unavailable')) {
+        errorMessage = "Location services are unavailable. Please check your device settings and try again.";
+      } else if (error.message.includes('timeout')) {
+        errorMessage = "Location request timed out. Please try again.";
+      } else if (error.message.includes('permission')) {
+        errorMessage = "Location permission was denied. Please grant location access.";
+      }
+
+      Alert.alert("Location Error", errorMessage);
     } finally {
       setLocationLoading(false);
     }
@@ -270,7 +307,7 @@ export default function MyServiceScreen({ navigation }) {
             onPress: () => navigation.navigate("ClientAccepted", { client }),
           },
         ]);
-        fetchServiceRequests();
+        loadData();
       } else {
         Alert.alert("Error", response.data.message || "Failed to accept request");
       }
@@ -316,7 +353,16 @@ export default function MyServiceScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* STATUS CARD */}
         <View style={styles.card}>
-          <Text style={styles.label}>My Status</Text>
+          <View style={styles.statusHeader}>
+            <Text style={styles.label}>My Status</Text>
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => navigation.navigate('ChatList')}
+            >
+              <Ionicons name="chatbox-ellipses-outline" size={20} color="#c20884" />
+              <Text style={styles.chatButtonText}>Chats</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.statusRow}>
             <Text style={[styles.statusText, { color: isOnline ? "#2E7D32" : "#777" }]}>
               {isOnline ? "Online" : "Offline"}
@@ -435,11 +481,11 @@ export default function MyServiceScreen({ navigation }) {
               <Ionicons name="chevron-down" size={20} color="#555" />
             </TouchableOpacity>
             {availableServices && availableServices.length > 0 && (
-              <Text style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+              <Text style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
                 {availableServices.length} service{availableServices.length !== 1 ? 's' : ''} available
               </Text>
             )}
-            {serviceUpdating && <Text style={{ fontSize: '12px', color: '#666' }}>Updating...</Text>}
+            {serviceUpdating && <Text style={{ fontSize: 12, color: '#666' }}>Updating...</Text>}
             <View style={{ marginTop: 15 }}>
               <Text style={styles.detailText}>
                 <Text style={styles.bold}>Service:</Text> {formData.service}
@@ -618,6 +664,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
+  statusHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  chatButton: { flexDirection: "row", alignItems: "center", backgroundColor: "#f0f0f0", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4 },
+  chatButtonText: { fontSize: 14, color: "#c20884", fontWeight: "600" },
   statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   statusText: { fontSize: 16, fontWeight: "500" },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: "#333", marginBottom: 10 },

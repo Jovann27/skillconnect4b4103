@@ -192,18 +192,22 @@ const RecordsScreen = () => {
   // Popup handlers
   const handleRequestClick = (request) => {
     if (request.serviceRequest) {
-      // It's a booking, navigate to OrderDetails
-      const order = {
-        worker: request.acceptedBy ? `${request.acceptedBy.firstName} ${request.acceptedBy.lastName}` : 'N/A',
-        type: request.serviceRequest.typeOfWork,
-        status: request.status,
+      // It's a booking, navigate to ClientAccepted
+      const client = {
+        name: request.requester ? `${request.requester.firstName} ${request.requester.lastName}` : 'N/A',
+        email: request.requester?.email || '',
+        phone: request.requester?.phone || '',
+        photo: request.requester?.photo || null,
+        service: request.serviceRequest.typeOfWork,
+        budget: request.serviceRequest.budget,
         date: request.createdAt ? new Date(request.createdAt).toLocaleDateString() : '',
-        address: request.serviceRequest.address,
-        id: request._id,
-        price: `${request.serviceRequest.budget}`,
-        isOwnOrder: false
+        time: request.serviceRequest.time,
+        location: request.serviceRequest.address,
+        note: request.serviceRequest.notes || '',
+        _id: request.requester?._id || ''
       };
-      navigation.navigate('OrderDetails', { order });
+      const orderStatus = request.status === 'Working' ? 'IN_PROGRESS' : request.status === 'Completed' ? 'COMPLETED' : 'ACCEPTED';
+      navigation.navigate('ClientAccepted', { client, orderStatus });
     } else {
       // Regular request
       const isMyRequest = myRequests.find(r => r._id === request._id);

@@ -1,9 +1,10 @@
 // /helpers/notificationHelper.js
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
+import { isRunningInExpoGo } from 'expo';
 
-// Check if notifications are available
-const notificationsAvailable = !!Notifications && typeof Notifications.scheduleNotificationAsync === 'function';
+// Check if notifications are available (not in Expo Go and notifications module is available)
+const notificationsAvailable = !isRunningInExpoGo() && !!Notifications && typeof Notifications.scheduleNotificationAsync === 'function';
 
 // Configure foreground notification handler (show alert & sound)
 if (notificationsAvailable) {

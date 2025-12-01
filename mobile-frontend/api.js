@@ -2,7 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Constants for configuration
-const API_BASE_URL = 'http://192.168.1.11:4000/api/v1';
+const API_BASE_URL = 'http://192.168.1.12:4000/api/v1';
 const MAX_RETRY_ATTEMPTS = 5;
 const RETRY_BASE_DELAY = 1000; // 1 second base delay
 const RETRY_MULTIPLIER = 2; // Exponential backoff multiplier
@@ -65,5 +65,29 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Service Request API
+export const serviceRequestAPI = {
+  getServiceRequests: () => apiClient.get('/settings/service-requests'),
+  acceptServiceRequest: (id) => apiClient.put(`/settings/service-requests/${id}/accept`),
+  getAcceptedRequests: () => apiClient.get('/settings/my-accepted-requests'),
+};
+
+// Booking API
+export const bookingAPI = {
+  completeBooking: (id, data) => apiClient.put(`/booking/${id}/complete`, data),
+};
+
+// Service Profile API
+export const serviceProfileAPI = {
+  getServiceProfile: () => apiClient.get('/user/service-profile'),
+  updateServiceProfile: (data) => apiClient.post('/user/service-profile', data),
+  updateServiceStatus: (data) => apiClient.put('/user/service-status', data),
+};
+
+// User Services API
+export const userServicesAPI = {
+  getUserServices: () => apiClient.get('/user/services'),
+};
 
 export default apiClient;

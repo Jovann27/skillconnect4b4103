@@ -13,19 +13,23 @@ import {
   Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { isRunningInExpoGo } from 'expo';
 import * as Notifications from "expo-notifications";
 import apiClient from "../api";
 import { socket } from "../utils/socket";
 
 const { width } = Dimensions.get("window");
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+// Configure notification handler only if not in Expo Go
+if (!isRunningInExpoGo()) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 const AnimatedWaiting = () => {
   const pulse = useRef(new Animated.Value(1)).current;
@@ -229,7 +233,9 @@ export default function WaitingForWorker({ route, navigation }) {
   const [currentRequest, setCurrentRequest] = useState(null);
 
   useEffect(() => {
-    registerForPushNotificationsAsync();
+    if (!isRunningInExpoGo()) {
+      registerForPushNotificationsAsync();
+    }
   }, []);
 
   useEffect(() => {
@@ -264,15 +270,17 @@ export default function WaitingForWorker({ route, navigation }) {
             });
             setShowAlert(true);
 
-            await Notifications.scheduleNotificationAsync({
-              content: {
-                title: "Order Accepted!",
-                body: "Your worker is on the way!",
-                sound: "default",
-                priority: Notifications.AndroidNotificationPriority.HIGH,
-              },
-              trigger: null,
-            });
+            if (!isRunningInExpoGo()) {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: "Order Accepted!",
+                  body: "Your worker is on the way!",
+                  sound: "default",
+                  priority: Notifications.AndroidNotificationPriority.HIGH,
+                },
+                trigger: null,
+              });
+            }
           } else if (data.action === "cancelled") {
             Alert.alert("Request Cancelled", "Your service request has been cancelled.");
             navigation.navigate("PlaceOrder");

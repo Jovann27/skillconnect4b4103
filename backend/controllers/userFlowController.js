@@ -786,6 +786,7 @@ export const completeBooking = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
   const { id } = req.params;
+  const { comment } = req.body;
   const booking = await Booking.findById(id);
   if (!booking) return next(new ErrorHandler("Booking not found", 404));
 
@@ -798,15 +799,20 @@ export const completeBooking = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Booking is not in working status", 400));
   }
 
-  // Handle proof image upload
-  let proofImageUrl = null;
-  if (req.files?.proofImage) {
-    proofImageUrl = await uploadToCloudinary(req.files.proofImage.tempFilePath, "skillconnect/proof-images");
+  // Handle proof images upload
+  let proofImageUrls = [];
+  if (req.files && req.files.proofImages) {
+    const files = Array.isArray(req.files.proofImages) ? req.files.proofImages : [req.files.proofImages];
+    for (const file of files) {
+      const url = await uploadToCloudinary(file.tempFilePath, "skillconnect/proof-images");
+      proofImageUrls.push(url);
+    }
   }
 
   // Update booking
   booking.status = "Complete";
-  booking.proofImage = proofImageUrl;
+  booking.proofImages = proofImageUrls;
+  booking.proofComment = comment || null;
   await booking.save();
 
   // Update the associated service request status

@@ -8,18 +8,20 @@ import {
   ScrollView,
   Alert,
   TextInput,
-  SafeAreaView,
   Linking,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { bookingAPI } from "../api";
 
 export default function ClientAccepted({ route, navigation }) {
-  const { client, orderStatus = "PENDING" } = route.params || {}; // default status
+  const { client, orderStatus = "PENDING", bookingId } = route.params || {}; // default status
   const [worker, setWorker] = useState(null);
   const [comment, setComment] = useState("");
   const [media, setMedia] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const loadWorker = async () => {
@@ -68,14 +70,43 @@ export default function ClientAccepted({ route, navigation }) {
     }
   };
 
-  const handleSubmitProof = () => {
+  const handleSubmitProof = async () => {
     if (media.length === 0) {
       Alert.alert("Required", "Please upload proof of work before completing the job.");
       return;
     }
-    // Send comment & media to backend here
-    Alert.alert("Success", "Proof of work submitted successfully!");
-    navigation.goBack();
+    if (!bookingId) {
+      Alert.alert("Error", "Booking ID is missing.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('comment', comment);
+
+      media.forEach((item, index) => {
+        const file = {
+          uri: item.uri,
+          type: item.type || 'image/jpeg',
+          name: item.fileName || `proof_${index}.${item.uri.split('.').pop()}`,
+        };
+        formData.append('proofImages', file);
+      });
+
+      const response = await bookingAPI.completeBooking(bookingId, formData);
+      if (response.data.success) {
+        Alert.alert("Success", "Proof of work submitted successfully!");
+        navigation.goBack();
+      } else {
+        Alert.alert("Error", "Failed to submit proof of work.");
+      }
+    } catch (error) {
+      console.error("Submit proof error:", error);
+      Alert.alert("Error", "Failed to submit proof of work. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -195,8 +226,14 @@ export default function ClientAccepted({ route, navigation }) {
             <Text style={styles.cancelText}>Cancel Order</Text>
           </TouchableOpacity>
         ) : orderStatus === "IN_PROGRESS" ? (
-          <TouchableOpacity style={styles.submitButton} onPress={handleSubmitProof}>
-            <Text style={styles.submitText}>Submit Proof</Text>
+          <TouchableOpacity
+            style={[styles.submitButton, loading && styles.disabledButton]}
+            onPress={handleSubmitProof}
+            disabled={loading}
+          >
+            <Text style={styles.submitText}>
+              {loading ? "Submitting..." : "Submit Proof"}
+            </Text>
           </TouchableOpacity>
         ) : null}
       </View>

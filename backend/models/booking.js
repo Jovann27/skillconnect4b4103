@@ -21,7 +21,11 @@ const bookingSchema = new mongoose.Schema({
     enum: ['Available', 'Working', 'Complete', 'Cancelled'],
     default: 'Available'
   },
-  proofImage: {
+  proofImages: [{
+    type: String,
+    default: []
+  }],
+  proofComment: {
     type: String,
     default: null
   }
