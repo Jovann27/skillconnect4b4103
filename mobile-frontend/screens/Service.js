@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import {View,Text,StyleSheet,ScrollView,TextInput,TouchableOpacity,Switch,Alert,Modal,FlatList,SafeAreaView,Image,ActivityIndicator,LayoutAnimation,Platform,UIManager,
+import {View,Text,StyleSheet,ScrollView,TouchableOpacity,Switch,Alert,Modal,FlatList,SafeAreaView,Image,ActivityIndicator,Platform,UIManager,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -26,12 +26,17 @@ const maskEmail = (email) => {
 
 
 export default function MyServiceScreen({ navigation }) {
-  const { user, isAuthorized } = useMainContext();
+  const { user, isLoggedIn } = useMainContext();
   const [isOnline, setIsOnline] = useState(true);
-  const [selectedService, setSelectedService] = useState({ name: 'Service', rate: '0', description: '' });
+  const [formData, setFormData] = useState({
+    service: '',
+    rate: '',
+    description: ''
+  });
   const [availableServices, setAvailableServices] = useState([]);
   const [showServiceModal, setShowServiceModal] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [selectedServiceName, setSelectedServiceName] = useState('');
+  const [serviceUpdating, setServiceUpdating] = useState(false);
   const [clients, setClients] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [serviceProfile, setServiceProfile] = useState(null);
@@ -39,23 +44,58 @@ export default function MyServiceScreen({ navigation }) {
   const [locationLoading, setLocationLoading] = useState(false);
   const [requestsError, setRequestsError] = useState('');
 
-  const handleSaveChanges = () => {
-    Alert.alert("Saved", "Your service details have been updated successfully.");
-    setIsEditing(false);
+
+
+  const handleSelectService = async (serviceName) => {
+    if (!serviceName) {
+      setSelectedServiceName('');
+      return;
+    }
+
+    console.log('MyService: Service selected:', serviceName);
+    console.log('MyService: Available services:', availableServices);
+
+    // Find the selected service from the user's services array
+    const selectedPredefinedService = availableServices.find(service => service.name === serviceName);
+    console.log('MyService: Found service:', selectedPredefinedService);
+
+    if (selectedPredefinedService) {
+      setServiceUpdating(true);
+      try {
+        const response = await serviceProfileAPI.updateServiceProfile({
+          service: serviceName,
+          rate: selectedPredefinedService.rate || 0,
+          description: selectedPredefinedService.description || ''
+        });
+        if (response.data.success) {
+          setFormData({
+            service: serviceName,
+            rate: selectedPredefinedService.rate || 0,
+            description: selectedPredefinedService.description || ''
+          });
+          setSelectedServiceName(serviceName);
+          setShowServiceModal(false);
+          Alert.alert("Success", "Service profile updated successfully");
+          console.log('MyService: Service profile updated successfully');
+        }
+      } catch (error) {
+        console.error('MyService: Error updating service profile:', error);
+        Alert.alert("Error", error.response?.data?.message || 'Failed to update service profile');
+        // Don't reset selectedServiceName on error, keep the selection
+      } finally {
+        setServiceUpdating(false);
+      }
+    } else {
+      console.warn('MyService: Selected service not found in predefined services:', serviceName);
+      console.warn('MyService: Available service names:', availableServices.map(s => s.name));
+      Alert.alert("Error", 'Selected service not found in your services list');
+    }
   };
 
-  const handleSelectService = (service) => {
-    setSelectedService(service);
-    setShowServiceModal(false);
-  };
 
-  const toggleEdit = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setIsEditing((prev) => !prev);
-  };
 
   useEffect(() => {
-    if (!isAuthorized || !user) return;
+    if (!isLoggedIn || !user) return;
     fetchServiceRequests();
     fetchServiceProfile();
     fetchAvailableServices();
@@ -74,7 +114,7 @@ export default function MyServiceScreen({ navigation }) {
         socket.off("service-request-updated");
       }
     };
-  }, [user, isAuthorized]);
+  }, [user, isLoggedIn]);
 
   const requestLocationPermission = async () => {
     try {
@@ -139,14 +179,16 @@ export default function MyServiceScreen({ navigation }) {
         const profile = response.data.data;
         setServiceProfile(profile);
         setIsOnline(profile.isOnline !== undefined ? profile.isOnline : true);
-        setSelectedService({
-          name: profile.service || 'Service',
-          rate: profile.rate || '0',
+        setFormData({
+          service: profile.service || '',
+          rate: profile.rate || '',
           description: profile.description || ''
         });
+        setSelectedServiceName(profile.service || '');
       }
     } catch (error) {
       console.error('Error fetching service profile:', error);
+      setIsOnline(true);
     }
   };
 
@@ -248,7 +290,7 @@ export default function MyServiceScreen({ navigation }) {
     }
   };
 
-  if (!isAuthorized || !user) {
+  if (!isLoggedIn || !user) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.authRequired}>
@@ -383,68 +425,33 @@ export default function MyServiceScreen({ navigation }) {
         )}
 
 
-        {/* SERVICE SETTINGS */}
+        {/* SERVICE INFORMATION */}
         <View style={styles.card}>
-          <View style={styles.editHeader}>
-            <Text style={styles.sectionTitle}>Service Information</Text>
-            <TouchableOpacity onPress={toggleEdit}>
-              <Ionicons
-                name={isEditing ? "close-circle" : "create-outline"}
-                size={22}
-                color="#c20884"
-              />
+          <Text style={styles.sectionTitle}>Service Information</Text>
+          <View style={{ marginTop: 10 }}>
+            <Text style={styles.label}>Select a Service</Text>
+            <TouchableOpacity style={styles.picker} onPress={() => setShowServiceModal(true)} disabled={serviceUpdating}>
+              <Text style={styles.pickerText}>{selectedServiceName || 'Select a service'}</Text>
+              <Ionicons name="chevron-down" size={20} color="#555" />
             </TouchableOpacity>
+            {availableServices && availableServices.length > 0 && (
+              <Text style={{ fontSize: '11px', color: '#666', marginTop: '4px' }}>
+                {availableServices.length} service{availableServices.length !== 1 ? 's' : ''} available
+              </Text>
+            )}
+            {serviceUpdating && <Text style={{ fontSize: '12px', color: '#666' }}>Updating...</Text>}
+            <View style={{ marginTop: 15 }}>
+              <Text style={styles.detailText}>
+                <Text style={styles.bold}>Service:</Text> {formData.service}
+              </Text>
+              <Text style={styles.detailText}>
+                <Text style={styles.bold}>Rate:</Text> ₱{formData.rate}
+              </Text>
+              <Text style={styles.detailText}>
+                <Text style={styles.bold}>Description:</Text> {formData.description}
+              </Text>
+            </View>
           </View>
-
-          {/* Display Mode */}
-          {!isEditing && (
-            <View style={{ marginTop: 10 }}>
-              <Text style={styles.detailText}>
-                <Text style={styles.bold}>Service:</Text> {selectedService.name}
-              </Text>
-              <Text style={styles.detailText}>
-                <Text style={styles.bold}>Rate:</Text> ₱{selectedService.rate}
-              </Text>
-              <Text style={styles.detailText}>
-                <Text style={styles.bold}>Description:</Text> {selectedService.description}
-              </Text>
-            </View>
-          )}
-
-          {/* Edit Mode */}
-          {isEditing && (
-            <View style={{ marginTop: 10 }}>
-              {availableServices.length > 1 && (
-                <>
-                  <Text style={styles.label}>Service</Text>
-                  <TouchableOpacity style={styles.picker} onPress={() => setShowServiceModal(true)}>
-                    <Text style={styles.pickerText}>{selectedService.name}</Text>
-                    <Ionicons name="chevron-down" size={20} color="#555" />
-                  </TouchableOpacity>
-                </>
-              )}
-
-              <Text style={styles.label}>Service Rate (₱)</Text>
-              <TextInput
-                style={styles.input}
-                value={selectedService.rate}
-                onChangeText={(text) => setSelectedService({ ...selectedService, rate: text })}
-                keyboardType="numeric"
-              />
-
-              <Text style={styles.label}>Description</Text>
-              <TextInput
-                style={[styles.input, styles.multilineInput]}
-                value={selectedService.description}
-                onChangeText={(text) => setSelectedService({ ...selectedService, description: text })}
-                multiline
-              />
-
-              <TouchableOpacity style={styles.saveButton} onPress={handleSaveChanges}>
-                <Text style={styles.saveButtonText}>Save Changes</Text>
-              </TouchableOpacity>
-            </View>
-          )}
         </View>
 
         {/* WAITING CLIENTS */}
@@ -534,17 +541,18 @@ export default function MyServiceScreen({ navigation }) {
                 <TouchableOpacity
                   style={[
                     styles.modalItem,
-                    item.name === selectedService.name && styles.modalItemSelected,
+                    item.name === selectedServiceName && styles.modalItemSelected,
                   ]}
-                  onPress={() => handleSelectService(item)}
+                  onPress={() => handleSelectService(item.name)}
+                  disabled={serviceUpdating}
                 >
                   <Text
                     style={[
                       styles.modalItemText,
-                      item.name === selectedService.name && { color: "#c20884" },
+                      item.name === selectedServiceName && { color: "#c20884" },
                     ]}
                   >
-                    {item.name}
+                    {item.name} {item.rate ? `(₱${item.rate})` : ''}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -609,20 +617,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  editHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 5,
-  },
+
   statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
   statusText: { fontSize: 16, fontWeight: "500" },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: "#333", marginBottom: 10 },
   label: { fontSize: 14, color: "#444", fontWeight: "600", marginTop: 14, marginBottom: 5 },
-  input: { backgroundColor: "#F3F3F3", borderRadius: 8, padding: 12, fontSize: 15, color: "#333" },
-  multilineInput: { height: 100, textAlignVertical: "top" },
-  saveButton: { backgroundColor: "#c20884", borderRadius: 10, paddingVertical: 14, marginTop: 18, alignItems: "center" },
-  saveButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
   bold: { fontWeight: "700" },
   detailText: { fontSize: 15, color: "#333", marginBottom: 6 },
   picker: {

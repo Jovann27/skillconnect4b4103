@@ -23,12 +23,18 @@ const Settings = () => {
     email: '',
     phone: '',
   });
+  const [notificationPreferences, setNotificationPreferences] = useState({
+    emailNotifications: true,
+    smsNotifications: false,
+    pushNotifications: true,
+  });
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchUserProfile();
     fetchPasswordLength();
+    fetchNotificationPreferences();
   }, []);
 
     const fetchUserProfile = async () => {
@@ -60,6 +66,22 @@ const Settings = () => {
         if (res.data.success) setPasswordLength(res.data.length);
         } catch (err) {
         console.error("Failed to fetch password length:", err);
+        }
+    };
+
+    const fetchNotificationPreferences = async () => {
+        try {
+        const res = await api.get("/user/notification-preferences");
+        if (res.data.success) {
+            const prefs = res.data.preferences;
+            setNotificationPreferences({
+                emailNotifications: prefs.emailNotifications,
+                smsNotifications: prefs.smsNotifications,
+                pushNotifications: prefs.pushNotifications,
+            });
+        }
+        } catch (err) {
+        console.error("Failed to fetch notification preferences:", err);
         }
     };
 
@@ -157,6 +179,25 @@ const Settings = () => {
     } catch (err) {
       console.error('Profile picture update failed:', err);
       setError('Failed to update profile picture');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveNotificationPreferences = async () => {
+    try {
+      setSaving(true);
+      setError('');
+      setSuccess('');
+      const response = await api.put('/user/notification-preferences', notificationPreferences);
+      if (response.data.success) {
+        setSuccess('Notification preferences updated successfully.');
+      } else {
+        setError('Failed to update notification preferences');
+      }
+    } catch (err) {
+      console.error('Error updating notification preferences:', err);
+      setError('Failed to update notification preferences');
     } finally {
       setSaving(false);
     }
@@ -335,23 +376,40 @@ const Settings = () => {
             <p>Manage how we keep you updated about bookings and account activity.</p>
             <div className="toggle-row">
               <label>
-                <input type="checkbox" defaultChecked />
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.emailNotifications}
+                  onChange={(e) => setNotificationPreferences(prev => ({ ...prev, emailNotifications: e.target.checked }))}
+                />
                 Email reminders
               </label>
+              <p className="option-description">Receive booking confirmations, updates, and important account notifications via email.</p>
             </div>
             <div className="toggle-row">
               <label>
-                <input type="checkbox" />
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.smsNotifications}
+                  onChange={(e) => setNotificationPreferences(prev => ({ ...prev, smsNotifications: e.target.checked }))}
+                />
                 SMS alerts
               </label>
+              <p className="option-description">Get urgent notifications about booking changes and service updates via text message.</p>
             </div>
             <div className="toggle-row">
               <label>
-                <input type="checkbox" defaultChecked />
+                <input
+                  type="checkbox"
+                  checked={notificationPreferences.pushNotifications}
+                  onChange={(e) => setNotificationPreferences(prev => ({ ...prev, pushNotifications: e.target.checked }))}
+                />
                 Push notifications
               </label>
+              <p className="option-description">Receive instant notifications on your device for new messages, booking requests, and updates.</p>
             </div>
-            <button className="primary-btn" type="button">Save Preferences</button>
+            <button className="primary-btn" type="button" onClick={handleSaveNotificationPreferences} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Preferences'}
+            </button>
           </section>
         )}
 

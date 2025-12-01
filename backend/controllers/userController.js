@@ -489,13 +489,14 @@ export const getNotificationPreferences = catchAsyncError(async (req, res, next)
 // Update user notification preferences
 export const updateNotificationPreferences = catchAsyncError(async (req, res, next) => {
   const userId = req.user._id;
-  const { eReceipts, proofOfDelivery, emailNotifications, pushNotifications } = req.body;
+  const { eReceipts, proofOfDelivery, emailNotifications, smsNotifications, pushNotifications } = req.body;
 
   // Validate input
   const updates = {};
   if (typeof eReceipts === 'boolean') updates['notificationPreferences.eReceipts'] = eReceipts;
   if (typeof proofOfDelivery === 'boolean') updates['notificationPreferences.proofOfDelivery'] = proofOfDelivery;
   if (typeof emailNotifications === 'boolean') updates['notificationPreferences.emailNotifications'] = emailNotifications;
+  if (typeof smsNotifications === 'boolean') updates['notificationPreferences.smsNotifications'] = smsNotifications;
   if (typeof pushNotifications === 'boolean') updates['notificationPreferences.pushNotifications'] = pushNotifications;
 
   const user = await User.findByIdAndUpdate(

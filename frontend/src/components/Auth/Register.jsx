@@ -97,18 +97,7 @@ const Register = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Track if user has attempted to submit
-  const [hasSubmitted, setHasSubmitted] = useState(false);
-
-  useEffect(() => {
-    if (!hasSubmitted) return;
-
-    const timer = setTimeout(() => {
-      validateForm();
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [formData, hasSubmitted]);
+  // Real-time validation on change
 
   const handleChange = (e) => {
     const { name, value, type, files } = e.target;
@@ -125,11 +114,11 @@ const Register = () => {
       }
       setFormData(updatedData);
     }
+    validateForm();
   };
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setHasSubmitted(true); // Mark that user has attempted to submit
 
     if (!validateForm()) {
       toast.error("Please fix the errors in the form before submitting");
@@ -246,74 +235,78 @@ const Register = () => {
         </div>
 
         <form onSubmit={handleRegister} className="auth-form register-form" noValidate>
-          {/* Profile Picture */}
-          <div className="form-group file-upload register-file">
-            <label htmlFor="profilePic" className="register-label">
-              Upload Profile Picture:
-            </label>
-            <input
-              type="file"
-              id="profilePic"
-              name="profilePic"
-              accept="image/*"
-              onChange={handleChange}
-              className={`register-input ${formData.profilePic ? 'has-file' : ''}`}
-              aria-describedby="profilePic-help"
-            />
-            <div className="preview-box" aria-live="polite">
-              {formData.profilePic ? (
-                <img
-                  src={URL.createObjectURL(formData.profilePic)}
-                  alt="Profile preview"
-                />
-              ) : (
-                <span>No file selected</span>
-              )}
+          {/* Account Information Section */}
+          <div className="form-section">
+            <h3 className="section-title">Account Information</h3>
+
+            {/* Profile Picture */}
+            <div className="form-group file-upload register-file">
+              <label htmlFor="profilePic" className="register-label">
+                Profile Picture (Optional)
+              </label>
+              <input
+                type="file"
+                id="profilePic"
+                name="profilePic"
+                accept="image/*"
+                onChange={handleChange}
+                className={`auth-input ${formData.profilePic ? 'success' : ''}`}
+                aria-describedby="profilePic-help"
+              />
+              <div className="preview-box" aria-live="polite">
+                {formData.profilePic ? (
+                  <img
+                    src={URL.createObjectURL(formData.profilePic)}
+                    alt="Profile preview"
+                  />
+                ) : (
+                  <span>No file selected</span>
+                )}
+              </div>
+              <small id="profilePic-help" className="form-help">
+                Upload a profile picture (JPG, PNG only, max 5MB)
+              </small>
             </div>
-            <small id="profilePic-help" className="form-help">
-              Optional: Upload a profile picture (JPG, PNG only)
+
+            {/* Username */}
+            <div className="input-container">
+              <label htmlFor="username" className="field-label">Username</label>
+              <div className="icon-input">
+                <i className="fas fa-user"></i>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  placeholder="Choose a unique username"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  className={`auth-input ${validationErrors.username ? 'error' : ''}`}
+                  aria-describedby={validationErrors.username ? 'username-error' : 'username-help'}
+                  aria-invalid={!!validationErrors.username}
+                  autoComplete="username"
+                />
+              </div>
+              {validationErrors.username && (
+                <span id="username-error" className="field-error">
+                  <i className="fas fa-exclamation-circle"></i>
+                  {validationErrors.username}
+                </span>
+              )}
+            <small id="username-help" className="form-help">
+              Choose a unique username (minimum 3 characters) - this will be visible to other users
             </small>
+          </div>
           </div>
 
-          {/* Username */}
-          <div className="form-group">
-            <label className="field-label">Username</label>
-            <div className="input-container icon-input">
-              <i className="fas fa-user" aria-hidden="true"></i>
-              <input
-                type="text"
-                name="username"
-                placeholder="Choose a unique username"
-                value={formData.username}
-                onChange={handleChange}
-                required
-                className={`auth-input ${validationErrors.username ? 'error' : formData.username ? 'success' : ''}`}
-                aria-describedby={validationErrors.username ? 'username-error' : 'username-help'}
-                aria-invalid={!!validationErrors.username}
-                autoComplete="username"
-              />
-              {formData.username && !validationErrors.username && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.username && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
-            </div>
-          </div>
-          {validationErrors.username && (
-            <small id="username-error" className="field-error" role="alert">
-              {validationErrors.username}
-            </small>
-          )}
-          <small id="username-help" className="form-help">
-            Choose a unique username (minimum 3 characters) - this will be visible to other users
-          </small>
+          {/* Personal Details Section */}
+          <div className="form-section">
+            <h3 className="section-title">Personal Details</h3>
 
           {/* Password */}
-          <div className="form-group">
-            <label className="field-label">Password</label>
-            <div className="input-container icon-input password-field">
-              <i className="fas fa-lock" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-lock"></i>
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
@@ -321,7 +314,7 @@ const Register = () => {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                className={`register-input ${validationErrors.password ? 'error' : formData.password && passwordStrength.strength >= 2 ? 'success' : ''}`}
+                className={`auth-input ${validationErrors.password ? 'error' : ''}`}
                 aria-describedby={validationErrors.password ? 'password-error' : 'password-help'}
                 aria-invalid={!!validationErrors.password}
               />
@@ -333,35 +326,22 @@ const Register = () => {
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
-              {formData.password && !validationErrors.password && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.password && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
-          </div>
-          {validationErrors.password && (
-            <small id="password-error" className="field-error" role="alert">
-              {validationErrors.password}
+            {validationErrors.password && (
+              <span id="password-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.password}
+              </span>
+            )}
+            <small id="password-help" className="form-help">
+              Password must be at least 8 characters long
             </small>
-          )}
-          {formData.password && (
-            <div className="password-strength" aria-live="polite">
-              <div className={`strength-bar strength-${passwordStrength.strength}`}>
-                <span className="strength-label">{passwordStrength.label}</span>
-              </div>
-            </div>
-          )}
-          <small id="password-help" className="form-help">
-            Password must be at least 8 characters long
-          </small>
+          </div>
 
           {/* Confirm Password */}
-          <div className="form-group">
-            <label className="field-label">Confirm Password</label>
-            <div className="input-container icon-input password-field">
-              <i className="fas fa-lock" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-lock"></i>
               <input
                 type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
@@ -369,7 +349,7 @@ const Register = () => {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className={`register-input ${validationErrors.confirmPassword ? 'error' : formData.confirmPassword && formData.password === formData.confirmPassword ? 'success' : ''}`}
+                className={`auth-input ${validationErrors.confirmPassword ? 'error' : ''}`}
                 aria-describedby={validationErrors.confirmPassword ? 'confirmPassword-error' : 'confirmPassword-help'}
                 aria-invalid={!!validationErrors.confirmPassword}
               />
@@ -381,61 +361,49 @@ const Register = () => {
               >
                 {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
-              {formData.confirmPassword && formData.password === formData.confirmPassword && !validationErrors.confirmPassword && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.confirmPassword && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
-          </div>
-          {validationErrors.confirmPassword && (
-            <small id="confirmPassword-error" className="field-error" role="alert">
-              {validationErrors.confirmPassword}
+            {validationErrors.confirmPassword && (
+              <span id="confirmPassword-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.confirmPassword}
+              </span>
+            )}
+            <small id="confirmPassword-help" className="form-help">
+              Re-enter your password to confirm
             </small>
-          )}
-          <small id="confirmPassword-help" className="form-help">
-            Re-enter your password to confirm
-          </small>
+          </div>
 
           {/* Email */}
-          <div className="form-group">
-            <label className="field-label">Email</label>
-            <div className="input-container icon-input">
-              <i className="fas fa-envelope" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-envelope"></i>
               <input
                 type="email"
                 name="email"
-                placeholder="Enter Email"
+                placeholder="Enter your email address"
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className={`register-input ${validationErrors.email ? 'error' : formData.email ? 'success' : ''}`}
+                className={`auth-input ${validationErrors.email ? 'error' : ''}`}
                 aria-describedby={validationErrors.email ? 'email-error' : 'email-help'}
                 aria-invalid={!!validationErrors.email}
               />
-              {formData.email && !validationErrors.email && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.email && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
-          </div>
-          {validationErrors.email && (
-            <small id="email-error" className="field-error" role="alert">
-              {validationErrors.email}
+            {validationErrors.email && (
+              <span id="email-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.email}
+              </span>
+            )}
+            <small id="email-help" className="form-help">
+              We'll use this email to send you important updates about your account
             </small>
-          )}
-          <small id="email-help" className="form-help">
-            We'll use this to send you important updates
-          </small>
+          </div>
 
           {/* First Name */}
-          <div className="form-group">
-            <label className="field-label">First Name</label>
-            <div className="input-container icon-input">
-              <i className="fas fa-id-card" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-id-card"></i>
               <input
                 type="text"
                 name="firstName"
@@ -443,29 +411,23 @@ const Register = () => {
                 value={formData.firstName}
                 onChange={handleChange}
                 required
-                className={`register-input ${validationErrors.firstName ? 'error' : formData.firstName ? 'success' : ''}`}
+                className={`auth-input ${validationErrors.firstName ? 'error' : ''}`}
                 aria-describedby={validationErrors.firstName ? 'firstName-error' : 'firstName-help'}
                 aria-invalid={!!validationErrors.firstName}
               />
-              {formData.firstName && !validationErrors.firstName && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.firstName && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
+            {validationErrors.firstName && (
+              <span id="firstName-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.firstName}
+              </span>
+            )}
           </div>
-          {validationErrors.firstName && (
-            <small id="firstName-error" className="field-error" role="alert">
-              {validationErrors.firstName}
-            </small>
-          )}
 
           {/* Last Name */}
-          <div className="form-group">
-            <label className="field-label">Last Name</label>
-            <div className="input-container icon-input">
-              <i className="fas fa-id-card" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-id-card"></i>
               <input
                 type="text"
                 name="lastName"
@@ -473,29 +435,23 @@ const Register = () => {
                 value={formData.lastName}
                 onChange={handleChange}
                 required
-                className={`register-input ${validationErrors.lastName ? 'error' : formData.lastName ? 'success' : ''}`}
+                className={`auth-input ${validationErrors.lastName ? 'error' : ''}`}
                 aria-describedby={validationErrors.lastName ? 'lastName-error' : 'lastName-help'}
                 aria-invalid={!!validationErrors.lastName}
               />
-              {formData.lastName && !validationErrors.lastName && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.lastName && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
+            {validationErrors.lastName && (
+              <span id="lastName-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.lastName}
+              </span>
+            )}
           </div>
-          {validationErrors.lastName && (
-            <small id="lastName-error" className="field-error" role="alert">
-              {validationErrors.lastName}
-            </small>
-          )}
 
           {/* Phone */}
-          <div className="form-group">
-            <label className="field-label">Phone Number</label>
-            <div className="input-container icon-input">
-              <i className="fas fa-phone" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-phone"></i>
               <input
                 type="tel"
                 name="phone"
@@ -503,26 +459,21 @@ const Register = () => {
                 value={formData.phone}
                 onChange={handleChange}
                 required
-                className={`register-input ${validationErrors.phone ? 'error' : formData.phone ? 'success' : ''}`}
+                className={`auth-input ${validationErrors.phone ? 'error' : ''}`}
                 aria-describedby={validationErrors.phone ? 'phone-error' : 'phone-help'}
                 aria-invalid={!!validationErrors.phone}
               />
-              {formData.phone && !validationErrors.phone && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {validationErrors.phone && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
-          </div>
-          {validationErrors.phone && (
-            <small id="phone-error" className="field-error" role="alert">
-              {validationErrors.phone}
+            {validationErrors.phone && (
+              <span id="phone-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.phone}
+              </span>
+            )}
+            <small id="phone-help" className="form-help">
+              Use format: +63XXXXXXXXXX or 0XXXXXXXXXX (10 digits after country code)
             </small>
-          )}
-          <small id="phone-help" className="form-help">
-            Use format: +63XXXXXXXXXX or 0XXXXXXXXXX (10 digits after country code)
-          </small>
+          </div>
 
           {/* Address */}
           <div className="form-group">
@@ -640,6 +591,7 @@ const Register = () => {
                               }
                             }
                             setFormData({ ...formData, skills: currentSkills });
+                            validateForm();
                           }}
                           disabled={!formData.skills.includes(skill) && formData.skills.length >= 3}
                         />
@@ -728,6 +680,7 @@ const Register = () => {
               {validationErrors.employed}
             </small>
           )}
+          </div>
 
           {/* Service Provider Documents */}
           {formData.role === "Service Provider Applicant" && (

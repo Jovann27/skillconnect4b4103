@@ -128,78 +128,70 @@ const ResetPassword = () => {
 
         <form onSubmit={handleSubmit} className="auth-form" noValidate>
           {/* New Password Field */}
-          <div className="input-container icon-input">
-            <i className="fas fa-lock" aria-hidden="true"></i>
-            <input
-              type={showPassword ? "text" : "password"}
-              name="newPassword"
-              placeholder="New Password"
-              value={formData.newPassword}
-              onChange={(e) => handleInputChange('newPassword', e.target.value)}
-              className={`auth-input ${validationErrors.newPassword ? 'error' : formData.newPassword ? 'success' : ''}`}
-              aria-describedby={validationErrors.newPassword ? 'password-error' : 'password-help'}
-              aria-invalid={!!validationErrors.newPassword}
-              autoComplete="new-password"
-              required
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <FaEyeSlash /> : <FaEye />}
-            </button>
-            {formData.newPassword && !validationErrors.newPassword && (
-              <FaCheck className="validation-icon success" aria-hidden="true" />
-            )}
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-lock"></i>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="newPassword"
+                placeholder="New Password"
+                value={formData.newPassword}
+                onChange={(e) => handleInputChange('newPassword', e.target.value)}
+                className={`auth-input ${validationErrors.newPassword ? 'error' : (formData.newPassword && !validationErrors.newPassword ? 'success' : '')}`}
+                aria-describedby={validationErrors.newPassword ? 'password-error' : 'password-help'}
+                aria-invalid={!!validationErrors.newPassword}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {validationErrors.newPassword && (
-              <FaTimes className="validation-icon error" aria-hidden="true" />
+              <span id="password-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.newPassword}
+              </span>
             )}
           </div>
-
-          {validationErrors.newPassword && (
-            <small id="password-error" className="field-error" role="alert">
-              {validationErrors.newPassword}
-            </small>
-          )}
 
           {/* Confirm Password Field */}
-          <div className="input-container icon-input">
-            <i className="fas fa-lock" aria-hidden="true"></i>
-            <input
-              type={showConfirmPassword ? "text" : "password"}
-              name="confirmPassword"
-              placeholder="Confirm New Password"
-              value={formData.confirmPassword}
-              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-              className={`auth-input ${validationErrors.confirmPassword ? 'error' : formData.confirmPassword ? 'success' : ''}`}
-              aria-describedby={validationErrors.confirmPassword ? 'confirm-error' : 'confirm-help'}
-              aria-invalid={!!validationErrors.confirmPassword}
-              autoComplete="new-password"
-              required
-            />
-            <button
-              type="button"
-              className="password-toggle"
-              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-            >
-              {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-            </button>
-            {formData.confirmPassword && !validationErrors.confirmPassword && (
-              <FaCheck className="validation-icon success" aria-hidden="true" />
-            )}
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-lock"></i>
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Confirm New Password"
+                value={formData.confirmPassword}
+                onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                className={`auth-input ${validationErrors.confirmPassword ? 'error' : (formData.confirmPassword && !validationErrors.confirmPassword ? 'success' : '')}`}
+                aria-describedby={validationErrors.confirmPassword ? 'confirm-error' : 'confirm-help'}
+                aria-invalid={!!validationErrors.confirmPassword}
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
             {validationErrors.confirmPassword && (
-              <FaTimes className="validation-icon error" aria-hidden="true" />
+              <span id="confirm-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.confirmPassword}
+              </span>
             )}
           </div>
-
-          {validationErrors.confirmPassword && (
-            <small id="confirm-error" className="field-error" role="alert">
-              {validationErrors.confirmPassword}
-            </small>
-          )}
 
           <small id="password-help" className="form-help">
             Password must be at least 8 characters long and contain a mix of letters, numbers, and symbols

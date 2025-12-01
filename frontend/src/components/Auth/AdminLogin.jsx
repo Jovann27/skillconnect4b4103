@@ -18,7 +18,25 @@ const AdminLogin = () => {
   const { setIsAuthorized, setAdmin, setTokenType } = useMainContext();
   const navigate = useNavigate();
 
-  // Clear field error when user starts typing
+  // Real-time validation
+  const validateField = (name, value) => {
+    let error = "";
+    if (name === "email") {
+      if (!value.trim()) {
+        error = "Email address is required";
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+        error = "Please enter a valid email address";
+      }
+    } else if (name === "password") {
+      if (!value.trim()) {
+        error = "Password is required";
+      } else if (value.trim().length < 6) {
+        error = "Password must be at least 6 characters long";
+      }
+    }
+    return error;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -26,13 +44,12 @@ const AdminLogin = () => {
       [name]: value
     }));
 
-    // Clear error for this field when user starts typing
-    if (fieldErrors[name]) {
-      setFieldErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
-    }
+    // Real-time validation
+    const error = validateField(name, value);
+    setFieldErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
   };
 
   const validateForm = () => {
@@ -129,12 +146,9 @@ const AdminLogin = () => {
 
         <form onSubmit={handleAdminLogin} className="auth-form admin-form" noValidate>
           {/* Email Field */}
-          <div className="form-field">
-            <label htmlFor="admin-email" className="field-label">
-              Administrator Email
-            </label>
-            <div className="input-container icon-input">
-              <i className="fas fa-envelope field-icon" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-envelope"></i>
               <input
                 id="admin-email"
                 type="email"
@@ -142,38 +156,29 @@ const AdminLogin = () => {
                 placeholder="admin@skillconnect.com"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`auth-input ${fieldErrors.email ? 'error' : formData.email ? 'success' : ''}`}
+                className={`auth-input ${fieldErrors.email ? 'error' : (formData.email && !fieldErrors.email ? 'success' : '')}`}
                 disabled={isSubmitting}
                 aria-describedby={fieldErrors.email ? 'email-error' : 'email-help'}
                 aria-invalid={!!fieldErrors.email}
                 autoComplete="email"
                 required
               />
-              {formData.email && !fieldErrors.email && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {fieldErrors.email && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
             {fieldErrors.email && (
-              <small id="email-error" className="field-error" role="alert">
-                <FaTimes className="error-icon-small" />
+              <span id="email-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
                 {fieldErrors.email}
-              </small>
+              </span>
             )}
-            <small id="email-help" className="field-help">
+            <small id="email-help" className="form-help">
               Use the email address registered with your administrator account
             </small>
           </div>
 
           {/* Password Field */}
-          <div className="form-field">
-            <label htmlFor="admin-password" className="field-label">
-              Password
-            </label>
-            <div className="input-container icon-input password-field">
-              <i className="fas fa-lock field-icon" aria-hidden="true"></i>
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-lock"></i>
               <input
                 id="admin-password"
                 type={showPassword ? "text" : "password"}
@@ -181,7 +186,7 @@ const AdminLogin = () => {
                 placeholder="Enter your administrator password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`auth-input ${fieldErrors.password ? 'error' : formData.password ? 'success' : ''}`}
+                className={`auth-input ${fieldErrors.password ? 'error' : (formData.password && !fieldErrors.password ? 'success' : '')}`}
                 disabled={isSubmitting}
                 aria-describedby={fieldErrors.password ? 'password-error' : 'password-help'}
                 aria-invalid={!!fieldErrors.password}
@@ -197,20 +202,14 @@ const AdminLogin = () => {
               >
                 {showPassword ? <FaEyeSlash /> : <FaEye />}
               </button>
-              {formData.password && !fieldErrors.password && (
-                <FaCheck className="validation-icon success" aria-hidden="true" />
-              )}
-              {fieldErrors.password && (
-                <FaTimes className="validation-icon error" aria-hidden="true" />
-              )}
             </div>
             {fieldErrors.password && (
-              <small id="password-error" className="field-error" role="alert">
-                <FaTimes className="error-icon-small" />
+              <span id="password-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
                 {fieldErrors.password}
-              </small>
+              </span>
             )}
-            <small id="password-help" className="field-help">
+            <small id="password-help" className="form-help">
               Enter the password for your administrator account (minimum 6 characters)
             </small>
           </div>

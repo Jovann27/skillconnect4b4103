@@ -78,6 +78,7 @@ const userSchema = new mongoose.Schema({
     eReceipts: { type: Boolean, default: false },
     proofOfDelivery: { type: Boolean, default: true },
     emailNotifications: { type: Boolean, default: true },
+    smsNotifications: { type: Boolean, default: false },
     pushNotifications: { type: Boolean, default: true }
   },
 

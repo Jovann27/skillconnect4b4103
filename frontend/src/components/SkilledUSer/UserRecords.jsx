@@ -84,18 +84,8 @@ const UserWorkRecord = () => {
   // Popup handlers
   const handleRequestClick = (request) => {
     if (request.serviceRequest) {
-      // It's a booking, navigate to OrderDetails
-      const order = {
-        worker: request.acceptedBy ? `${request.acceptedBy.firstName} ${request.acceptedBy.lastName}` : 'N/A',
-        type: request.serviceRequest.typeOfWork,
-        status: request.status,
-        date: request.createdAt ? new Date(request.createdAt).toLocaleDateString() : '',
-        address: request.serviceRequest.address,
-        id: request._id,
-        price: `${request.serviceRequest.budget}`,
-        isOwnOrder: false
-      };
-      navigate('/order-details', { state: { order } });
+      // It's a booking from work-records, navigate to ClientAccepted
+      navigate('/user/client-accepted', { state: { requestId: request.serviceRequest._id } });
     } else {
       // Regular request
       const isMyRequest = myRequests.find(r => r._id === request._id);

@@ -8,6 +8,7 @@ import { sendNotification } from "../utils/socketNotify.js";
 import Booking from "../models/booking.js";
 import Chat from "../models/chat.js";
 import { io, onlineUsers } from "../server.js";
+import cloudinary from "cloudinary";
 
 
 
@@ -142,6 +143,8 @@ export const updateBookingStatus = catchAsyncError(async (req, res, next) => {
 
   res.json({ success: true, booking });
 });
+
+
 
 export const leaveReview = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
@@ -366,11 +369,34 @@ export const getBookings = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
   const bookings = await Booking.find({
-    provider: req.user._id
+    $or: [
+      { requester: req.user._id },
+      { provider: req.user._id }
+    ]
   }).populate('requester provider', 'firstName lastName')
     .populate('serviceRequest');
 
   res.status(200).json({ success: true, bookings });
+});
+
+export const getBooking = catchAsyncError(async (req, res, next) => {
+  if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
+
+  const { id } = req.params;
+
+  const booking = await Booking.findById(id)
+    .populate('requester', 'firstName lastName username email phone profilePic')
+    .populate('provider', 'firstName lastName username email phone profilePic')
+    .populate('serviceRequest');
+
+  if (!booking) return next(new ErrorHandler("Booking not found", 404));
+
+  // Check if user is authorized
+  if (String(booking.requester) !== String(req.user._id) && String(booking.provider) !== String(req.user._id)) {
+    return next(new ErrorHandler("Not authorized", 403));
+  }
+
+  res.status(200).json({ success: true, booking });
 });
 
 
@@ -653,6 +679,7 @@ export const getChatList = catchAsyncError(async (req, res, next) => {
       otherUser,
       serviceRequest: booking.serviceRequest,
       status: booking.status,
+      canComplete: booking.provider.toString() === userId.toString() && booking.status === 'Working',
       lastMessage: lastMessage ? {
         message: lastMessage.message,
         sender: lastMessage.sender,
@@ -754,6 +781,60 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+
+export const completeBooking = catchAsyncError(async (req, res, next) => {
+  if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
+
+  const { id } = req.params;
+  const booking = await Booking.findById(id);
+  if (!booking) return next(new ErrorHandler("Booking not found", 404));
+
+  // Only the provider can complete the booking
+  if (String(booking.provider) !== String(req.user._id)) {
+    return next(new ErrorHandler("Not authorized to complete this booking", 403));
+  }
+
+  if (booking.status !== "Working") {
+    return next(new ErrorHandler("Booking is not in working status", 400));
+  }
+
+  // Handle proof image upload
+  let proofImageUrl = null;
+  if (req.files?.proofImage) {
+    proofImageUrl = await uploadToCloudinary(req.files.proofImage.tempFilePath, "skillconnect/proof-images");
+  }
+
+  // Update booking
+  booking.status = "Complete";
+  booking.proofImage = proofImageUrl;
+  await booking.save();
+
+  // Update the associated service request status
+  const serviceRequest = await ServiceRequest.findById(booking.serviceRequest);
+  if (serviceRequest) {
+    serviceRequest.status = "Complete";
+    await serviceRequest.save();
+  }
+
+  // Notify the requester
+  await sendNotification(
+    booking.requester,
+    "Service Completed",
+    `Your service has been completed. Please review and rate the provider.`,
+    { bookingId: booking._id, type: "service-completed" }
+  );
+
+  // Emit socket event for real-time updates
+  io.emit("booking-updated", { bookingId: booking._id, action: "status-updated", newStatus: "Complete" });
+
+  res.json({ success: true, booking });
+});
+
+// Helper function to upload to Cloudinary
+const uploadToCloudinary = async (filePath, folder) => {
+  const result = await cloudinary.v2.uploader.upload(filePath, { folder });
+  return result.secure_url;
+};
 
 export const reverseGeocode = catchAsyncError(async (req, res, next) => {
   const { lat, lon } = req.query;

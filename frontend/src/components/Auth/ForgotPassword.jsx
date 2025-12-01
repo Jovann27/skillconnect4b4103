@@ -78,40 +78,32 @@ const ForgotPassword = () => {
 
         <form onSubmit={handleSubmit} className="forgot-password-form" noValidate>
           {/* Email Field */}
-          <div className="email-input-group">
-            <FaEnvelope />
-            <input
-              type="email"
-              name="email"
-              placeholder="your.email@example.com"
-              value={email}
-              onChange={handleEmailChange}
-              className="email-input"
-              aria-describedby={validationErrors.email ? 'email-error' : 'email-help'}
-              aria-invalid={!!validationErrors.email}
-              autoComplete="email"
-              required
-            />
-            {email && !validationErrors.email && (
-              <FaCheck className="success-icon" aria-hidden="true" />
+          <div className="input-container">
+            <div className="icon-input">
+              <i className="fas fa-envelope"></i>
+              <input
+                type="email"
+                name="email"
+                placeholder="your.email@example.com"
+                value={email}
+                onChange={handleEmailChange}
+                className={`auth-input ${validationErrors.email ? 'error' : (email && !validationErrors.email ? 'success' : '')}`}
+                aria-describedby={validationErrors.email ? 'email-error' : 'email-help'}
+                aria-invalid={!!validationErrors.email}
+                autoComplete="email"
+                required
+              />
+            </div>
+            {validationErrors.email && (
+              <span id="email-error" className="field-error">
+                <i className="fas fa-exclamation-circle"></i>
+                {validationErrors.email}
+              </span>
             )}
+            <small id="email-help" className="form-help">
+              Enter the email address associated with your account - we'll send you a password reset link
+            </small>
           </div>
-
-          {validationErrors.email && (
-            <small id="email-error" className="error-message" role="alert">
-              {validationErrors.email}
-            </small>
-          )}
-
-          {email && !validationErrors.email && (
-            <small className="success-message" role="alert">
-              Email address looks good!
-            </small>
-          )}
-
-          <small id="email-help" className="help-text">
-            Enter the email address associated with your account - we'll send you a password reset link
-          </small>
 
           {/* Submit Button */}
           <button

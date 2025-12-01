@@ -39,9 +39,9 @@ const initializeSocket = async (token) => {
         return null;
     }
 
-    _socket = io("http://10.139.216.204:4000/api/v1", {
+    _socket = io("http://192.168.1.12:4000/api/v1", {
         withCredentials: true,
-        auth: { token }
+        query: { token }
     });
 
     _socket.on("connect_error", (error) => {

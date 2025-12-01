@@ -5,7 +5,9 @@ import Review from '../models/review.js';
 
 import {
   getBookings,
+  getBooking,
   updateBookingStatus,
+  completeBooking,
   leaveReview,
   getServiceRequests,
   postServiceRequest,
@@ -165,7 +167,9 @@ router.get('/dashboard/recent-activity', isUserAuthenticated, async (req, res) =
 
 // Booking routes
 router.get('/bookings', isUserAuthenticated, getBookings);
+router.get('/booking/:id', isUserAuthenticated, getBooking);
 router.put('/booking/:id/status', isUserAuthenticated, updateBookingStatus);
+router.put('/booking/:id/complete', isUserAuthenticated, completeBooking);
 router.post('/review', isUserAuthenticated, leaveReview);
 
 // Service Request routes

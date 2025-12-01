@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useMainContext } from "../../mainContext";
 import api from "../../api";
 import { updateSocketToken } from "../../utils/socket";
@@ -14,24 +15,38 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { setIsAuthorized, setUser, setTokenType, setIsUserVerified } = useMainContext();
   const navigate = useNavigate();
+
+  // Real-time validation
+  const validateField = (name, value) => {
+    let error = "";
+    if (name === "email") {
+      if (!value) {
+        error = "Email is required";
+      } else if (!/\S+@\S+\.\S+/.test(value)) {
+        error = "Please enter a valid email address";
+      }
+    } else if (name === "password") {
+      if (!value) {
+        error = "Password is required";
+      } else if (value.length < 6) {
+        error = "Password must be at least 6 characters";
+      }
+    }
+    return error;
+  };
 
   // Form validation
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.email) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
-    }
+    const emailError = validateField("email", formData.email);
+    if (emailError) newErrors.email = emailError;
 
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
+    const passwordError = validateField("password", formData.password);
+    if (passwordError) newErrors.password = passwordError;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -71,13 +86,12 @@ const Login = () => {
       [name]: value
     }));
 
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ""
-      }));
-    }
+    // Real-time validation
+    const error = validateField(name, value);
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
   };
 
   const handleLogin = async (e) => {
@@ -166,16 +180,17 @@ const Login = () => {
         <form onSubmit={handleLogin} className="auth-form">
           {/* Email Field */}
           <div className="input-container">
+            <label htmlFor="email" className="field-label">Email Address</label>
             <div className="icon-input">
               <i className="fas fa-envelope"></i>
               <input
                 type="email"
                 id="email"
                 name="email"
-                placeholder="Enter your email address"
+                placeholder="your.email@example.com"
                 value={formData.email}
                 onChange={handleInputChange}
-                className={`auth-input ${errors.email ? 'error' : ''}`}
+                className={`auth-input ${errors.email ? 'error' : (formData.email && !errors.email ? 'success' : '')}`}
                 disabled={isLoading}
                 aria-describedby={errors.email ? "email-error" : "email-help"}
                 aria-invalid={!!errors.email}
@@ -190,28 +205,37 @@ const Login = () => {
               </span>
             )}
             <small id="email-help" className="form-help">
-              We'll use this email to send you important updates about your account
+              Enter the email address associated with your account
             </small>
           </div>
 
           {/* Password Field */}
           <div className="input-container">
+            <label htmlFor="password" className="field-label">Password</label>
             <div className="icon-input">
               <i className="fas fa-lock"></i>
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 id="password"
                 name="password"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={handleInputChange}
-                className={`auth-input ${errors.password ? 'error' : ''}`}
+                className={`auth-input ${errors.password ? 'error' : (formData.password && !errors.password ? 'success' : '')}`}
                 disabled={isLoading}
                 aria-describedby={errors.password ? "password-error" : "password-help"}
                 aria-invalid={!!errors.password}
                 autoComplete="current-password"
                 required
               />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
             </div>
             {errors.password && (
               <span id="password-error" className="field-error">
@@ -220,7 +244,7 @@ const Login = () => {
               </span>
             )}
             <small id="password-help" className="form-help">
-              Your password must be at least 6 characters long
+              Minimum 6 characters required
             </small>
           </div>
 

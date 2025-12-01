@@ -5,16 +5,9 @@ import socket from '../utils/socket';
 import './ChatIcon.css';
 import { FaFacebookMessenger, FaLocationArrow  } from 'react-icons/fa';
 import { BsThreeDotsVertical } from 'react-icons/bs';
+import { MdClose } from 'react-icons/md';
 
-// Constants
-const API_BASE_URL = "https://skillconnect4b410-backend.onrender.com/api/v1";
-
-// Helper function to get full profile image URL
-const getProfileImageUrl = (profilePic) => {
-  if (!profilePic) return '/skillconnect.png'; // default
-  if (profilePic.startsWith('http')) return profilePic;
-  return `${API_BASE_URL.replace('/api/v1', '')}${profilePic}`;
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Helper function to sort chat list by last message timestamp
 const sortChatList = (list) => {
@@ -81,6 +74,11 @@ const ChatIcon = () => {
               groupedChats[otherUserId].lastMessage = chat.lastMessage;
               groupedChats[otherUserId].serviceRequest = chat.serviceRequest;
               groupedChats[otherUserId].status = chat.status;
+            }
+
+            // If any appointment can be completed, allow completion for this chat
+            if (chat.canComplete) {
+              groupedChats[otherUserId].canComplete = true;
             }
           }
         }
@@ -278,6 +276,17 @@ const ChatIcon = () => {
     ]);
   };
 
+  // Function to fetch booking details
+  const fetchBookingDetails = async (appointmentId) => {
+    try {
+      const response = await api.get(`/user/booking/${appointmentId}`);
+      return response.data.booking;
+    } catch (err) {
+      console.error('Error fetching booking details:', err);
+      return null;
+    }
+  };
+
   // Effect to handle opening chat from external trigger
   useEffect(() => {
     if (openChatAppointmentId && chatList.length > 0) {
@@ -291,12 +300,34 @@ const ChatIcon = () => {
         openChat(chatToOpen, openChatAppointmentId);
         setOpenChatAppointmentId(null); // Reset
       } else {
-        // If chat not found, reset and show notification
-        setOpenChatAppointmentId(null);
-        console.warn('Chat not found for appointment:', openChatAppointmentId);
+        // If chat not found, try to fetch booking details and create chat object
+        fetchBookingDetails(openChatAppointmentId).then(booking => {
+          if (booking) {
+            const isProvider = user?.role === 'Service Provider';
+            const otherUser = isProvider ? booking.requester : booking.provider;
+            const chatData = {
+              otherUser,
+              serviceRequest: booking.serviceRequest,
+              status: booking.status,
+              canComplete: booking.provider.toString() === user._id.toString() && booking.status === 'Working',
+              appointments: [openChatAppointmentId],
+              appointmentId: openChatAppointmentId,
+              totalUnreadCount: 0,
+              lastMessage: null
+            };
+            setIsOpen(true);
+            openChat(chatData, openChatAppointmentId);
+          } else {
+            console.warn('Appointment not found:', openChatAppointmentId);
+          }
+          setOpenChatAppointmentId(null); // Reset
+        }).catch(err => {
+          console.error('Error fetching booking:', err);
+          setOpenChatAppointmentId(null);
+        });
       }
     }
-  }, [openChatAppointmentId, chatList]);
+  }, [openChatAppointmentId, chatList, user]);
 
   // Organize help topics by categories
   useEffect(() => {
@@ -403,6 +434,13 @@ const ChatIcon = () => {
     if (!timestamp) return '';
     const date = new Date(timestamp);
     return isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getProfileImageUrl = (profilePic) => {
+    if (profilePic) {
+      return profilePic.startsWith('http') ? profilePic : `${API_BASE_URL}${profilePic}`;
+    }
+    return '/default-profile.png';
   };
 
   const getMessageStatusIcon = (status) => {
@@ -614,17 +652,73 @@ const ChatIcon = () => {
         )}
       </button>
 
+      {/* Request Details Modal - Global Overlay */}
+      {isOpen && view === 'chat' && selectedChat?.serviceRequest && selectedChat?.status === 'Working' && (
+        <div className="request-details-modal">
+          <div className="request-details-content">
+            <h4>Request Details</h4>
+            <div className="request-info">
+              <div className="detail-row">
+                <span className="label">Service:</span>
+                <span className="value">{selectedChat.serviceRequest.typeOfWork || selectedChat.serviceRequest.name || 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Budget:</span>
+                <span className="value">{selectedChat.serviceRequest.budget ? `₱${selectedChat.serviceRequest.budget}` : 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Location:</span>
+                <span className="value">{selectedChat.serviceRequest.address || 'N/A'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="label">Notes:</span>
+                <span className="value">{selectedChat.serviceRequest.notes || 'N/A'}</span>
+              </div>
+            </div>
+
+            {/* Work Confirmation Section - Only show when user can complete the work */}
+            {selectedChat?.canComplete && (
+              <div className="work-confirmation-section">
+                <h4>Complete Work</h4>
+                <div className="work-confirmation-form">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setWorkProofImage(e.target.files[0])}
+                    style={{ marginBottom: '10px' }}
+                  />
+                  <button
+                    className="confirm-work-btn"
+                    onClick={handleCompleteWork}
+                    disabled={completingWork || !workProofImage}
+                  >
+                    {completingWork ? 'Completing...' : 'Confirm Work Done'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Chat Panel */}
       {isOpen && (
         <div className="chat-panel">
           <div className="chat-header">
             {view === 'chat' ? (
               <>
-                <button className="back-btn" onClick={backToList}>←</button>
-                <h3>
-                  {selectedChat?.otherUser?.firstName} {selectedChat?.otherUser?.lastName}
-                </h3>
+                <button className="back-button" onClick={backToList}>
+                  <i className="fas fa-chevron-left"></i>
+                </button>
+                <div className="header-title-section">
+                  <h2 className="chat-header-title">
+                    {selectedChat?.otherUser?.firstName} {selectedChat?.otherUser?.lastName}
+                  </h2>
+                </div>
                 <div className="chat-header-actions">
+                  <span className={`status-badge ${selectedChat?.status?.toLowerCase()}`}>
+                    {selectedChat?.status}
+                  </span>
                   <button
                     className="user-menu-btn"
                     onClick={() => setShowUserMenu(!showUserMenu)}
@@ -632,29 +726,26 @@ const ChatIcon = () => {
                   >
                     <BsThreeDotsVertical size={20} />
                   </button>
-                  <span className={`status-indicator ${selectedChat?.status?.toLowerCase()}`}>
-                    {selectedChat?.status}
-                  </span>
                 </div>
               </>
             ) : view === 'help' ? (
               <>
-                <button className="back-btn" onClick={() => setView('list')}>←</button>
-                <h3>Help Center</h3>
+                <button className="back-button" onClick={() => setView('list')}><i className="fas fa-chevron-left"></i></button>
+                <h2>Help Center</h2>
               </>
             ) : view === 'help-topics' ? (
               <>
-                <button className="back-btn" onClick={() => setView('help')}>←</button>
-                <h3>Help Topics</h3>
+                <button className="back-button" onClick={() => setView('help')}><i className="fas fa-chevron-left"></i></button>
+                <h2>Help Topics</h2>
               </>
             ) : (
               <>
-                <h3>Messages</h3>
+                <h2>Messages</h2>
                 <div className="header-actions">
                   <button className="help-header-btn" onClick={() => setView('help')} title="Help">
                     ?
                   </button>
-                  <button className="close-btn" onClick={toggleChat}>×</button>
+                  <button className="close-header-btn" onClick={toggleChat}><MdClose size={20} /></button>
                 </div>
               </>
             )}
@@ -695,12 +786,35 @@ const ChatIcon = () => {
             </div>
           )}
 
-          <div className="chat-body">
+          <div className="messages-container">
             {view === 'list' ? (
               loading ? (
-                <p>Loading...</p>
+                <div className="loading-text">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      border: '2px solid #c20884',
+                      borderTop: '2px solid transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite'
+                    }}></div>
+                    Loading conversations...
+                  </div>
+                  <style>{`
+                    @keyframes spin {
+                      0% { transform: rotate(0deg); }
+                      100% { transform: rotate(360deg); }
+                    }
+                  `}</style>
+                </div>
               ) : error ? (
-                <p className="error">{error}</p>
+                <div className="error-text">
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '24px' }}>⚠️</span>
+                    {error}
+                  </div>
+                </div>
               ) : (
                 <div className="chat-list">
                   <div className="chat-item" onClick={() => setView('help')}>
@@ -743,56 +857,9 @@ const ChatIcon = () => {
               )
             ) : view === 'chat' ? (
               <div className="chat-messages">
-                {error && <p className="error">{error}</p>}
+                  {error && <p className="error">{error}</p>}
 
-                {/* Request Details Section */}
-                {selectedChat?.serviceRequest && (
-                  <div className="request-details-section">
-                    <h4>Request Details</h4>
-                    <div className="request-info">
-                      <div className="detail-row">
-                        <span className="label">Service:</span>
-                        <span className="value">{selectedChat.serviceRequest.typeOfWork || selectedChat.serviceRequest.name || 'N/A'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="label">Budget:</span>
-                        <span className="value">{selectedChat.serviceRequest.budget ? `₱${selectedChat.serviceRequest.budget}` : 'N/A'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="label">Location:</span>
-                        <span className="value">{selectedChat.serviceRequest.address || 'N/A'}</span>
-                      </div>
-                      <div className="detail-row">
-                        <span className="label">Notes:</span>
-                        <span className="value">{selectedChat.serviceRequest.notes || 'N/A'}</span>
-                      </div>
-                    </div>
-
-                    {/* Work Confirmation Section - Only show for service providers when status is Working */}
-                    {user?.role === 'Service Provider' && selectedChat?.status === 'Working' && (
-                      <div className="work-confirmation-section">
-                        <h4>Complete Work</h4>
-                        <div className="work-confirmation-form">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => setWorkProofImage(e.target.files[0])}
-                            style={{ marginBottom: '10px' }}
-                          />
-                          <button
-                            className="confirm-work-btn"
-                            onClick={handleCompleteWork}
-                            disabled={completingWork || !workProofImage}
-                          >
-                            {completingWork ? 'Completing...' : 'Confirm Work Done'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="messages-container">
+                  <div className="messages-container">
                   {messages.map((msg) => (
                     <div
                       key={msg.id || msg._id}
@@ -807,6 +874,9 @@ const ChatIcon = () => {
                             src={getProfileImageUrl(msg.sender.profilePic)}
                             alt={`${msg.sender.firstName} ${msg.sender.lastName}`}
                             className="message-avatar"
+                            onError={(e) => {
+                              e.target.src = '/default-profile.png';
+                            }}
                           />
                         )}
                         <div className="message-content">
@@ -830,7 +900,7 @@ const ChatIcon = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <div className="message-input">
+                <div className="message-input-section">
                   <input
                     type="text"
                     value={newMessage}
@@ -841,13 +911,15 @@ const ChatIcon = () => {
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Type a message..."
                     disabled={loading}
+                    className="message-input"
                   />
                   <button
-                    className="send-btn"
+                    className="send-button"
                     onClick={sendMessage}
                     disabled={!newMessage.trim() || loading}
+                    title="Send message"
                   >
-                    Send
+                    <i className="fas fa-paper-plane"></i>
                   </button>
                 </div>
               </div>

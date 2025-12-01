@@ -20,6 +20,10 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     enum: ['Available', 'Working', 'Complete', 'Cancelled'],
     default: 'Available'
+  },
+  proofImage: {
+    type: String,
+    default: null
   }
 }, {
   timestamps: true

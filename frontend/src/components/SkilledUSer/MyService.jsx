@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../api.js';
 import { useMainContext } from '../../mainContext';
 import toast from 'react-hot-toast';
@@ -9,6 +10,7 @@ import './MyService.css';
 
 const MyService = () => {
   const { user, isAuthorized } = useMainContext();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -462,20 +464,14 @@ const MyService = () => {
 
   const handleAccept = async (requestId) => {
     if (acceptingRequest === requestId) return; // Prevent double-clicks
-    
+
     setAcceptingRequest(requestId);
     try {
       const response = await api.post(`/user/service-request/${requestId}/accept`);
       if (response.data.success) {
         toast.success('Request accepted successfully!');
-        setCurrentRequests(prev => prev.filter(req => req._id !== requestId));
-        // Remove marker from map
-        if (clientMarkers.current[requestId]) {
-          clientMarkers.current[requestId].remove();
-          delete clientMarkers.current[requestId];
-        }
-        // Update client locations
-        setClientLocations(prev => prev.filter(loc => loc.requestId !== requestId));
+        // Redirect to client-accepted page with request details
+        navigate('/user/client-accepted', { state: { requestId } });
       }
     } catch (error) {
       console.error('Failed to accept request:', error);

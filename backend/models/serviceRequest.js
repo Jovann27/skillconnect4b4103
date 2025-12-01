@@ -15,6 +15,8 @@ const serviceRequestSchema = new mongoose.Schema({
   targetProvider: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   eta: { type: Date }, // Estimated time of arrival
   trackingId: { type: String, default: () => `REQ-${Date.now().toString(36)}` },
+  proofOfWork: [{ type: String }], // Array of cloudinary URLs for proof images/videos
+  completionNotes: { type: String, default: "" },
 }, { timestamps: true });
 
 serviceRequestSchema.index({ requester: 1, category: 1, status: 1 });

@@ -3,14 +3,18 @@ import { FaStar, FaRegStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import './dashboard-content.css';
+import { useMainContext } from '../../mainContext';
 
 const ManageProfile = () => {
+  const { user: contextUser } = useMainContext();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [reviewStats, setReviewStats] = useState({ averageRating: 0, totalReviews: 0 });
+  const [completedJobs, setCompletedJobs] = useState([]);
+  const [completedJobsLoading, setCompletedJobsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,8 +24,12 @@ const ManageProfile = () => {
   useEffect(() => {
     if (user?._id) {
       fetchUserInsights(user._id);
+      // Fetch completed jobs if user is a service provider
+      if (user.role === 'Service Provider') {
+        fetchCompletedJobs();
+      }
     }
-  }, [user?._id]);
+  }, [user?._id, user?.role]);
 
   const fetchUserProfile = async () => {
     try {
@@ -55,6 +63,20 @@ const ManageProfile = () => {
       console.error('Error fetching review insights:', insightError);
     } finally {
       setReviewsLoading(false);
+    }
+  };
+
+  const fetchCompletedJobs = async () => {
+    try {
+      setCompletedJobsLoading(true);
+      const response = await api.get('/settings/my-completed-jobs');
+      if (response.data.success) {
+        setCompletedJobs(response.data.jobs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching completed jobs:', error);
+    } finally {
+      setCompletedJobsLoading(false);
     }
   };
 
@@ -257,6 +279,76 @@ const ManageProfile = () => {
                   </article>
                 ))}
               </div>
+            )}
+
+            {/* Completed Jobs Section - Only for Service Providers */}
+            {user.role === 'Service Provider' && (
+              <>
+                <div className="reviews-header" style={{ marginTop: '2rem' }}>
+                  <div>
+                    <p className="eyebrow-text">Work History</p>
+                    <h1 className="page-title">Completed Jobs</h1>
+                  </div>
+                  <div className="reviews-header-meta">
+                    <span>{completedJobs.length} completed jobs</span>
+                  </div>
+                </div>
+
+                {completedJobsLoading ? (
+                  <div className="reviews-loading">Loading completed jobs…</div>
+                ) : completedJobs.length === 0 ? (
+                  <div className="reviews-empty">
+                    <p>No completed jobs yet</p>
+                    <small>Jobs you complete will appear here.</small>
+                  </div>
+                ) : (
+                  <div className="reviews-stack">
+                    {completedJobs.map((job) => (
+                      <article className="review-card" key={job._id}>
+                        <header className="review-card-header">
+                          <div>
+                            <p className="review-type">Completed Job</p>
+                            <h3>
+                              {job.requester?.firstName || 'Unknown'} {job.requester?.lastName || 'Client'}
+                            </h3>
+                            <p className="review-service-label">
+                              Service:&nbsp;
+                              <span>{job.typeOfWork || 'Service Request'}</span>
+                            </p>
+                          </div>
+                          <span className="review-date">{formatDate(job.updatedAt)}</span>
+                        </header>
+
+                        <div className="review-comment">
+                          <span>Budget:</span> ₱{job.budget || 0}
+                        </div>
+
+                        {job.completionNotes && (
+                          <div className="review-comment">
+                            <span>Completion Notes:</span> {job.completionNotes}
+                          </div>
+                        )}
+
+                        {job.proofOfWork && job.proofOfWork.length > 0 && (
+                          <div className="review-proof">
+                            <span>Proof of Work:</span>
+                            <div className="proof-grid">
+                              {job.proofOfWork.map((img, idx) => (
+                                <img src={img} alt={`Proof ${idx + 1}`} key={idx} />
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="review-rating-row">
+                          <span>Status:</span>
+                          <span className="status-completed">Completed</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>

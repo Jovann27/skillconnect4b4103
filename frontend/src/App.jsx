@@ -49,6 +49,7 @@ import UserRequest from "./components/SkilledUSer/UsersRequest";
 import ManageProfile from "./components/SkilledUSer/ManageProfile";
 import WaitingForWorker from "./components/SkilledUSer/WaitingForWorker";
 import AcceptedRequest from "./components/SkilledUSer/AcceptedRequest";
+import ClientAccepted from "./components/SkilledUSer/ClientAccepted";
 import AcceptedOrderWeb from "./components/SkilledUSer/AcceptedOrderWeb";
 import Settings from "./components/SkilledUSer/Settings";
 
@@ -217,6 +218,14 @@ const AppContent = () => {
             element={
               <RoleGuard allowedRoles={["Service Provider"]}>
                 <AcceptedRequest />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="client-accepted"
+            element={
+              <RoleGuard allowedRoles={["Service Provider"]}>
+                <ClientAccepted />
               </RoleGuard>
             }
           />

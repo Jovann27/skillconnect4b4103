@@ -3,7 +3,7 @@ import { io } from "socket.io-client";
 // Socket.io should connect to the base server URL, not the API endpoint
 // Extract base URL from API_BASE_URL by removing /api/v1 if present
 const getSocketBaseURL = () => {
-  const apiBaseURL = import.meta.env.VITE_API_BASE_URL || "http://10.139.216.204:4000/api/v1";
+  const apiBaseURL = import.meta.env.VITE_API_BASE_URL;
   // Remove /api/v1 or /api from the end if present
   return apiBaseURL.replace(/\/api\/v1$|\/api$/, '');
 };
@@ -50,7 +50,7 @@ const initializeSocket = (token) => {
 
     _socket = io(SOCKET_BASE_URL, {
         withCredentials: true,
-        auth: { token }
+        query: { token }
     });
 
     _socket.on("connect_error", (error) => {

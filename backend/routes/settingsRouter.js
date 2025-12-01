@@ -2,7 +2,7 @@ import express from "express";
 import { isUserAuthenticated } from "../middlewares/auth.js";
 import { totalsReport, demographicsReport, skillsReport } from "../controllers/reportsController.js";
 import { getJobFair, getSkilledUsers, acceptServiceRequest,
-    getAllRequests, getMyAcceptedRequests, getMyIncomingRequests,
+    getAllRequests, getMyAcceptedRequests, getMyIncomingRequests, getMyCompletedJobs,
     ignoreServiceRequest, completeServiceRequest } from "../controllers/settingsController.js";
 
 
@@ -26,5 +26,6 @@ router.put("/service-requests/:id/complete", isUserAuthenticated, completeServic
 
 router.get("/my-accepted-requests", isUserAuthenticated, getMyAcceptedRequests );
 router.get("/my-incoming-requests", isUserAuthenticated, getMyIncomingRequests);
+router.get("/my-completed-jobs", isUserAuthenticated, getMyCompletedJobs);
 
 export default router;

@@ -165,10 +165,19 @@
 
 .toggle-row {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
   font-weight: 600;
   color: #4b4b4b;
+}
+
+.option-description {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: #6b6b6b;
+  margin: 0;
+  line-height: 1.4;
 }
 
 .primary-btn {
@@ -251,5 +260,3 @@
     flex: unset;
   }
 }
-
-

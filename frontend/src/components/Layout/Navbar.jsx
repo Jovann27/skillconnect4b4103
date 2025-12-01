@@ -263,7 +263,7 @@ const Navbar = () => {
       <div className="navbar-container">
         <Link to="/home" className="navbar-logo">
           <img
-            src="https://i.ibb.co/MxKr7FVx/1000205778-removebg-preview.png"
+            src="/skillconnect.png"
             alt="SkillConnect4B410 logo"
             className="navbar-logo-image"
           />
@@ -284,7 +284,7 @@ const Navbar = () => {
             <div className="mobile-menu-header">
               <Link to="/home" className="navbar-logo" onClick={() => setShow(false)}>
                 <img
-                  src="https://i.ibb.co/MxKr7FVx/1000205778-removebg-preview.png"
+                  src="/skillconnect.png"
                   alt="SkillConnect4B410 logo"
                   className="navbar-logo-image"
                 />
@@ -403,19 +403,7 @@ const Navbar = () => {
                           </div>
                         </Link>
                       ))}
-                      {user?.role === "Service Provider" && (
-                        <Link
-                          to="/user/my-service"
-                          className="dropdown-action"
-                          onClick={() => setDashboardDropdown(false)}
-                        >
-                          <span className="dropdown-action-icon"><FaSuitcase /></span>
-                          <div>
-                            <p>My Service Desk</p>
-                            <small>Manage published services</small>
-                          </div>
-                        </Link>
-                      )}
+                      
                     </li>
 
                     <li className="logout-item">

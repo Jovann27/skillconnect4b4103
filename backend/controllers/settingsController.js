@@ -70,7 +70,7 @@ export const getAllRequests = async (req, res) => {
 
     const requests = await ServiceRequest.find(filter)
       .select("budget typeOfWork time status notes requester serviceProvider")
-      .populate("requester", "firstName lastName email role")
+      .populate("requester", "firstName lastName email role profilePic phone")
       .sort(sortObj)
       .skip(skip)
       .limit(limit);
@@ -139,8 +139,8 @@ export const getMyAcceptedRequests = async (req, res) => {
     const requests = await ServiceRequest.find({
       $or: [ { serviceProvider: userId }, { acceptedBy: userId } ]
     })
-    .populate("requester", "firstName lastName email")
-    .populate("serviceProvider", "firstName lastName email")
+    .populate("requester", "firstName lastName email profilePic phone")
+    .populate("serviceProvider", "firstName lastName email profilePic phone")
     .sort({ createdAt: -1 });
 
     res.status(200).json({
@@ -157,13 +157,35 @@ export const getMyIncomingRequests = async (req, res) => {
   try {
     const userId = req.user._id;
     const requests = await ServiceRequest.find({ serviceProvider: userId, status: "Available" })
-      .populate("requester", "firstName lastName email")
-      .populate("serviceProvider", "firstName lastName email")
+      .populate("requester", "firstName lastName email profilePic phone")
+      .populate("serviceProvider", "firstName lastName email profilePic phone")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, requests });
   } catch (err) {
     console.error("Error fetching incoming requests:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const getMyCompletedJobs = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const completedJobs = await ServiceRequest.find({
+      serviceProvider: userId,
+      status: "Complete"
+    })
+    .populate("requester", "firstName lastName email profilePic phone")
+    .populate("serviceProvider", "firstName lastName email profilePic phone")
+    .sort({ updatedAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      jobs: completedJobs,
+      count: completedJobs.length
+    });
+  } catch (err) {
+    console.error("Error fetching completed jobs:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
@@ -208,7 +230,31 @@ export const completeServiceRequest = async (req, res) => {
       return res.status(400).json({ success: false, message: "Only working requests can be completed" });
     }
 
+    // Handle file uploads
+    const proofOfWorkUrls = [];
+    if (req.files && req.files.proofImages) {
+      const cloudinary = (await import("../config/cloudinaryConfig.js")).default;
+      const files = Array.isArray(req.files.proofImages) ? req.files.proofImages : [req.files.proofImages];
+
+      for (const file of files) {
+        try {
+          // Upload to cloudinary
+          const result = await cloudinary.uploader.upload(file.tempFilePath, {
+            folder: 'proof-of-work',
+            resource_type: 'auto'
+          });
+          proofOfWorkUrls.push(result.secure_url);
+        } catch (uploadError) {
+          console.error("Error uploading proof image:", uploadError);
+          // Continue with other files, don't fail the whole request
+        }
+      }
+    }
+
+    // Update request with completion data
     request.status = "Complete";
+    request.proofOfWork = proofOfWorkUrls;
+    request.completionNotes = req.body.completionNotes || "";
     await request.save();
 
     res.json({ success: true, message: "Service request marked as completed", request });
