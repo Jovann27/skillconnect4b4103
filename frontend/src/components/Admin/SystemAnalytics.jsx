@@ -991,67 +991,13 @@ The following sections provide detailed analysis and visualizations of these met
         </div>
       </div>
 
-      {/* Service Provider Analysis */}
-      <div className="analytics-card">
-        <div className="card-header">
-          <h2>🏢 Service Provider Network</h2>
-          <div className="card-subinfo">Provider distribution by role and skills</div>
-        </div>
-        <div className="chart-container provider-chart" ref={providerChartRef}>
-          <Bar
-            data={{
-              labels: Object.keys(analyticsData.skilledPerTrade.byRole || {}),
-              datasets: [{
-                label: 'Users by Role',
-                data: Object.values(analyticsData.skilledPerTrade.byRole || {}),
-                backgroundColor: [
-                  '#2563eb', '#16a34a', '#ca8a04', '#dc2626', '#7c3aed',
-                  '#ea580c', '#0891b2', '#be185d', '#4b5563', '#0f766e'
-                ],
-                borderRadius: 8,
-                borderSkipped: false,
-              }]
-            }}
-            options={{
-              responsive: true,
-              maintainAspectRatio: true,
-              aspectRatio: 2.5,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      const value = context.parsed.y;
-                      const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                      const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                      return `${context.label}: ${value} users (${percentage}%)`;
-                    }
-                  }
-                }
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  ticks: { precision: 0 }
-                },
-                x: {
-                  ticks: {
-                    maxRotation: 45,
-                    minRotation: 45
-                  }
-                }
-              }
-            }}
-          />
-        </div>
-      </div>
+
 
       {/* Fixed Export Button */}
       <button className="fixed-export-btn" onClick={handleExportReport} title="Export Full Report">
         <FaDownload /> Export Full Report
       </button>
 
-      {/* Detailed Analytics Modal */}
 
     </div>
   );

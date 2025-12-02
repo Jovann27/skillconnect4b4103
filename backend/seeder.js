@@ -1,10 +1,36 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import Admin from "./models/adminSchema.js";
+import User from "./models/userSchema.js";
+import Booking from "./models/booking.js";
+import Chat from "./models/chat.js";
+import Help from "./models/helpSchema.js";
+import JobFair from "./models/jobFairSchema.js";
+import Notification from "./models/notification.js";
+import Report from "./models/report.js";
+import Resident from "./models/residentSchema.js";
+import Review from "./models/review.js";
+import Service from "./models/service.js";
+import ServiceRequest from "./models/serviceRequest.js";
+import Settings from "./models/settings.js";
+import VerificationAppointment from "./models/verificationSchema.js";
+
 dotenv.config();
 
 await mongoose.connect(process.env.MONGO_URI);
 
+// Clear all collections for fresh seeding
+await User.deleteMany({});
+await Booking.deleteMany({});
+await ServiceRequest.deleteMany({});
+await Review.deleteMany({});
+await Report.deleteMany({});
+await Notification.deleteMany({});
+await VerificationAppointment.deleteMany({});
+await Resident.deleteMany({});
+await Service.deleteMany({});
+
+console.log("Cleared existing data");
 
 const DEFAULT_PASSWORD = process.env.ADMIN_SEED_PASSWORD || null;
 
@@ -28,3 +54,291 @@ if (existingAdmin) {
   console.log("Admin created successfully.");
 }
 
+// Philippine Names
+const firstNames = [
+  "Maria", "Juan", "Pedro", "Ana", "Jose", "Carmen", "Francisco", "Antonio", "Rosa", "Luis",
+  "Elena", "Ricardo", "Teresa", "Manuel", "Consuelo", "Rafael", "Isabel", "Carlos", "Sofia", "Miguel",
+  "Mercedes", "Angel", "Victoria", "Fernando", "Patricia", "Alberto", "Dolores", "Pablo", "Luisa", "Sergio"
+];
+
+const lastNames = [
+  "Dela Cruz", "Garcia", "Santos", "Reyes", "Cruz", "Mendoza", "Flores", "Punzalan", "Villanueva", "Tan",
+  "Morales", "Aquino", "Domingo", "Martinez", "Hernandez", "De Jesus", "Legaspi", "Tolentino", "Rosario", "Valdez",
+  "Macapagal", "Romualdez", "Luz", "Pineda", "Salazar", "Fernandez", "Torres", "Ramirez", "Lopez", "Gomez"
+];
+
+const houseNumbers = [
+  "123", "456", "789", "101", "202", "303", "404", "505", "606", "707",
+  "808", "909", "111", "222", "333", "444", "555", "666", "777", "888",
+  "999", "121", "212", "313", "414", "515", "616", "717", "818", "919"
+];
+
+// Generate name
+function generateName() {
+  const first = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+  return { firstName: first, lastName: last };
+}
+
+// Generate email
+function generateEmail(first, last) {
+  return `${first.toLowerCase()}.${last.toLowerCase().replace(' ', '')}${Math.floor(Math.random() * 100)}@gmail.com`;
+}
+
+// Generate phone
+function generatePhone() {
+  const prefixes = ["0917", "0918", "0919", "0920", "0921", "0927", "0935"];
+  return prefixes[Math.floor(Math.random() * prefixes.length)] + Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
+}
+
+// Generate address
+function generateAddress() {
+  const house = houseNumbers[Math.floor(Math.random() * houseNumbers.length)];
+  const streets = ["Main St", "Elm St", "Oak Ave", "Pine Rd", "Cedar Ln", "Maple Blvd", "Birch Way"];
+  const street = streets[Math.floor(Math.random() * streets.length)];
+  return `${house} ${street}, Barangay 410, Zone 42, Pasay City`;
+}
+
+// Generate birthdate (18-60 years old)
+function generateBirthdate() {
+  const now = new Date();
+  const minAge = 18;
+  const maxAge = 60;
+  const age = Math.floor(Math.random() * (maxAge - minAge)) + minAge;
+  const birthYear = now.getFullYear() - age;
+  const birthMonth = Math.floor(Math.random() * 12);
+  const birthDay = Math.floor(Math.random() * 28) + 1;
+  return new Date(birthYear, birthMonth, birthDay);
+}
+
+// Skills
+const skills = ["Plumbing", "Electrical", "Cleaning", "Carpentry", "Painting"];
+
+// Function to get random skills
+function getRandomSkills(num) {
+  const shuffled = skills.sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, num);
+}
+
+// Services
+const services = [
+  "Plumbing", "Electrical", "Cleaning", "Carpentry", "Painting", "Appliance Repair",
+  "Home Renovation", "Pest Control", "Gardening & Landscaping", "Air Conditioning & Ventilation", "Laundry / Labandera"
+];
+
+// Create 50 users
+const usersData = [];
+for (let i = 0; i < 50; i++) {
+  const name = generateName();
+  const email = generateEmail(name.firstName, name.lastName);
+  const phone = generatePhone();
+  const address = generateAddress();
+  const birthdate = generateBirthdate();
+  const employed = Math.random() > 0.5 ? "employed" : "unemployed";
+  const role = Math.random() > 0.5 ? "Service Provider" : "Community Member";
+
+  const userData = {
+    username: `${name.firstName}${name.lastName}${i}`,
+    firstName: name.firstName,
+    lastName: name.lastName,
+    email: email,
+    phone: phone,
+    address: address,
+    birthdate: birthdate,
+    occupation: role === "Service Provider" ? services[Math.floor(Math.random() * services.length)] : "",
+    employed: employed,
+    role: role,
+    profilePic: `https://picsum.photos/200/200?random=${i}`,
+    validId: "https://via.placeholder.com/300x200/cccccc/000000?text=Valid+ID",
+    password: "password123",
+    verified: Math.random() > 0.8 ? false : true // 80% verified, 20% pending
+  };
+
+  if (role === "Service Provider") {
+    const numSkills = Math.floor(Math.random() * 3) + 1; // 1-3 skills
+    userData.skills = getRandomSkills(numSkills);
+    userData.availability = ["Available", "Currently Working", "Not Available"][Math.floor(Math.random() * 3)];
+    userData.acceptedWork = Math.random() > 0.5; // Randomly set acceptedWork
+
+    // Create services array for service providers (1-3 services)
+    const numServices = Math.floor(Math.random() * 3) + 1;
+    userData.services = [];
+    for (let j = 0; j < numServices; j++) {
+      const serviceName = services[Math.floor(Math.random() * services.length)];
+      userData.services.push({
+        name: serviceName,
+        rate: Math.floor(Math.random() * 500) + 100,
+        description: `Professional ${serviceName.toLowerCase()} service. Quality work guaranteed.`
+      });
+    }
+
+    // Add certificates (50% chance)
+    if (Math.random() > 0.5) {
+      const numCertificates = Math.floor(Math.random() * 3) + 1;
+      userData.certificates = [];
+      for (let j = 0; j < numCertificates; j++) {
+        userData.certificates.push(`https://via.placeholder.com/300x200/cccccc/000000?text=Certificate+${j + 1}`);
+      }
+    }
+  }
+
+  usersData.push(userData);
+}
+
+const users = await User.create(usersData);
+console.log("50 users created");
+
+// Get user providers and members
+const providers = users.filter(u => u.role === "Service Provider");
+const members = users.filter(u => u.role === "Community Member");
+
+// Service Request Statuses
+const srStatuses = ["Waiting", "Working", "Complete", "Cancelled", "No Longer Available"];
+
+// Booking Statuses
+const bookingStatuses = ["Available", "Working", "Complete", "Cancelled"];
+
+// Create ServiceRequests (connected to members and assign providers)
+const serviceRequestsData = members.slice(0, 20).map((member, index) => {
+  const assignedProvider = providers[Math.floor(Math.random() * providers.length)];
+  return {
+    requester: member._id,
+    provider: assignedProvider._id,
+    name: member.firstName + " " + member.lastName,
+    address: member.address,
+    phone: member.phone,
+    serviceProviderName: assignedProvider.firstName + " " + assignedProvider.lastName,
+    typeOfWork: services[Math.floor(Math.random() * services.length)],
+    time: `${Math.floor(Math.random() * 12) + 1}:${Math.floor(Math.random() * 60).toString().padStart(2, '0')} PM`,
+    budget: Math.floor(Math.random() * 1000) + 200,
+    notes: "Sample service request notes",
+    status: srStatuses[Math.floor(Math.random() * srStatuses.length)],
+    serviceProviderPhone: assignedProvider.phone,
+    serviceProviderAddress: assignedProvider.address
+  };
+});
+
+const serviceRequests = await ServiceRequest.insertMany(serviceRequestsData);
+console.log("20 service requests created");
+
+// Create Bookings (link to serviceRequests with their assigned providers)
+const bookingsData = serviceRequests.map(sr => ({
+  requester: sr.requester,
+  provider: sr.provider,
+  serviceRequest: sr._id,
+  status: bookingStatuses[Math.floor(Math.random() * bookingStatuses.length)]
+}));
+
+const bookings = await Booking.insertMany(bookingsData);
+console.log("20 bookings created");
+
+// Create Reviews (for some bookings)
+const reviewsData = bookings.slice(0, 10).map(booking => ({
+  booking: booking._id,
+  reviewer: booking.requester,
+  reviewee: booking.provider,
+  rating: Math.floor(Math.random() * 5) + 1,
+  comments: "Sample review comment"
+}));
+
+await Review.insertMany(reviewsData);
+console.log("10 reviews created");
+
+// Create Reports (from members to providers)
+const reportsData = providers.slice(0, 5).map(provider =>
+  members.slice(0, 5).map(member => ({
+    reporter: member._id,
+    reportedUser: provider._id,
+    reason: "Sample reason",
+    description: "Sample description"
+  }))
+).flat();
+
+await Report.insertMany(reportsData);
+console.log("Reports created");
+
+// Create comprehensive Notifications (for users, service requests, bookings, etc.)
+const notificationsData = [];
+
+// Welcome notifications for first 10 users
+notificationsData.push(...users.slice(0, 10).map(user => ({
+  user: user._id,
+  title: "Welcome to SkillConnect!",
+  message: "Welcome to SkillConnect! Your account has been created successfully."
+})));
+
+// Booking notifications
+notificationsData.push(...bookings.slice(0, 10).map(booking => ({
+  user: booking.requester,
+  title: "Booking Confirmed",
+  message: `Your booking with ${providers.find(p => p._id.equals(booking.provider)).firstName} has been confirmed.`
+})));
+
+// Service requests notifications
+notificationsData.push(...serviceRequests.slice(0, 10).map(sr => ({
+  user: providers.find(p => p._id.equals(sr.provider))._id,
+  title: "New Service Request",
+  message: `You have received a new service request from ${members.find(m => m._id.equals(sr.requester)).firstName}.`
+})));
+
+// Review notifications
+notificationsData.push(...reviews.slice(0, 5).map(review => ({
+  user: review.reviewee,
+  title: "New Review Received",
+  message: `You received a ${review.rating}-star review from a customer.`
+})));
+
+const notifications = await Notification.insertMany(notificationsData);
+console.log(`${notifications.length} notifications created`);
+
+// Update users with notifications
+for (const notif of notifications) {
+  await User.findByIdAndUpdate(notif.user, { $push: { notifications: notif._id } });
+}
+
+// Create VerificationAppointments
+const verificationsData = providers.slice(0, 10).map(provider => ({
+  provider: provider._id,
+  scheduledBy: existingAdmin ? existingAdmin._id : admin._id,
+  appointmentDate: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000),
+  location: "Barangay Hall, Pasay City"
+}));
+
+await VerificationAppointment.insertMany(verificationsData);
+console.log("10 verification appointments created");
+
+// Create Residents (similar to users but separate)
+const residentsData = [];
+for (let i = 0; i < 10; i++) {
+  const name = generateName();
+  const resident = {
+    name: name.firstName + " " + name.lastName,
+    address: generateAddress(),
+    phoneNumber: generatePhone(),
+    email: generateEmail(name.firstName, name.lastName)
+  };
+  residentsData.push(resident);
+}
+
+await Resident.insertMany(residentsData);
+console.log("10 residents created");
+
+// Create Services (created by admin)
+const servicesData = services.map(serviceName => ({
+  name: serviceName,
+  description: `Description for ${serviceName}`,
+  rate: Math.floor(Math.random() * 200) + 50,
+  createdBy: existingAdmin ? existingAdmin._id : admin._id
+}));
+
+await Service.insertMany(servicesData);
+console.log("Services created");
+
+// Update users with bookings where applicable
+for (const booking of bookings) {
+  await User.findByIdAndUpdate(booking.requester, { $push: { bookings: booking._id } });
+  await User.findByIdAndUpdate(booking.provider, { $push: { bookings: booking._id } });
+}
+
+console.log("Seeding completed successfully!");
+process.exit();

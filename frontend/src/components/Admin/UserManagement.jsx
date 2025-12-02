@@ -80,6 +80,11 @@ const UserManagement = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'Service Provider', 'Community Member'
 
+  // Pagination states
+  const [currentPageUsers, setCurrentPageUsers] = useState(1);
+  const [currentPageNewUsers, setCurrentPageNewUsers] = useState(1);
+  const itemsPerPage = 10; // Show 10 users per page
+
   // Zoom handlers
   const handleZoomIn = () => {
     setZoomLevel(prev => Math.min(prev + 0.25, 3));
@@ -161,10 +166,10 @@ const UserManagement = () => {
       // Validate data structure
       const usersData = Array.isArray(usersRes.data.users) ? usersRes.data.users : [];
 
-      // Filter new registered users (users registered within the last 30 days)
+      // Filter new registered users (users registered within the last 30 days, excluding verified users)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const newUsersData = usersData.filter(user => new Date(user.createdAt) >= thirtyDaysAgo);
+      const newUsersData = usersData.filter(user => new Date(user.createdAt) >= thirtyDaysAgo && !user.verified);
 
       setUsers(usersData);
       setNewRegisteredUsers(newUsersData);
@@ -298,6 +303,12 @@ const UserManagement = () => {
 
       {tab === "users" && (() => {
         const filteredUsers = users.filter(user => user.verified && (roleFilter === 'all' || user.role === roleFilter));
+
+        // Pagination calculations
+        const totalPagesUsers = Math.ceil(filteredUsers.length / itemsPerPage);
+        const startIndex = (currentPageUsers - 1) * itemsPerPage;
+        const currentUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
+
         return (
           <div className="content-card">
             <div className="card-header">
@@ -312,7 +323,10 @@ const UserManagement = () => {
                   <label className="filter-label">Filter by Role:</label>
                   <select
                     value={roleFilter}
-                    onChange={(e) => setRoleFilter(e.target.value)}
+                    onChange={(e) => {
+                      setRoleFilter(e.target.value);
+                      setCurrentPageUsers(1); // Reset to first page when filter changes
+                    }}
                     className="role-filter-select"
                   >
                     <option value="all">All Roles</option>
@@ -336,167 +350,230 @@ const UserManagement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.length === 0 ? (
+                  {currentUsers.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="no-data">
                         {roleFilter === 'all' ? 'No verified users found' : `No verified ${roleFilter === 'Service Provider' ? 'service providers' : 'community members'} found`}
                       </td>
                     </tr>
                   ) : (
-                    filteredUsers.map((user) => (
-                    <tr key={user._id}>
-                      <td>
-                        <img
-                          src={user.profilePic || "/default-avatar.png"}
-                          alt={`${user.firstName} ${user.lastName}`}
-                          className="admin-avatar"
-                        />
-                      </td>
-                      <td>
-                        <div className="status-container">
-                          <div className="name">{user.firstName} {user.lastName}</div>
-                          <div className="user-id">ID: {user._id.slice(-6)}</div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="contact-info">
-                          <div className="email">{user.email}</div>
-                        </div>
-                      </td>
-                      <td>{user.role === 'Community Member' ? 'Resident' : user.role}</td>
-                      <td>
-                        <span className={`status-badge ${
-                          user.banned ? 'banned' :
-                          user.suspended ? 'suspended' :
-                          user.verified ? 'approved' :
-                          'pending'
-                        }`}>
-                          {user.banned ? 'Banned' :
-                           user.suspended ? 'Suspended' :
-                           user.verified ? 'Verified' :
-                           'Unverified'}
-                        </span>
-                      </td>
-                      <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setModalSource("users");
-                              setShowUserModal(true);
-                            }}
-                            className="action-btn view-btn"
-                            title="View user details and manage account"
-                          >
-                            <i className="fas fa-eye"></i>
-                            <span>View</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                    currentUsers.map((user) => (
+                      <tr key={user._id}>
+                        <td>
+                          <img
+                            src={user.profilePic || "/default-avatar.png"}
+                            alt={`${user.firstName} ${user.lastName}`}
+                            className="admin-avatar"
+                          />
+                        </td>
+                        <td>
+                          <div className="status-container">
+                            <div className="name">{user.firstName} {user.lastName}</div>
+                            <div className="user-id">ID: {user._id.slice(-6)}</div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="contact-info">
+                            <div className="email">{user.email}</div>
+                          </div>
+                        </td>
+                        <td>{user.role === 'Community Member' ? 'Resident' : user.role}</td>
+                        <td>
+                          <span className={`status-badge ${
+                            user.banned ? 'banned' :
+                            user.suspended ? 'suspended' :
+                            user.verified ? 'approved' :
+                            'pending'
+                          }`}>
+                            {user.banned ? 'Banned' :
+                             user.suspended ? 'Suspended' :
+                             user.verified ? 'Verified' :
+                             'Unverified'}
+                          </span>
+                        </td>
+                        <td>{new Date(user.createdAt).toLocaleDateString()}</td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setModalSource("users");
+                                setShowUserModal(true);
+                              }}
+                              className="action-btn view-btn"
+                              title="View user details and manage account"
+                            >
+                              <i className="fas fa-eye"></i>
+                              <span>View</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
               </tbody>
-            </table>
-        </div>
+              </table>
+            </div>
+
+            {/* Pagination Controls for Verified Users */}
+        {totalPagesUsers > 1 && (
+          <div className="pagination-container">
+            <button
+              className="pagination-btn"
+              disabled={currentPageUsers === 1}
+              onClick={() => setCurrentPageUsers(prev => Math.max(prev - 1, 1))}
+            >
+              <i className="fas fa-chevron-left"></i>
+              Previous
+            </button>
+
+            <div className="pagination-info">
+              Page {currentPageUsers} of {totalPagesUsers}
+              <span className="page-count">({filteredUsers.length} total users)</span>
+            </div>
+
+            <button
+              className="pagination-btn"
+              disabled={currentPageUsers === totalPagesUsers}
+              onClick={() => setCurrentPageUsers(prev => Math.min(prev + 1, totalPagesUsers))}
+            >
+              Next
+              <i className="fas fa-chevron-right"></i>
+            </button>
+          </div>
+        )}
       </div>
       );
     })()}
 
-      {tab === "new-users" && (
-        <div className="content-card">
-          <div className="card-header">
-            <h2>
-              <i className="fas fa-user-clock"></i> New Registered Users
-            </h2>
-            <span className="count">{newRegisteredUsers.length}</span>
-          </div>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Profile</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Registered</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {newRegisteredUsers.length === 0 ? (
+      {tab === "new-users" && (() => {
+        // Pagination calculations for new users
+        const totalPagesNewUsers = Math.ceil(newRegisteredUsers.length / itemsPerPage);
+        const startIndex = (currentPageNewUsers - 1) * itemsPerPage;
+        const currentNewUsers = newRegisteredUsers.slice(startIndex, startIndex + itemsPerPage);
+
+        return (
+          <div className="content-card">
+            <div className="card-header">
+              <h2>
+                <i className="fas fa-user-clock"></i> New Registered Users
+              </h2>
+              <span className="count">{newRegisteredUsers.length}</span>
+            </div>
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan="7" className="no-data">No new registered users in the last 30 days</td>
+                    <th>Profile</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
-                  newRegisteredUsers.map((user) => (
-                    <tr key={user._id}>
-                      <td>
-                        <img
-                          src={user.profilePic || "/default-avatar.png"}
-                          alt={`${user.firstName} ${user.lastName}`}
-                          className="admin-avatar"
-                        />
-                      </td>
-                      <td>
-                        <div className="status-container">
-                          <div className="name">{user.firstName} {user.lastName}</div>
-                          <div className="user-id">ID: {user._id.slice(-6)}</div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="contact-info">
-                          <div className="email">{user.email}</div>
-                        </div>
-                      </td>
-                      <td>{user.role === 'Community Member' ? 'Resident' : user.role}</td>
-                      <td>
-                        <span className={`status-badge ${
-                          user.banned ? 'banned' :
-                          user.suspended ? 'suspended' :
-                          user.verified ? 'approved' :
-                          'pending'
-                        }`}>
-                          {user.banned ? 'Banned' :
-                           user.suspended ? 'Suspended' :
-                           user.verified ? 'Verified' :
-                           'Unverified'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="registration-info">
-                          <div className="registration-date">{new Date(user.createdAt).toLocaleDateString()}</div>
-                          <div className="days-ago">
-                            {Math.floor((new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24))} days ago
-                          </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="action-buttons">
-                          <button
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setModalSource("new-users");
-                              setShowUserModal(true);
-                            }}
-                            className="action-btn view-btn"
-                            title="View user details and manage account"
-                          >
-                            <i className="fas fa-eye"></i>
-                            <span>View</span>
-                          </button>
-                        </div>
-                      </td>
+                </thead>
+                <tbody>
+                  {currentNewUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="no-data">No new registered users in the last 30 days</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    currentNewUsers.map((user) => (
+                      <tr key={user._id}>
+                        <td>
+                          <img
+                            src={user.profilePic || "/default-avatar.png"}
+                            alt={`${user.firstName} ${user.lastName}`}
+                            className="admin-avatar"
+                          />
+                        </td>
+                        <td>
+                          <div className="status-container">
+                            <div className="name">{user.firstName} {user.lastName}</div>
+                            <div className="user-id">ID: {user._id.slice(-6)}</div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="contact-info">
+                            <div className="email">{user.email}</div>
+                          </div>
+                        </td>
+                        <td>{user.role === 'Community Member' ? 'Resident' : user.role}</td>
+                        <td>
+                          <span className={`status-badge ${
+                            user.banned ? 'banned' :
+                            user.suspended ? 'suspended' :
+                            user.verified ? 'approved' :
+                            'pending'
+                          }`}>
+                            {user.banned ? 'Banned' :
+                             user.suspended ? 'Suspended' :
+                             user.verified ? 'Verified' :
+                             'Unverified'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="registration-info">
+                            <div className="registration-date">{new Date(user.createdAt).toLocaleDateString()}</div>
+                            <div className="days-ago">
+                              {Math.floor((new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24))} days ago
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="action-buttons">
+                            <button
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setModalSource("new-users");
+                                setShowUserModal(true);
+                              }}
+                              className="action-btn view-btn"
+                              title="View user details and manage account"
+                            >
+                              <i className="fas fa-eye"></i>
+                              <span>View</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls for New Users */}
+            {totalPagesNewUsers > 1 && (
+              <div className="pagination-container">
+                <button
+                  className="pagination-btn"
+                  disabled={currentPageNewUsers === 1}
+                  onClick={() => setCurrentPageNewUsers(prev => Math.max(prev - 1, 1))}
+                >
+                  <i className="fas fa-chevron-left"></i>
+                  Previous
+                </button>
+
+                <div className="pagination-info">
+                  Page {currentPageNewUsers} of {totalPagesNewUsers}
+                  <span className="page-count">({newRegisteredUsers.length} total users)</span>
+                </div>
+
+                <button
+                  className="pagination-btn"
+                  disabled={currentPageNewUsers === totalPagesNewUsers}
+                  onClick={() => setCurrentPageNewUsers(prev => Math.min(prev + 1, totalPagesNewUsers))}
+                >
+                  Next
+                  <i className="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
 
 
@@ -1038,8 +1115,10 @@ const UserManagement = () => {
                   {!selectedUser.banned && (
                     <button
                       className="action-btn ban-user-btn"
-                      onClick={() => {
-                        banUser(selectedUser._id);
+                      onClick={async () => {
+                        setActionLoading('ban');
+                        await banUser(selectedUser._id);
+                        setActionLoading(null);
                         setShowUserModal(false);
                       }}
                       disabled={actionLoading === 'ban'}
