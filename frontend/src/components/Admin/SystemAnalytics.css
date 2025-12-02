@@ -12,7 +12,7 @@
   background: var(--admin-gradient);
   padding: 32px;
   color: #fff;
-  box-shadow: 0 30px 60px rgba(221, 48, 106, 0.25);
+  box-shadow: 0 10px 20px rgba(48, 44, 45, 0.25);
   display: flex;
   justify-content: space-between;
   align-items: flex-start;

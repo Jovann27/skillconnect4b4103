@@ -87,7 +87,6 @@
 .navbar-icon-btn,
 .dashboard-toggle {
   background: rgba(255, 255, 255, 0.15);
-  padding: 8px;
   border-radius: 8px;
   cursor: pointer;
   transition: 0.15s ease-in-out;

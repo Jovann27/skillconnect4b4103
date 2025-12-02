@@ -19,7 +19,6 @@ import Footer from "./components/Layout/Footer";
 
 // Home pages
 import Home from "./components/Home/Home";
-import About from "./components/Home/About";
 
 // Auth pages
 import Login from "./components/Auth/Login";
@@ -174,7 +173,6 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/home" element={<Home />} />
-        <Route path="/about" element={<About />} />
 
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

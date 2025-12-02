@@ -306,16 +306,15 @@
 .contact-image {
   flex: 1;
   background: linear-gradient(180deg, #1e3a8a, #2563eb);
-  border-top-right-radius: 20px;
-  border-bottom-right-radius: 20px;
-  position: relative;
+
   min-height: 400px; 
 }
 .contact-image img {
   position: relative;
   bottom: 0;
-  right: 30px;
-  width: 260px;
+  
+  object-fit: cover;
+  width: 100%;
   margin: 0;
 }
 /* LEARN MORE BUTTON */
@@ -433,7 +432,7 @@
 /* RIGHT SIDE – IMAGE WITH BLUE BACKGROUND */
 .contact-image {
   flex: 1;
-  background: linear-gradient(to bottom right, #2b32b2, #1488cc);
+  background: linear-gradient(135deg, #cc1b56 0%, #f37ab6 100%);
   display: flex;
   align-items: center;
   justify-content: center;

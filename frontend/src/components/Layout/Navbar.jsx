@@ -308,11 +308,6 @@ const Navbar = () => {
                     HOME
                   </Link>
                 </li>
-                <li role="none">
-                  <Link to="/about" className="navbar-link" role="menuitem" aria-label="About SkillConnect4B410">
-                    ABOUT
-                  </Link>
-                </li>
               </>
             )}
 

@@ -68,7 +68,7 @@ const AdminDashboard = () => {
     { to: "/admin/service-requests", label: "Requests", icon: FaClipboardList, active: isServiceRequests },
     { to: "/admin/users", label: "Users", icon: FaUsers, active: isUsers },
     { to: "/admin/residents", label: "Barangay Residents List", icon: FaUserFriends, active: isResidents },
-    { to: "/admin/admin-settings", label: "Settings", icon: FaTools, active: isAdminSettings },
+    // { to: "/admin/admin-settings", label: "Settings", icon: FaTools, active: isAdminSettings },
     { to: "/admin/admin-register", label: "Admin Register", icon: FaTools, active: isAdminRegister }
   ];
 

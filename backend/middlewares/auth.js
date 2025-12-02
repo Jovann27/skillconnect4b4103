@@ -41,24 +41,41 @@ export const isUserAuthenticated = async (req, res, next) => {
 export const isAdminAuthenticated = async (req, res, next) => {
   try {
     const token = getTokenFromRequest(req);
-    if (!token) return res.status(401).json({ success: false, message: "Please login first (admin)" });
+    if (!token) {
+      console.log("No token found in admin authentication");
+      return res.status(401).json({ success: false, message: "Please login first (admin)" });
+    }
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET_KEY);
+      console.log("Decoded admin token:", decoded);
     } catch (err) {
+      console.error("Admin token verification failed:", err.message);
       return res.status(401).json({ success: false, message: "Invalid or expired token (admin)" });
     }
 
-    if (!decoded || decoded.type !== "admin") return res.status(401).json({ success: false, message: "Not an admin token" });
+    if (!decoded || decoded.type !== "admin") {
+      console.log("Invalid admin token structure or type:", decoded);
+      return res.status(401).json({ success: false, message: "Not an admin token" });
+    }
+
+    if (!decoded.id) {
+      console.log("No admin ID found in decoded token:", decoded);
+      return res.status(401).json({ success: false, message: "Invalid admin token - no ID" });
+    }
 
     const admin = await Admin.findById(decoded.id);
-    if (!admin) return res.status(401).json({ success: false, message: "Admin not found" });
+    if (!admin) {
+      console.log("Admin not found in database for ID:", decoded.id);
+      return res.status(401).json({ success: false, message: "Admin not found" });
+    }
 
+    console.log("Admin authenticated successfully:", admin._id);
     req.admin = admin;
     next();
   } catch (error) {
-    console.error("Admin auth error:", error.message);
+    console.error("Admin auth error:", error.message, error.stack);
     return res.status(401).json({ success: false, message: "Authentication failed (admin)" });
   }
 };

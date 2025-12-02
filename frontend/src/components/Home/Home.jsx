@@ -3,7 +3,10 @@ import HowItWorks from "./HowItWorks";
 import Mission from "./Mission";
 import Announcement from "./Announcement";
 import TeamSection from "./Officials";
+import DevelopmentCards from "./DevelopmentCards";
+import ContactForm from "./ContactForm";
 import "./home-styles.css";
+import "./about.css";
 
 const Home = () => {
   
@@ -15,6 +18,8 @@ const Home = () => {
         <Mission />
         <HowItWorks />
         <TeamSection />
+        <DevelopmentCards />
+        <ContactForm />
       </section>
     </>
   );

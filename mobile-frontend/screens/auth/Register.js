@@ -70,10 +70,11 @@ export default function RegisterScreen({ navigation }) {
     if (!formData.lastName.trim()) errors.lastName = "Last name is required";
     if (!formData.role) errors.role = "Role selection is required";
     if (!formData.validId) errors.validId = "Valid ID is required";
+    if (!formData.address.trim()) errors.address = "Address is required";
+    if (!formData.birthdate || formData.birthdate >= new Date()) errors.birthdate = "Please select a valid birth date";
 
     // Role-specific validations
     if (formData.role === "Service Provider") {
-      if (!formData.address.trim()) errors.address = "Address is required for Service Providers";
       if (!formData.employed) errors.employed = "Employment status is required for Service Providers";
       if (!formData.skills || formData.skills.length === 0) errors.skills = "At least one skill is required for Service Providers";
       else if (formData.skills.length > 3) errors.skills = "You can select a maximum of 3 skills";
@@ -392,8 +393,7 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.helpText}>Use +63XXXXXXXXXX or 0XXXXXXXXXX format</Text>
         </View>
 
-        {/* Address - Required for Service Providers */}
-        {formData.role === "Service Provider" && (
+        
             <View style={styles.formGroup}>
                 <Text style={styles.fieldLabel}>Address</Text>
                 <Input
@@ -405,7 +405,6 @@ export default function RegisterScreen({ navigation }) {
                   showSuccess={formData.address && !validationErrors.address}
                 />
             </View>
-        )}
 
         {/* Occupation */}
         <View style={styles.formGroup}>

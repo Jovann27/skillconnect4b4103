@@ -30,7 +30,7 @@ export const register = catchAsyncError(async (req, res, next) => {
 
   // Role-specific field validation
   if (role === "Community Member") {
-    if (!username || !firstName || !lastName || !email || !phone || !password || !confirmPassword) {
+    if (!username || !firstName || !lastName || !email || !phone || !password || !confirmPassword || !address || !birthdate) {
       return next(new ErrorHandler("Please fill up all required fields", 400));
     }
   } else if (role === "Service Provider") {
@@ -47,12 +47,12 @@ export const register = catchAsyncError(async (req, res, next) => {
   if (password !== confirmPassword) return next(new ErrorHandler("Passwords do not match", 400));
   if (password.length < 8) return next(new ErrorHandler("Password must be at least 8 characters", 400));
 
-  // Validate birthdate only for Service Providers
-  if (role === "Service Provider") {
-    const birthDate = new Date(birthdate);
-    if (isNaN(birthDate.getTime())) return next(new ErrorHandler("Invalid birthdate format", 400));
-    if (birthDate > new Date()) return next(new ErrorHandler("Birthdate cannot be in the future", 400));
-  }
+  // Validate birthdate 
+
+  const birthDate = new Date(birthdate);
+  if (isNaN(birthDate.getTime())) return next(new ErrorHandler("Invalid birthdate format", 400));
+  if (birthDate > new Date()) return next(new ErrorHandler("Birthdate cannot be in the future", 400));
+
 
   // Validate phone number format
   if (!/^(\+63|0)[0-9]{10}$/.test(phone)) return next(new ErrorHandler("Invalid phone number format. Use +63XXXXXXXXXX or 0XXXXXXXXXX", 400));

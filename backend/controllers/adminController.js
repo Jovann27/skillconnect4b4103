@@ -86,13 +86,20 @@ export const adminGetAllServiceRequests = async (req, res) => {
 // Verify user
 export const verifyUser = catchAsyncError(async (req, res, next) => {
   const { id } = req.params;
-  
+
+  // Debug logging
+  console.log("verifyUser called with params:", { id });
+  console.log("req.admin:", req.admin);
+  console.log("req.headers.authorization:", req.headers.authorization);
+  console.log("req.cookies:", req.cookies);
+
   // Validate request
   if (!id) {
     return next(new ErrorHandler("User ID is required", 400));
   }
-  
-  if (!req.user || !req.user._id) {
+
+  if (!req.admin || !req.admin._id) {
+    console.error("Admin authentication failed - req.admin is missing or invalid:", req.admin);
     return next(new ErrorHandler("Admin authentication required", 401));
   }
 
@@ -103,10 +110,10 @@ export const verifyUser = catchAsyncError(async (req, res, next) => {
     if (user.verified) return next(new ErrorHandler("User is already verified", 400));
 
     user.verified = true;
-    user.verifiedBy = req.user._id; // Admin who verified the user
+    user.verifiedBy = req.admin._id; // Admin who verified the user
     await user.save();
 
-    console.log(`User ${id} verified successfully by admin ${req.user._id}`);
+    console.log(`User ${id} verified successfully by admin ${req.admin._id}`);
 
     // Send notification to the user (won't fail if socket not available)
     await sendNotification(
