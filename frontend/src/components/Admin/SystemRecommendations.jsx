@@ -560,12 +560,14 @@ const SystemRecommendations = () => {
 
       console.log('📦 Complete Analytics Data:', newAnalyticsData);
       console.log('📦 Total Users:', newAnalyticsData.totals?.totalUsers);
+      console.log('📦 Employment Data:', newAnalyticsData.demographics?.employment);
+      console.log('📦 Employment Rate Calc:', newAnalyticsData.demographics?.employment?.worker, newAnalyticsData.demographics?.employment?.nonWorker);
 
       setAnalyticsData(newAnalyticsData);
 
-      // Generate recommendations based on analytics data
+      // Generate recommendations based on analytics data - pass the data directly
       console.log('✨ Generating recommendations after data load...');
-      generateRecommendations();
+      generateRecommendations(newAnalyticsData);
 
       toast.success("Analytics data loaded successfully!");
     } catch (err) {
@@ -579,8 +581,12 @@ const SystemRecommendations = () => {
   };
 
   // Enhanced recommendations generation with intelligent fallback mechanisms
-  const generateRecommendations = async () => {
+  const generateRecommendations = async (dataToUse = null) => {
     console.log('🔄 Starting Enhanced Hybrid Recommendation Engine...');
+
+    // Use passed data or fall back to state
+    const data = dataToUse || analyticsData;
+    console.log('📊 Recommendations using data:', data);
 
     setHybridEngine(prev => ({ ...prev, isActive: true }));
 
@@ -593,12 +599,12 @@ const SystemRecommendations = () => {
     try {
       // Step 1: Always generate rule-based recommendations (most reliable)
       console.log('📋 Generating rule-based recommendations...');
-      ruleBasedRecs = generateRuleBasedRecommendations();
+      ruleBasedRecs = generateRuleBasedRecommendations(data);
 
       // Step 2: Generate content-based recommendations with validation
       console.log('🎯 Generating content-based recommendations...');
       try {
-        contentBasedRecs = generateContentBasedRecommendations(analyticsData);
+        contentBasedRecs = generateContentBasedRecommendations(data);
         // Validate content-based results
         const contentCategories = Object.keys(contentBasedRecs);
         const hasValidContent = contentCategories.some(cat =>
@@ -616,7 +622,7 @@ const SystemRecommendations = () => {
       // Step 3: Generate collaborative recommendations with validation
       console.log('🤝 Generating collaborative recommendations...');
       try {
-        collaborativeRecs = generateCollaborativeRecommendations(analyticsData);
+        collaborativeRecs = generateCollaborativeRecommendations(data);
         // Validate collaborative results
         const collabCategories = Object.keys(collaborativeRecs);
         const hasValidCollab = collabCategories.some(cat =>
@@ -639,7 +645,7 @@ const SystemRecommendations = () => {
         });
 
         aiBasedRecs = await Promise.race([
-          generateAIRecommendations(analyticsData),
+          generateAIRecommendations(data),
           aiTimeoutPromise
         ]);
 
@@ -786,32 +792,33 @@ const SystemRecommendations = () => {
   };
 
   // Legacy rule-based recommendations (refactored for hybrid system)
-  const generateRuleBasedRecommendations = () => {
+  const generateRuleBasedRecommendations = (data = analyticsData) => {
     console.log('📊 Generating rule-based recommendations...');
+    console.log('📊 Input data for rule-based:', data);
 
     // Calculate key metrics from system analytics data
-    const totalUsers = analyticsData.totals?.totalUsers || 0;
-    const serviceProviders = analyticsData.totals?.serviceProviders || 0;
-    const unemployed = analyticsData.demographics?.employment?.unemployed || 0;
-    const employed = analyticsData.demographics?.employment?.employed || 0;
+    const totalUsers = data.totals?.totalUsers || 0;
+    const serviceProviders = data.totals?.serviceProviders || 0;
+    const unemployed = data.demographics?.employment?.nonWorker || 0;
+    const employed = data.demographics?.employment?.worker || 0;
     const employmentRate = employed + unemployed > 0 ? (employed / (employed + unemployed)) * 100 : 0;
-    const population = analyticsData.totals?.totalPopulation || 0;
-    const activeUsers = analyticsData.activeUsers || 0;
-    const totalBookings = analyticsData.totalBookings || 0;
-    const topServiceData = analyticsData.popularServices?.[0];
+    const population = data.totals?.totalPopulation || 0;
+    const activeUsers = data.activeUsers || 0;
+    const totalBookings = data.totalBookings || 0;
+    const topServiceData = data.popularServices?.[0];
     const popularService = topServiceData?.service || 'General Services';
     const popularServiceBookings = topServiceData?.count || 0;
-    const skillsCount = Object.keys(analyticsData.skills || {}).length;
-    const marketDemand = analyticsData.mostBookedServices || {};
+    const skillsCount = Object.keys(data.skills || {}).length;
+    const marketDemand = data.mostBookedServices || {};
     const totalMarketSize = Object.values(marketDemand).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
-    const growthRate = analyticsData.totalsOverTime?.values?.length > 1 ?
-      ((analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] -
-        analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2]) /
-       Math.max(analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2], 1)) * 100 : 0;
+    const growthRate = data.totalsOverTime?.values?.length > 1 ?
+      ((data.totalsOverTime.values[data.totalsOverTime.values.length - 1] -
+        data.totalsOverTime.values[data.totalsOverTime.values.length - 2]) /
+       Math.max(data.totalsOverTime.values[data.totalsOverTime.values.length - 2], 1)) * 100 : 0;
 
     // Unemployment and youth data from demographics
-    const youthUnemploymentRate = analyticsData.demographics?.ageGroups?.['18-35']?.unemployed || 0;
-    const totalYouth = analyticsData.demographics?.ageGroups?.['18-35']?.total || 0;
+    const youthUnemploymentRate = data.demographics?.ageGroups?.['18-35']?.unemployed || 0;
+    const totalYouth = data.demographics?.ageGroups?.['18-35']?.total || 0;
 
     // Service provider capacity analysis
     const avgBookingsPerProvider = serviceProviders > 0 ? Math.floor(totalBookings / serviceProviders) : 0;
@@ -826,17 +833,17 @@ const SystemRecommendations = () => {
     };
 
     // Barangay Projects based on system analytics
-    // 1. High-demand facility based on booking volume
+    // 1. Community training space (renovate existing structure)
     if (totalBookings > 50) {
       const demandLevel = totalBookings > 200 ? "Critical" : totalBookings > 100 ? "Medium" : "Low";
       recommendationsData.barangayProjects.push({
-        title: "Skills Training and Community Hub",
-        description: "Build a community center for skills training, jobs, and services",
+        title: "Community Skills Training Space",
+        description: "Renovate existing barangay building or use school/church space for skills training and job matching",
         priority: demandLevel === "High" && skillsCount < 6 ? "Critical" : demandLevel === "High" ? "High" : "Medium",
-        impact: "Helps people learn skills and grow local economy",
-        rationale: `Community has ${totalBookings} service requests across ${skillsCount} skill areas, showing need for training facilities.`,
-        estimatedCost: "₱2.0M - ₱3.0M",
-        timeline: "6-9 months",
+        impact: "Low-cost training venue for skills programs",
+        rationale: `Community has ${totalBookings} service requests across ${skillsCount} skill areas. Using existing barangay facilities (town hall, multi-purpose building, or school) costs minimal investment (₱50K-150K for equipment/supplies) vs building new. Can accommodate ${Math.max(20, Math.floor(totalBookings / 10))} trainees per batch.`,
+        estimatedCost: "₱50K - ₱150K (renovation) + ₱20K/month (operations)",
+        timeline: "1-2 months setup",
         source: "rule-based",
         confidence: demandLevel === "High" ? 0.85 : demandLevel === "Medium" ? 0.7 : 0.6
       });
@@ -846,13 +853,13 @@ const SystemRecommendations = () => {
     if (employmentRate < 70 || unemployed > 50) {
       const severity = employmentRate < 40 || unemployed > 100 ? "Critical" : "High";
       recommendationsData.barangayProjects.push({
-        title: "Employment and Skills Development Center",
-        description: "Build a center for job placement, career help, and skills certificates",
+        title: "Community Job Matching Program",
+        description: "Designate trained barangay staff to coordinate job placement and skills matching",
         priority: severity,
-        impact: "Reduces unemployment and makes economy more stable",
-        rationale: `EMPLOYMENT CRISIS: Only ${employmentRate.toFixed(1)}% employment with ${unemployed} residents unemployed = ₱${(unemployed * 8000 * 12 / 1000000).toFixed(1)}M annual income loss. Center would: (1) Place 60-70% of unemployed within 12 months, (2) Generate ₱${(unemployed * 0.65 * 8000 * 12 / 1000000).toFixed(1)}M income recovery, (3) Reduce social services 40-50%, (4) Create 8-12 permanent jobs. Benchmark: Similar centers reduced unemployment from ${employmentRate.toFixed(0)}% to 55-60% in 18 months. Investment: ₱750K-1.25M yields ₱2-3M annual benefit.`,
-        estimatedCost: "₱750K - ₱1.25M",
-        timeline: "3-6 months",
+        impact: "Reduce unemployment by matching residents with available services and opportunities",
+        rationale: `EMPLOYMENT FOCUS: ${unemployed} residents unemployed (${employmentRate.toFixed(1)}% employment rate). LOW-COST SOLUTION: Designate 1-2 existing barangay staff as job coordinators. Training cost: ₱5K. Expected placement rate: 30-50% within 3 months = ${Math.ceil(unemployed * 0.4)} residents placed. Monthly operational cost: ₱0 (already salaried staff). Potential monthly earnings added: ₱${Math.ceil(unemployed * 0.4 * 500)} from increased bookings/services. Process 5-10 placements monthly. Staff already in community, trusted by residents. Immediate implementation possible.`,
+        estimatedCost: "₱5K (training) + staff time",
+        timeline: "1 month setup",
         source: "rule-based",
         confidence: severity === "Critical" ? 0.9 : 0.8
       });
@@ -862,13 +869,13 @@ const SystemRecommendations = () => {
     if (growthRate > 15 || activeUsers > totalUsers * 0.4) {
       const digitalReadiness = growthRate > 25 ? "Critical" : growthRate > 15 ? "High" : "Medium";
       recommendationsData.barangayProjects.push({
-        title: "Community Digital Access and Training Center",
-        description: "Improve digital tools and teach people how to use online service platforms",
+        title: "Community Digital Literacy Sessions",
+        description: "Monthly free training sessions teaching residents how to use online service platforms",
         priority: digitalReadiness,
-        impact: "Makes platform easier to use and teaches digital skills",
-        rationale: `DIGITAL OPPORTUNITY: Platform growing ${growthRate.toFixed(1)}%/month but ${Math.max(0, totalUsers - activeUsers)} registered users inactive (${((Math.max(0, totalUsers - activeUsers)/totalUsers)*100).toFixed(0)}% adoption gap). Center converts 40-60% inactive users, adding ${Math.ceil(Math.max(0, totalUsers - activeUsers) * 0.5)} active users, accelerating growth to 25-30%, enabling 200+ additional bookings monthly (+₱${Math.ceil(200 * 500)}K revenue), creating 5-8 trainer jobs. 30-40 computers, high-speed internet, trained facilitators. ROI within 6-8 months through increased transaction volume.`,
-        estimatedCost: "₱400K - ₱700K",
-        timeline: "2-4 months",
+        impact: "Increases platform adoption and teaches digital skills to the community",
+        rationale: `DIGITAL OPPORTUNITY: Platform growing ${growthRate.toFixed(1)}%/month but ${Math.max(0, totalUsers - activeUsers)} registered users inactive (${((Math.max(0, totalUsers - activeUsers)/totalUsers)*100).toFixed(0)}% adoption gap). LOW-COST SOLUTION: Monthly 2-hour free sessions at barangay office/school. Cost: ₱500/month (snacks only). Use existing barangay tablets/phones. 1 trained facilitator can conduct (pay ₱1K/session = ₱4K/month). Can reach 30-50 residents/month = 300-600/year. Converting 40-50% to active users = ${Math.ceil(Math.max(0, totalUsers - activeUsers) * 0.45)} new active users. Expected: +150 bookings/month = ₱75K monthly revenue increase. Monthly cost ₱4.5K, monthly benefit ₱75K. ROI: 16:1 within 3 months.`,
+        estimatedCost: "₱500 - ₱1K/month",
+        timeline: "Immediate (1 week setup)",
         source: "rule-based",
         confidence: digitalReadiness === "Critical" ? 0.95 : 0.75
       });
@@ -879,14 +886,14 @@ const SystemRecommendations = () => {
     if (popularServiceBookings > 20) {
       const trainingPriority = popularServiceBookings > 100 ? "Critical" : popularServiceBookings > 50 ? "High" : "Medium";
       recommendationsData.skillsTraining.push({
-        title: `${popularService} Excellence Program`,
-        description: `Training and certification for high-demand ${popularService} work`,
+        title: `${popularService} Short Course Certification`,
+        description: `2-month weekend training and certification for high-demand ${popularService} work`,
         targetAudience: "People wanting to become service providers or improve their skills",
-        duration: "4 months",
-        expectedParticipants: Math.min(Math.floor(popularServiceBookings / 5), 40),
+        duration: "2 months (8 sessions, 1x/week)",
+        expectedParticipants: Math.min(20, Math.floor(popularServiceBookings / 8)),
         priority: trainingPriority,
-        skills: [popularService, "Quality Assurance", "Customer Relations", "Basic Entrepreneurship"],
-        rationale: `MARKET DEMAND: ${popularService} = ${popularServiceBookings} confirmed bookings (${(popularServiceBookings/totalMarketSize*100).toFixed(1)}% of market) with estimated ${Math.ceil(popularServiceBookings * 1.4)} unmet requests monthly. Training ${Math.min(Math.floor(popularServiceBookings / 5), 40)} new providers: (1) Increases fulfillment 60% to 95%+, (2) Generates ₱${Math.ceil((Math.ceil(popularServiceBookings * 1.4) * 500 * 30) / 1000000)}M+ annual provider revenue, (3) Creates 8-40 sustainable jobs in highest-demand sector, (4) Improves customer satisfaction 25-35%. Certification increases provider earnings 20-30% through premium pricing.`,
+        skills: [popularService, "Quality Assurance", "Customer Relations"],
+        rationale: `MARKET DEMAND: ${popularService} = ${popularServiceBookings} confirmed bookings with estimated ${Math.ceil(popularServiceBookings * 1.4)} unmet requests monthly. LOW-COST SOLUTION: 2-month program (8 weekend sessions, 2 hours each) at barangay hall. Cost: ₱4K (8 sessions × ₱500 local trainer payment). Training ${Math.min(20, Math.floor(popularServiceBookings / 8))} new providers: (1) Fills 40-50% of unmet demand = +${Math.ceil(Math.ceil(popularServiceBookings * 1.4) * 0.45)} monthly bookings, (2) Each trainee earns ₱1,500/month average = ₱${Math.ceil(Math.min(20, Math.floor(popularServiceBookings / 8)) * 1500 * 12 / 1000)}K annual income generated, (3) Program ROI: ₱4K investment → ₱${Math.ceil(Math.min(20, Math.floor(popularServiceBookings / 8)) * 1500 * 0.1 * 12)}K revenue in 3 months = 15:1 ROI. Weekend format allows working adults to participate.`,
         source: "rule-based",
         confidence: trainingPriority === "Critical" ? 0.9 : trainingPriority === "High" ? 0.8 : 0.7
       });
@@ -896,14 +903,14 @@ const SystemRecommendations = () => {
     if (skillsCount < 10 || totalBookings < serviceProviders * 15) {
       const gapPriority = skillsCount < 5 || totalBookings < serviceProviders * 10 ? "Critical" : "High";
       recommendationsData.skillsTraining.push({
-        title: "Comprehensive Skills Diversification Program",
-        description: "Training in many essential skills to build a stronger workforce",
+        title: "Monthly Rotating Skills Training",
+        description: "Different high-demand skills offered monthly, rotating throughout the year",
         targetAudience: "Unemployed adults and people changing jobs",
-        duration: "8 months",
-        expectedParticipants: Math.max(75, Math.floor(unemployed * 0.3)),
+        duration: "2 months per skill (rotating monthly)",
+        expectedParticipants: Math.max(30, Math.floor(unemployed * 0.2)),
         priority: gapPriority,
-        skills: ["Construction & Carpentry", "Electrical & Plumbing", "Welding & Fabrication", "Automotive Services", "Digital Skills"],
-        rationale: `SKILLS GAP: Only ${skillsCount} areas with ${totalBookings} bookings across ${serviceProviders} providers (${(totalBookings / serviceProviders).toFixed(1)}/provider vs. 20-25 healthy benchmark). DIVERSIFICATION adds: (1) Construction (40-50 jobs/month demand), (2) Electrical/Plumbing (emergency services highest demand), (3) Welding (manufacturing growth), (4) Automotive (transport economy), (5) Digital (future-proofing). Training ${Math.max(75, Math.floor(unemployed * 0.3))} generates ₱${(Math.max(75, Math.floor(unemployed * 0.3)) * 12000 * 12 / 1000000).toFixed(1)}M annual income with 85-90 job placements = ₱${(85 * 12000 * 12 / 1000000).toFixed(1)}M productivity gain.`,
+        skills: ["Construction & Carpentry", "Electrical & Plumbing", "Welding & Fabrication", "Automotive Services", "Digital Skills", "Food Service"],
+        rationale: `SKILLS GAP: Only ${skillsCount} areas with ${totalBookings} bookings across ${serviceProviders} providers. ROTATING PROGRAM: Each month, launch new 2-month skill course. Cost: ₱5K/course (₱2K materials + ₱3K instructor) = ₱30K/year for 6 courses. Year 1 train ${Math.max(30, Math.floor(unemployed * 0.2)) * 6} = ${Math.max(180, Math.floor(unemployed * 1.2))} residents. Expected: 40-50% join platform = ${Math.ceil((Math.max(180, Math.floor(unemployed * 1.2)) * 0.45))} new providers earning ₱1K-2K/month = ₱${Math.ceil((Math.max(180, Math.floor(unemployed * 1.2)) * 0.45 * 1500 * 12 / 1000000))}M annual income generated. Year 2: Add 2-3 new skills based on demand. Total program cost ₱30K/year, generated income ₱${Math.ceil((Math.max(180, Math.floor(unemployed * 1.2)) * 0.45 * 1500 * 12 / 1000000))}M = ROI 100+:1.`,
         source: "rule-based",
         confidence: gapPriority === "Critical" ? 0.95 : 0.85
       });
@@ -912,14 +919,14 @@ const SystemRecommendations = () => {
     // 3. Provider capacity building
     if (serviceProviders > 0 && avgBookingsPerProvider < 10) {
       recommendationsData.skillsTraining.push({
-        title: "Service Provider Business Development Program",
-        description: "Business skills, marketing, and better services for existing providers",
-        targetAudience: "Providers who get few bookings",
-        duration: "3 months",
+        title: "Provider Success Coaching (Peer Mentoring)",
+        description: "Top performers mentor struggling providers through monthly 1-hour coaching sessions",
+        targetAudience: "Service providers below 10 bookings/month and top-tier mentors",
+        duration: "3 months (monthly 1-hour sessions)",
         expectedParticipants: Math.floor(serviceProviders * 0.6),
         priority: "Medium",
-        skills: ["Digital Marketing", "Customer Service Excellence", "Business Management", "Pricing Strategy"],
-        rationale: `PROVIDER UNDERPERFORMANCE: ${serviceProviders} providers at ${avgBookingsPerProvider} bookings/month (vs. 20-25 benchmark). ~${Math.floor(serviceProviders * 0.4)} significantly underutilized = ₱${((Math.floor(serviceProviders * 0.4) * 20 * 500 * 30) - (Math.floor(serviceProviders * 0.4) * avgBookingsPerProvider * 500 * 30)) / 1000000}M/month lost or ₱${(((Math.floor(serviceProviders * 0.4) * 20 * 500 * 30) - (Math.floor(serviceProviders * 0.4) * avgBookingsPerProvider * 500 * 30)) * 12) / 1000000}M annually. TRAINING: (1) Profile optimization +50-70% visibility, (2) Pricing strategy reflecting true value, (3) Customer retention techniques, (4) Online reputation management. Similar programs increase bookings from ${avgBookingsPerProvider} to 15-18/month = ₱${((Math.floor(serviceProviders * 0.6) * 18 * 500 * 30) / 1000000).toFixed(1)}M annual recovery for ${Math.floor(serviceProviders * 0.6)} trained providers.`,
+        skills: ["Profile Optimization", "Customer Service Excellence", "Booking Strategy", "Review Management"],
+        rationale: `PROVIDER UNDERPERFORMANCE: ${serviceProviders} providers at ${avgBookingsPerProvider} bookings/month (vs. 20-25 benchmark). PEER MENTORING SOLUTION: Pay top 3-5 performers ₱1K/month each = ₱60K/year to mentor struggling providers. Monthly 1-hour coaching sessions on: (1) Optimizing profiles (+50% visibility), (2) Managing customer expectations (+30% retention), (3) Strategic pricing, (4) Handling negative reviews. Cost: ₱60K/year. Expected results: Mentor struggling ${Math.floor(serviceProviders * 0.6)} providers from ${avgBookingsPerProvider} to 10-12 bookings/month = +${Math.floor(serviceProviders * 0.6) * 3} bookings/month = ₱${(Math.floor(serviceProviders * 0.6) * 3 * 500 * 30 / 1000)}K monthly revenue increase. ROI: ₱60K/year → ₱${(Math.floor(serviceProviders * 0.6) * 3 * 500 * 30 / 1000) * 12}K annual benefit = 30:1 ROI. Local expertise preserved, sustainable growth.`,
         source: "rule-based",
         confidence: 0.75
       });
@@ -929,12 +936,14 @@ const SystemRecommendations = () => {
     // 1. Youth employment program
     if (totalYouth > 20 || youthUnemploymentRate > 0.3) {
       recommendationsData.communityPrograms.push({
-        title: "Youth Skills Apprenticeship Program",
-        description: "Hands-on training with mentors for young people without jobs",
+        title: "Youth Skills Apprenticeship Program (Peer-Led)",
+        description: "Local service providers mentor young people through 2-month apprenticeships, no formal classroom",
         targetGroup: "Young people aged 16-30 with little work experience",
-        focus: "Helps youth find jobs quickly",
-        duration: "12 months program",
-        rationale: `${totalYouth} young people have trouble finding work. They need more training chances.`,
+        focus: "Fast job placement through on-the-job learning",
+        duration: "2 months apprenticeships, rotating monthly",
+        estimatedCost: "₱10K/month (mentor stipends) = ₱60K/year",
+        expectedOutcome: `${Math.ceil(totalYouth * 0.4)} youth trained/year earning ₱2K-3K/month within 3 months`,
+        rationale: `LOW-COST SOLUTION: Pair ${totalYouth} young people with successful local providers. 1-month hands-on apprenticeship at provider's workplace. No classroom needed. Cost: ₱500/month mentor stipend × 20 youth = ₱10K/month. After apprenticeship: 60-70% join platform earning ₱2K-3K/month. Monthly cost ₱10K, monthly benefit ₱${Math.ceil(totalYouth * 0.4 * 2500)} = ROI 2.5:1. Immediate employment, no expensive training center needed.`,
         source: "rule-based",
         confidence: totalYouth > 50 ? 0.85 : 0.7
       });
@@ -943,12 +952,14 @@ const SystemRecommendations = () => {
     // 2. Community networking and job matching
     if (totalUsers > 500 || totalBookings > 100) {
       recommendationsData.communityPrograms.push({
-        title: "Community Skills Marketplace Events",
-        description: "Quarterly events where providers and customers meet and job seekers find work",
-        targetGroup: "Everyone in the community, including employers and job seekers",
-        focus: "Creates more jobs and business connections",
-        duration: "Ongoing quarterly events",
-        rationale: `${totalUsers} registered users make ${totalBookings} transactions. More connections needed.`,
+        title: "Monthly Community Skills Marketplace",
+        description: "Free monthly gathering at barangay hall where providers showcase skills and residents find services",
+        targetGroup: "All residents: service providers, job seekers, and service customers",
+        focus: "Direct connections between providers and customers, job placement",
+        duration: "Monthly events (1st Saturday, 2 hours)",
+        estimatedCost: "₱500-1K/month (refreshments) = ₱6K-12K/year",
+        expectedOutcome: `${Math.ceil(totalBookings * 0.3)} new bookings/month, ${Math.ceil(totalUsers * 0.05)} job placements/month`,
+        rationale: `LOW-COST NETWORKING: Monthly marketplace at barangay office. Cost: ₱500 snacks. Format: Providers pitch (30 min each), residents attend (2 hours). Expected: ${Math.ceil(totalBookings * 0.3)} new service bookings/month = ₱${Math.ceil(totalBookings * 0.3 * 500)} revenue. Monthly cost ₱500, monthly benefit ₱${Math.ceil(totalBookings * 0.3 * 500)} = ROI 30:1. Plus ${Math.ceil(totalUsers * 0.05)} job connections monthly. Requires 1 barangay staff to organize (already salaried). No venue rental.`,
         source: "rule-based",
         confidence: totalUsers > 1000 ? 0.9 : 0.75
       });
@@ -957,12 +968,14 @@ const SystemRecommendations = () => {
     // 3. Inclusive skill development
     if (employmentRate < 80) {
       recommendationsData.communityPrograms.push({
-        title: "Inclusive Skills Development Initiative",
-        description: "Special programs for groups who need more help to join the workforce",
-        targetGroup: "Women, people with disabilities, and other groups who face barriers",
-        focus: "Makes workforce more inclusive and fair",
-        duration: "6 months pilot program",
-        rationale: "More people from different groups should have access to skill training.",
+        title: "Inclusive Skills Training (Women & PWD Focus)",
+        description: "Free 2-month training courses tailored for women and people with disabilities with flexible scheduling",
+        targetGroup: "Women, people with disabilities, and other groups facing employment barriers",
+        focus: "Equal opportunity job training and placement",
+        duration: "2-month courses, rolling enrollment (new cohort monthly)",
+        estimatedCost: "₱3K/course (₱2K instructor + ₱1K materials) = ₱36K/year",
+        expectedOutcome: `${Math.ceil(unemployed * 0.15)} women/PWD trained/year, 40% job placement`,
+        rationale: `INCLUSIVE APPROACH: 2-month flexible training (evening/weekend at barangay office) for women & PWD. Cost: ₱3K/course × 12 courses/year = ₱36K/year. Target ${Math.ceil(unemployed * 0.15)} women/PWD annually. Expected: 40% secure jobs earning ₱1K-2K/month = ₱${Math.ceil(unemployed * 0.15 * 0.4 * 1500 * 12 / 1000)}K annual income. Trained instructor from Year 1 can lead (Year 2 cost ₱24K). Addresses discrimination barriers, builds inclusive economy. Uses barangay office venue (no rental cost).`,
         source: "rule-based",
         confidence: employmentRate < 60 ? 0.85 : 0.7
       });
@@ -972,11 +985,13 @@ const SystemRecommendations = () => {
     // 1. Emergency response for critical metrics
     if (employmentRate < 50 || unemployed > 75) {
       recommendationsData.priorityActions.push({
-        action: "Implement Emergency Employment Program",
-        description: "Start job help and basic skills training right away for unemployed people",
-        rationale: `${Math.round(employmentRate)}% employment with ${unemployed} people unemployed means we need immediate help.`,
-        timeline: "Within 30 days",
-        responsible: "Barangay Employment and Development Office",
+        action: "Launch Quick Job Matching Program (Week 1)",
+        description: "Designate barangay staff to identify ${Math.ceil(unemployed * 0.3)} jobless residents and match with 20+ available service requests",
+        timeline: "Within 7 days",
+        estimatedCost: "₱0 (use existing staff)",
+        expectedOutcome: `${Math.ceil(unemployed * 0.2)} residents placed in jobs within 2 weeks, ₱${Math.ceil(unemployed * 0.2 * 500)} weekly revenue increase`,
+        rationale: `IMMEDIATE QUICK-WIN: ${Math.round(employmentRate)}% employment crisis. Do NOT wait for training programs. Action: This week, 1 barangay staff interviews ${Math.ceil(unemployed * 0.3)} unemployed residents. Next week, match them with existing 20+ service requests. Expected: ${Math.ceil(unemployed * 0.2)} placements = ₱${Math.ceil(unemployed * 0.2 * 500)}/week income. Cost: ₱0 (existing staff). Timeline: 2 weeks to first placements. Then scale to formal Job Matching Program.`,
+        responsible: "Barangay Employment Officer (if existing) or designated staff",
         priority: "Critical",
         source: "rule-based",
         confidence: 0.95
@@ -986,11 +1001,13 @@ const SystemRecommendations = () => {
     // 2. Data-driven planning
     if (skillsCount < 8 || !popularService || popularService === 'General Services') {
       recommendationsData.priorityActions.push({
-        action: "Conduct Comprehensive Skills Assessment",
-        description: "Check what skills people need and survey all community groups",
-        rationale: `System shows only ${skillsCount} skill areas with unclear service needs. Need better understanding first.`,
-        timeline: "Within 45 days",
-        responsible: "Barangay Development Planning Committee",
+        action: "Quick Community Skills Survey (Week 2-3)",
+        description: "Simple 5-minute survey with ${Math.ceil(totalUsers * 0.2)} residents + ${serviceProviders} providers to identify top 3 high-demand skills",
+        timeline: "Within 21 days",
+        estimatedCost: "₱2K (survey forms + incentives)",
+        expectedOutcome: "Identify 3-4 high-demand skills to prioritize in training programs",
+        rationale: `CLEAR PRIORITY: System shows only ${skillsCount} skill areas = unclear priorities. Action: Week 2, conduct quick survey (barangay hall + SMS/FB). Interview ${Math.ceil(totalUsers * 0.2)} residents asking 5 questions: (1) What job would you like? (2) What skills do you lack? (3) When can you train? Sample providers asking what they can teach. Cost: ₱2K forms. Output: Identify 3-4 high-demand skills (e.g., electrical, plumbing, digital). Use results to design Year 1 rotating training. Prevents wasted training on unwanted skills.`,
+        responsible: "Barangay Sanggunian / Community Development Team",
         priority: "High",
         source: "rule-based",
         confidence: 0.8
@@ -1000,11 +1017,13 @@ const SystemRecommendations = () => {
     // 3. Partnership development based on market demand
     if (totalBookings > 0 && serviceProviders > 0) {
       recommendationsData.priorityActions.push({
-        action: "Establish Industry Training Partnerships",
-        description: `Partner with industry for ${popularService} training and other skills certificates`,
-        rationale: `${totalBookings} service requests from ${serviceProviders} providers show chance to work with industry.`,
-        timeline: "Within 60 days",
-        responsible: "Barangay Education and Training Coordinator",
+        action: "Secure Free/Low-Cost Training Partners (Week 3-4)",
+        description: `Identify 1-2 successful ${popularService} providers willing to teach short courses for ₱500-1K/session`,
+        timeline: "Within 30 days",
+        estimatedCost: "₱0 (partnerships only, pay trainers from course budget)",
+        expectedOutcome: "Launch first 2-month ${popularService} course within 6 weeks",
+        rationale: `SUSTAINABLE MODEL: Rather than external consultants (expensive), work with your OWN best providers. Action: Contact top 3 ${popularService} providers (highest rated/booked). Offer ₱500/session to teach weekend short courses. Benefit: They earn extra income, courses are authentic/practical, learners get quality training. Cost: ₱500 × 8 sessions = ₱4K/course. Alternative: Barter = Free training for provider in exchange for course (e.g., digital marketing training). Secures sustainability - training continues using local expertise.`,
+        responsible: "Barangay Business and Development Coordinator",
         priority: "High",
         source: "rule-based",
         confidence: serviceProviders > 50 ? 0.9 : 0.75
@@ -1014,11 +1033,13 @@ const SystemRecommendations = () => {
     // 4. Platform growth management
     if (growthRate > 20 || activeUsers > totalUsers * 0.5) {
       recommendationsData.priorityActions.push({
-        action: "Enhance Platform Adoption Strategy",
-        description: "Promote platform and help users to manage growing use",
-        rationale: `Users growing ${growthRate.toFixed(1)}% monthly with ${activeUsers} active. Need promotion to keep growing.`,
-        timeline: "Ongoing - Monthly",
-        responsible: "Community Outreach and Communications Team",
+        action: "Monthly Digital Literacy Sessions (Ongoing)",
+        description: "Free 2-hour monthly sessions at barangay office teaching residents how to use the platform",
+        timeline: "Start Month 1, continue monthly",
+        estimatedCost: "₱500/month (snacks) = ₱6K/year",
+        expectedOutcome: `Convert ${Math.ceil(Math.max(0, totalUsers - activeUsers) * 0.05)} inactive users/month to active, +₱${Math.ceil(200 * 500)}/month revenue`,
+        rationale: `GROWTH ENABLEMENT: Users growing ${growthRate.toFixed(1)}%/month but ${Math.max(0, totalUsers - activeUsers)} users inactive. Action: Monthly 2-hour free sessions. Format: Live app walkthrough, Q&A, practice booking. Cost: ₱500 snacks + 1 staff (already salaried). Can reach 40-50 residents/month. Convert 30-40% to active users = +${Math.ceil(Math.max(0, totalUsers - activeUsers) * 0.05)}/month active. Each new active user books ₱500 average = ₱${Math.ceil(200 * 500)}/month revenue. Monthly cost ₱500, monthly benefit ₱${Math.ceil(200 * 500)} = ROI 8:1.`,
+        responsible: "Community Outreach and Digital Literacy Team",
         priority: "Medium",
         source: "rule-based",
         confidence: growthRate > 30 ? 0.9 : 0.75
@@ -1304,42 +1325,30 @@ const SystemRecommendations = () => {
                 const nonWorker = analyticsData.demographics.employment?.nonWorker || 0;
                 const total = worker + nonWorker;
                 return total > 0 ? Math.round((worker / total) * 100) : 0;
-              })()}%
-            </p>
-            <div className="metric-description">
-              {(() => {
-                const rate = (() => {
-                  const worker = analyticsData.demographics.employment?.worker || 0;
-                  const nonWorker = analyticsData.demographics.employment?.nonWorker || 0;
-                  const total = worker + nonWorker;
-                  return total > 0 ? (worker / total) * 100 : 0;
-                })();
-                return rate < 50 ? "Critical - Immediate action needed" : rate < 70 ? "Moderate - Improvement needed" : "Good - Monitor and maintain";
               })()}
-            </div>
+            </p>
+            <div className="metric-description">Percentage employed</div>
           </div>
 
           <div className="metric-card">
             <div className="metric-icon bookings">
               <FaTools />
             </div>
-            <h3 className="metric-title">Top Service Demand</h3>
-            <p className="metric-value">{analyticsData.popularServices[0]?.service || 'N/A'}</p>
-            <div className="metric-description">{analyticsData.popularServices[0]?.count || 0} bookings</div>
+            <h3 className="metric-title">Top Service Bookings</h3>
+            <p className="metric-value">{analyticsData.popularServices[0]?.count || 0}</p>
+            <div className="metric-description">Most requested service</div>
           </div>
 
           <div className="metric-card">
             <div className="metric-icon growth">
               <FaChartLine />
             </div>
-            <h3 className="metric-title">User Growth</h3>
+            <h3 className="metric-title">Monthly growth</h3>
             <p className="metric-value">
-              {analyticsData.totalsOverTime.values.length > 1 ?
-                Math.round(((analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] -
-                           analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2]) /
-                          (analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2] || 1)) * 100) : 0}%
+              {analyticsData.totalsOverTime.values.length > 0 ?
+                analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] : 0}
             </p>
-            <div className="metric-description">Monthly growth rate</div>
+            <div className="metric-description">New users this month</div>
           </div>
 
           <div className="metric-card">

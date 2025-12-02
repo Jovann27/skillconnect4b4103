@@ -34,6 +34,7 @@ if (process.env.NODE_ENV !== 'production') {
   const User = (await import("./models/userSchema.js")).default;
   const Chat = (await import("./models/chat.js")).default;
   const Booking = (await import("./models/booking.js")).default;
+  const { initializeSocketNotify } = await import("./utils/socketNotify.js");
 
   const PORT = process.env.PORT || 4000;
   const server = http.createServer(app);
@@ -54,6 +55,9 @@ if (process.env.NODE_ENV !== 'production') {
   });
 
   onlineUsers = new Map();
+
+  // Initialize socketNotify with io and onlineUsers
+  initializeSocketNotify(io, onlineUsers);
 
   // Socket.IO authentication middleware
   io.use(async (socket, next) => {

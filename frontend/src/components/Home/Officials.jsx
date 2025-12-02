@@ -1,14 +1,14 @@
-import './images/Chairwoman.png';
-import './images/Kagwadomar.png';
-import './images/treasurer.png';
-import './images/Fired.png';
-import './images/DSC_0028-removebg-preview.png';
-import './images/DSC_9666-removebg-preview.png';
-import './images/DSC_9677-removebg-preview.png';
-import './images/DSC_9822-removebg-preview.png';
-
-import './images/DSC_9875-removebg-preview.png';
-import { fromUnixTime } from 'date-fns';
+import chairwomanImage from './images/Chairwoman.png';
+import skChairwomanImage from './images/skChiarwoman.png';
+import kagwadomarImage from './images/Kagwadomar.png';
+import treasurerImage from './images/treasurer.png';
+import firedImage from './images/Fired.png';
+import img0028 from './images/DSC_0028-removebg-preview.png';
+import img9666 from './images/DSC_9666-removebg-preview.png';
+import img9677 from './images/DSC_9677-removebg-preview.png';
+import img9822 from './images/DSC_9822-removebg-preview.png';
+import img9860 from './images/DSC_9860-removebg-preview (1).png';
+import img9875 from './images/DSC_9875-removebg-preview.png';
 const styles = `
   .team-section {
     min-height: 100vh;
@@ -65,27 +65,36 @@ const styles = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    cursor: pointer;
-    transition: transform 0.3s ease;
+    width: 80%;
+    height: 310px;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    padding: 5px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+      0 2px 4px -2px rgba(0, 0, 0, 0.06);
   }
 
-  .team-member:hover {
-    transform: translateY(-8px);
+
+  .team-member-container {
+    width: 10rem;
+    height: 16rem;
+    margin-bottom: 1rem;
   }
 
   .team-member-image-container {
-    width: 9rem;
-    height: 9rem;
-    border-radius: 50%;
-    overflow: hidden;
-    margin-bottom: 1rem;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    transition: all 0.3s ease;
+   width: 100%;
+   height: 100%;
+
+  }
+  .team-member-image-container img {
+    width: 90%;
+    height: 90%;
+    margin: 0 auto;
+    object-fit: cover;
   }
 
-  .team-member:hover .team-member-image-container {
+  .team-member:hover {
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    transform: scale(1.1);
   }
 
   .team-member-image {
@@ -96,30 +105,18 @@ const styles = `
   }
 
   .team-member:hover .team-member-image {
-    transform: scale(1.1);
-  }
-
-  .team-member-name {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 0.25rem;
-    transition: color 0.3s ease;
-  }
-
-  .team-member:hover .team-member-name {
-    color: #3b82f6;
+    transform: scale(1.05);
   }
 
   .team-member-role {
     font-size: 1rem;
-    color: #6b7280;
+    color: #000000ff;
     transition: color 0.3s ease;
+    font-weight: 600;
+    text-shadow: 1px 2px 3px #00000066;
   }
 
-  .team-member:hover .team-member-role {
-    color: #374151;
-  }
+
 
   @media (max-width: 1024px) {
     .team-grid {
@@ -162,11 +159,13 @@ const styles = `
 
 const TeamMember = ({ name, role, imageUrl }) => (
   <div className="team-member">
-    <div className="team-member-image-container">
-      <img 
-        src={imageUrl} 
-        className="team-member-image"
-      />
+    <div className="team-member-container">
+      <div className="team-member-image-container">
+        <img 
+          src={imageUrl} 
+          className="team-member-image"
+        />
+      </div>
     </div>
     <p className="team-member-role">{role}</p>
   </div>
@@ -176,47 +175,47 @@ export default function TeamSection() {
   const teamMembers = [
     {
       role: "Barangay Chairman",
-      imageUrl: "./images/Chairwoman.png"
+      imageUrl: chairwomanImage
     },
     {
       role: "Sk Chairman",
-      imageUrl: "./images/skChiarwoman.png"
+      imageUrl: skChairwomanImage
     },
     {
       role: "Kagawad",
-      imageUrl: "./images/Kagwadomar.png"
+      imageUrl: kagwadomarImage
     },
     {
       role: "Treasurer",
-      imageUrl: "./images/treasurer.png"
+      imageUrl: treasurerImage
     },
     {
       role: "Barangay Official",
-      imageUrl: "./images/Fired.png"
+      imageUrl: firedImage
     },
     {
       role: "Barangay Official",
-      imageUrl: "./images/DSC_0028-removebg-preview.png"
+      imageUrl: img0028
     },
     {
       role: "Barangay Official",
-      imageUrl: "./images/DSC_9666-removebg-preview.png"
+      imageUrl: img9666
     },
     {
       role: "Barangay Official",
-      imageUrl: "./images/DSC_9677-removebg-preview.png"
+      imageUrl: img9677
     },
     {
       role: "Barangay Official",
-      imageUrl: "./images/DSC_9822-removebg-preview.png"
+      imageUrl: img9822
     },
     {
       role: "Barangay Official",
-      imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
+      imageUrl: img9860
     },
     {
       role: "Barangay Official",
-      imageUrl: "./images/DSC_9875-removebg-preview.png"
+      imageUrl: img9875
     }
   ];
 

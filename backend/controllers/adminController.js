@@ -86,28 +86,45 @@ export const adminGetAllServiceRequests = async (req, res) => {
 // Verify user
 export const verifyUser = catchAsyncError(async (req, res, next) => {
   const { id } = req.params;
-  const user = await User.findById(id);
+  
+  // Validate request
+  if (!id) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
+  
+  if (!req.user || !req.user._id) {
+    return next(new ErrorHandler("Admin authentication required", 401));
+  }
 
-  if (!user) return next(new ErrorHandler("User not found", 404));
-  if (user.verified) return next(new ErrorHandler("User is already verified", 400));
+  try {
+    const user = await User.findById(id);
 
-  user.verified = true;
-  user.verifiedBy = req.user._id; // Admin who verified the user
-  await user.save();
+    if (!user) return next(new ErrorHandler("User not found", 404));
+    if (user.verified) return next(new ErrorHandler("User is already verified", 400));
 
-  // Send notification to the user
-  await sendNotification(
-    user._id,
-    "Account Verified",
-    "Your account has been verified by an administrator. You can now log in to the system.",
-    { type: "account-verified" }
-  );
+    user.verified = true;
+    user.verifiedBy = req.user._id; // Admin who verified the user
+    await user.save();
 
-  res.status(200).json({
-    success: true,
-    message: `User (${user.firstName} ${user.lastName}) has been verified successfully`,
-    user
-  });
+    console.log(`User ${id} verified successfully by admin ${req.user._id}`);
+
+    // Send notification to the user (won't fail if socket not available)
+    await sendNotification(
+      user._id,
+      "Account Verified",
+      "Your account has been verified by an administrator. You can now log in to the system.",
+      { type: "account-verified" }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `User (${user.firstName} ${user.lastName}) has been verified successfully`,
+      user
+    });
+  } catch (error) {
+    console.error("Error verifying user:", error.message, error.stack);
+    return next(new ErrorHandler(`Failed to verify user: ${error.message}`, 500));
+  }
 });
 
 // Get all users
@@ -186,19 +203,41 @@ export const getServiceProviderApplicants = catchAsyncError(async (req, res, nex
 //Ban User
 export const banUser = catchAsyncError(async (req, res, next) => {
   const { id } = req.params;
-  const user = await User.findById(id);
+  
+  if (!id) {
+    return next(new ErrorHandler("User ID is required", 400));
+  }
 
-  if (!user) return next(new ErrorHandler("User not found", 404));
-  if (user.role === "Admin") return next(new ErrorHandler("Cannot ban another admin", 403));
+  try {
+    const user = await User.findById(id);
 
-  user.availability = "Not Available";
-  user.banned = true; // add this field to your schema if it doesn’t exist
-  await user.save();
+    if (!user) return next(new ErrorHandler("User not found", 404));
+    if (user.role === "Admin") return next(new ErrorHandler("Cannot ban another admin", 403));
+    if (user.banned) return next(new ErrorHandler("User is already banned", 400));
 
-  res.status(200).json({
-    success: true,
-    message: `User (${user.firstName} ${user.lastName}) has been banned.`,
-  });
+    user.availability = "Not Available";
+    user.banned = true;
+    await user.save();
+
+    console.log(`User ${id} banned successfully`);
+
+    // Send notification to banned user (won't fail if socket not available)
+    await sendNotification(
+      user._id,
+      "Account Banned",
+      "Your account has been banned by an administrator. Please contact support for more information.",
+      { type: "account-banned" }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `User (${user.firstName} ${user.lastName}) has been banned successfully.`,
+      user
+    });
+  } catch (error) {
+    console.error("Error banning user:", error.message, error.stack);
+    return next(new ErrorHandler(`Failed to ban user: ${error.message}`, 500));
+  }
 });
 
 // Update user service profile
