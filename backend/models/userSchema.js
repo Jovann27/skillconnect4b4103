@@ -74,6 +74,7 @@ const userSchema = new mongoose.Schema({
   passwordLength: { type: Number, default: 0 },
 
   banned: { type: Boolean, default: false },
+  suspended: { type: Boolean, default: false },
 
   // Notification preferences
   notificationPreferences: {

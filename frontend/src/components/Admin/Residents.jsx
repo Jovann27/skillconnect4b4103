@@ -143,8 +143,8 @@ const Residents = () => {
     <div className="user-management-container">
       <div className="analytics-header">
         <div>
-          <h1>Residents Management</h1>
-          <p className="header-description">Manage resident information and import data from Excel</p>
+          <h1>Residents List</h1>
+          <p className="header-description">View Records of the Barangay Residents</p>
         </div>
       </div>
 
@@ -164,7 +164,7 @@ const Residents = () => {
             <div className="action-buttons">
               <label className="admin-btn secondary import-btn">
                 <i className="fas fa-file-excel"></i>
-                {importing ? 'Importing...' : 'Import Excel'}
+                {importing ? 'Importing...' : 'Import Residents Data from Excel'}
                 <input
                   type="file"
                   accept=".xls,.xlsx"

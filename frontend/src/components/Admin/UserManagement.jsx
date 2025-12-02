@@ -69,10 +69,56 @@ const UserManagement = () => {
   const [serviceFormData, setServiceFormData] = useState([]);
 
   const [showUserModal, setShowUserModal] = useState(false);
+  const [modalSource, setModalSource] = useState(""); // "users" or "new-users"
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [documentType, setDocumentType] = useState(''); // 'validId' or 'certificate'
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'Service Provider', 'Community Member'
+
+  // Zoom handlers
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.25, 3));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleWheel = (e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoomLevel(prev => Math.max(0.5, Math.min(3, prev + delta)));
+  };
+
+  const handleMouseDown = (e) => {
+    if (zoomLevel > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && zoomLevel > 1) {
+      setPanPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
 
   // Check if user is authenticated as admin
   const isAdmin = isAuthorized && tokenType === "admin" && admin;
@@ -239,8 +285,8 @@ const UserManagement = () => {
       <div className="tab-navigation">
         <button onClick={() => setTab("users")} className={`tab-btn ${tab === "users" ? "active" : ""}`}>
           <i className="fas fa-users"></i>
-          <span className="tab-text">All Users</span>
-          <span className="tab-count">{users.length}</span>
+          <span className="tab-text">Verified Users</span>
+          <span className="tab-count">{users.filter(user => user.verified).length}</span>
         </button>
         <button onClick={() => setTab("new-users")} className={`tab-btn ${tab === "new-users" ? "active" : ""}`}>
           <i className="fas fa-user-clock"></i>
@@ -250,34 +296,54 @@ const UserManagement = () => {
 
       </div>
 
-      {tab === "users" && (
-        <div className="content-card">
-          <div className="card-header">
-            <h2>
-              <i className="fas fa-users"></i> All Users
-            </h2>
-            <span className="count">{users.length}</span>
-          </div>
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Profile</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Joined</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.length === 0 ? (
+      {tab === "users" && (() => {
+        const filteredUsers = users.filter(user => user.verified && (roleFilter === 'all' || user.role === roleFilter));
+        return (
+          <div className="content-card">
+            <div className="card-header">
+              <div className="header-content">
+                <div className="header-title">
+                  <h2>
+                    <i className="fas fa-users"></i> All Verified Users
+                  </h2>
+                  <span className="count">{filteredUsers.length}</span>
+                </div>
+                <div className="filter-section">
+                  <label className="filter-label">Filter by Role:</label>
+                  <select
+                    value={roleFilter}
+                    onChange={(e) => setRoleFilter(e.target.value)}
+                    className="role-filter-select"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="Service Provider">Service Provider</option>
+                    <option value="Community Member">Community Member</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan="7" className="no-data">No users found</td>
+                    <th>Profile</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
                   </tr>
-                ) : (
-                  users.map((user) => (
+                </thead>
+                <tbody>
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="no-data">
+                        {roleFilter === 'all' ? 'No verified users found' : `No verified ${roleFilter === 'Service Provider' ? 'service providers' : 'community members'} found`}
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user) => (
                     <tr key={user._id}>
                       <td>
                         <img
@@ -301,10 +367,12 @@ const UserManagement = () => {
                       <td>
                         <span className={`status-badge ${
                           user.banned ? 'banned' :
+                          user.suspended ? 'suspended' :
                           user.verified ? 'approved' :
                           'pending'
                         }`}>
                           {user.banned ? 'Banned' :
+                           user.suspended ? 'Suspended' :
                            user.verified ? 'Verified' :
                            'Unverified'}
                         </span>
@@ -315,6 +383,7 @@ const UserManagement = () => {
                           <button
                             onClick={() => {
                               setSelectedUser(user);
+                              setModalSource("users");
                               setShowUserModal(true);
                             }}
                             className="action-btn view-btn"
@@ -385,10 +454,12 @@ const UserManagement = () => {
                       <td>
                         <span className={`status-badge ${
                           user.banned ? 'banned' :
+                          user.suspended ? 'suspended' :
                           user.verified ? 'approved' :
                           'pending'
                         }`}>
                           {user.banned ? 'Banned' :
+                           user.suspended ? 'Suspended' :
                            user.verified ? 'Verified' :
                            'Unverified'}
                         </span>
@@ -406,6 +477,7 @@ const UserManagement = () => {
                           <button
                             onClick={() => {
                               setSelectedUser(user);
+                              setModalSource("new-users");
                               setShowUserModal(true);
                             }}
                             className="action-btn view-btn"
@@ -447,13 +519,13 @@ const UserManagement = () => {
             </div>
 
             <div className="modal-body service-modal-body">
-              {/* <div className="service-instructions">
+              <div className="service-instructions">
                 <i className="fas fa-info-circle instruction-icon"></i>
                 <div className="instruction-content">
                   <h4>Service Management</h4>
                   <p>Configure the services this provider offers. Each service includes a name, rate, and detailed description.</p>
                 </div>
-              </div> */}
+              </div>
 
               <div className="services-container">
                 {serviceFormData.map((service, index) => (
@@ -620,7 +692,7 @@ const UserManagement = () => {
         <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
           <div className="modal-content user-details-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2><i className="fas fa-user-circle"></i> User Profile Details</h2>
+              <h2><i className="fas fa-user-circle"></i> {modalSource === "new-users" ? "New User Profile Details" : "User Profile Details"}</h2>
               <button className="close-modal" onClick={() => setShowUserModal(false)}>&times;</button>
             </div>
             <div className="modal-body">
@@ -748,6 +820,7 @@ const UserManagement = () => {
                                 onClick={() => {
                                   setSelectedDocument(cert);
                                   setDocumentType('certificate');
+                                  handleZoomReset(); // Reset zoom when opening new document
                                   setShowDocumentModal(true);
                                 }}
                                 style={{ cursor: 'pointer' }}
@@ -793,6 +866,7 @@ const UserManagement = () => {
                               onClick={() => {
                                 setSelectedDocument(selectedUser.validId);
                                 setDocumentType('validId');
+                                handleZoomReset(); // Reset zoom when opening new document
                                 setShowDocumentModal(true);
                               }}
                               style={{ cursor: 'pointer' }}
@@ -896,6 +970,40 @@ const UserManagement = () => {
               </div>
             </div>
             <div className="modal-actions user-modal-actions">
+              {modalSource === "new-users" && !selectedUser.verified && (
+                <div className="verification-section">
+                  <div className="decision-header">
+                    <h4><i className="fas fa-check-circle"></i> User Verification</h4>
+                    <p className="decision-subtitle">Verify this new user's account to grant full access</p>
+                  </div>
+                  <div className="action-buttons-grid">
+                    <button
+                      className="action-btn verify-user-btn"
+                      onClick={async () => {
+                        setActionLoading('verify');
+                        await verifyUser(selectedUser._id);
+                        setActionLoading(null);
+                        setShowUserModal(false);
+                      }}
+                      disabled={actionLoading === 'verify'}
+                      title="Verify this user's account"
+                    >
+                      {actionLoading === 'verify' ? (
+                        <>
+                          <i className="fas fa-spinner fa-spin"></i>
+                          <span>Verifying...</span>
+                        </>
+                      ) : (
+                        <>
+                          <i className="fas fa-check"></i>
+                          <span>Verify User</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="decision-section">
                 <div className="decision-header">
                   <h4><i className="fas fa-cogs"></i> Account Management</h4>
@@ -970,13 +1078,62 @@ const UserManagement = () => {
               <button className="close-modal" onClick={() => setShowDocumentModal(false)}>&times;</button>
             </div>
             <div className="modal-body document-modal-body">
+              {/* Zoom Controls */}
+              {selectedDocument.match(/\.(jpg|jpeg|png|gif)$/i) && (
+                <div className="zoom-controls">
+                  <button
+                    className="zoom-btn zoom-out-btn"
+                    onClick={handleZoomOut}
+                    disabled={zoomLevel <= 0.5}
+                    title="Zoom Out"
+                  >
+                    <i className="fas fa-search-minus"></i>
+                  </button>
+                  <span className="zoom-level">{Math.round(zoomLevel * 100)}%</span>
+                  <button
+                    className="zoom-btn zoom-in-btn"
+                    onClick={handleZoomIn}
+                    disabled={zoomLevel >= 3}
+                    title="Zoom In"
+                  >
+                    <i className="fas fa-search-plus"></i>
+                  </button>
+                  <button
+                    className="zoom-btn zoom-reset-btn"
+                    onClick={handleZoomReset}
+                    title="Reset Zoom"
+                  >
+                    <i className="fas fa-expand"></i>
+                  </button>
+                </div>
+              )}
+
               <div className="document-full-preview">
                 {selectedDocument.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <img
-                    src={selectedDocument}
-                    alt={documentType === 'validId' ? 'Valid ID Document' : 'Certificate Document'}
-                    className="document-full-image"
-                  />
+                  <div
+                    className="image-container"
+                    onWheel={handleWheel}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    style={{
+                      cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <img
+                      src={selectedDocument}
+                      alt={documentType === 'validId' ? 'Valid ID Document' : 'Certificate Document'}
+                      className="document-full-image"
+                      style={{
+                        transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
+                        transformOrigin: 'center center',
+                        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+                      }}
+                      draggable={false}
+                    />
+                  </div>
                 ) : (
                   <div className="document-full-placeholder">
                     <i className="fas fa-file-pdf"></i>
