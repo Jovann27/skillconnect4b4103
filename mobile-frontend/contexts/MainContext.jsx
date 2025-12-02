@@ -6,6 +6,8 @@ import { notifyUserDataChange } from '../utils/storageEvents';
 
 const MainContext = createContext();
 
+export { MainContext };
+
 export const useMainContext = () => {
   const context = useContext(MainContext);
   if (!context) {

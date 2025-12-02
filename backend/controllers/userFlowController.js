@@ -362,6 +362,7 @@ export const cancelServiceRequest = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
   const { id } = req.params;
+  const { cancellationReason } = req.body;
 
   const request = await ServiceRequest.findById(id);
   if (!request) return next(new ErrorHandler("Service request not found", 404));
@@ -375,6 +376,7 @@ export const cancelServiceRequest = catchAsyncError(async (req, res, next) => {
   }
 
   request.status = "Cancelled";
+  request.cancellationReason = cancellationReason || "";
   await request.save();
 
   // Emit socket event for real-time updates

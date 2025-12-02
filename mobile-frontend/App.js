@@ -5,8 +5,8 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { MainProvider } from "./contexts/MainContext";
-import { isRunningInExpoGo } from 'expo';
+import { MainProvider, MainContext } from "./contexts/MainContext";
+import Constants from 'expo-constants';
 
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
@@ -54,7 +54,7 @@ const Stack = createNativeStackNavigator();
 
 // Account status guard component (checks banned status first, then verification)
 const AccountStatusGuard = ({ children, navigation }) => {
-  const { user } = React.useContext(require('./contexts/MainContext').MainContext);
+  const { user } = React.useContext(MainContext);
 
   // Check if user is banned first
   if (user?.banned) {
@@ -104,14 +104,14 @@ const SERVICE_FLOW_ROLES = ["Community Member", "Service Provider"];
 
 // PROVIDER_ONLY_ROLES: Roles that can access provider-only features
 // - Service (MyService), Clients, ClientAccepted, BlockedWorker
-// - Matches web: allowedRoles={["Service Provider"]}
+// - Matches web: allowedRoles={{"Service Provider"}}
 const PROVIDER_ONLY_ROLES = ["Service Provider"];
 
 // Note: RoleGuard is now used directly in Stack.Screen components (matching web App.jsx pattern)
 // No need for withRoleGuard HOC - using direct RoleGuard wrapper like web version
 
 // Configure notification behavior when app is foregrounded (only if not in Expo Go)
-if (!isRunningInExpoGo()) {
+if (Constants.executionEnvironment !== 'storeClient') {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -161,7 +161,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!isRunningInExpoGo()) {
+    if (Constants.executionEnvironment !== 'storeClient') {
       registerForPushNotificationsAsync();
 
       // Listener fired when a notification is received while app is foregrounded

@@ -244,6 +244,11 @@ const ReviewServiceRequest = () => {
                                 : r.notes || 'No description provided'
                               }
                             </p>
+                            {r.status?.toLowerCase() === 'cancelled' && r.cancellationReason && (
+                              <p className="cancellation-reason">
+                                <strong>Cancellation Reason:</strong> {r.cancellationReason}
+                              </p>
+                            )}
                           </div>
                         </td>
                         <td>

@@ -23,7 +23,7 @@ const Announcement = () => {
   }, []);
 
   if (loading) return <div>Loading...</div>;
-  if (error) return <div></div>;
+  if (error) return <div>{error}</div>;
   if (!jobfair || new Date(jobfair.date) < new Date()) return <div></div>;
 
   return (

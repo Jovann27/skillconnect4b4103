@@ -366,7 +366,7 @@ The following sections provide detailed analysis and visualizations of these met
         ['Service Providers', analyticsData.totals.serviceProviders?.toLocaleString() || '0', 'Active service providers'],
         ['Total Population', analyticsData.totals.totalPopulation?.toLocaleString() || '0', 'Total population in coverage area'],
         ['Active Users', analyticsData.activeUsers.toLocaleString(), 'Estimated active users (70%)'],
-        ['Total Bookings', analyticsData.totalBookings.toLocaleString(), 'Completed service bookings']
+        ['Total Requests', analyticsData.totalBookings.toLocaleString(), 'Completed service requests']
       ];
 
       autoTable(pdf, {
@@ -774,9 +774,9 @@ The following sections provide detailed analysis and visualizations of these met
             <div className="metric-icon bookings">
               <FaChartBar />
             </div>
-            <h3 className="metric-title">Total Bookings</h3>
+            <h3 className="metric-title">Total Requests</h3>
             <p className="metric-value">{typeof analyticsData.totalBookings === 'number' ? analyticsData.totalBookings.toLocaleString() : 0}</p>
-            <div className="metric-description">Completed service bookings</div>
+            <div className="metric-description">Completed service requests</div>
           </div>
 
           <div className="metric-card">
@@ -1046,18 +1046,10 @@ The following sections provide detailed analysis and visualizations of these met
         </div>
       </div>
 
-      {/* Data Export Actions */}
-      <div className="analytics-card">
-        <div className="card-header">
-          <h2>📋 Data Export & Actions</h2>
-          <div className="card-subinfo">Download reports and access detailed analytics</div>
-        </div>
-        <div className="actions-grid">
-          <button className="export-btn" onClick={handleExportReport}>
-            <FaDownload /> Export Full Report
-          </button>
-        </div>
-      </div>
+      {/* Fixed Export Button */}
+      <button className="fixed-export-btn" onClick={handleExportReport} title="Export Full Report">
+        <FaDownload /> Export Full Report
+      </button>
 
       {/* Detailed Analytics Modal */}
 

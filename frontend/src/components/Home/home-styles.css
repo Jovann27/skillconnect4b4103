@@ -298,9 +298,6 @@
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   padding: 5rem 0;
   position: relative;
-  width: 100%;
-  overflow: hidden;
-  z-index: 1;
 }
 
 .howitworks::before {
@@ -311,17 +308,12 @@
   right: 0;
   height: 1px;
   background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
-  z-index: 1;
 }
 
 .howitworks .container {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.5rem;
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 .howitworks h3 {
@@ -347,31 +339,9 @@
 
 .howitworks .banner {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 2rem;
   margin-top: 3rem;
-  width: 100%;
-  box-sizing: border-box;
-  justify-items: center;
-}
-
-@media (min-width: 1024px) {
-  .howitworks .banner {
-    grid-template-columns: repeat(3, 1fr);
-    max-width: 1000px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-  .howitworks .banner {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
-  }
 }
 
 .howitworks .card {
@@ -384,24 +354,6 @@
   position: relative;
   overflow: hidden;
   border: 1px solid #f1f5f9;
-  width: 100%;
-  max-width: 320px;
-  box-sizing: border-box;
-  margin: 0 auto;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-@media (min-width: 1024px) {
-  .howitworks .card {
-    max-width: 300px;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-  .howitworks .card {
-    max-width: 320px;
-  }
 }
 
 .howitworks .card::before {
@@ -419,18 +371,6 @@
 .howitworks .card:hover {
   transform: translateY(-8px);
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-}
-
-@media (max-width: 768px) {
-  .howitworks .card:hover {
-    transform: translateY(-4px);
-  }
-}
-
-@media (max-width: 480px) {
-  .howitworks .card:hover {
-    transform: none;
-  }
 }
 
 .howitworks .card:hover::before {
@@ -454,18 +394,12 @@
   font-weight: 700;
   color: #1e293b;
   margin-bottom: 1rem;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  hyphens: auto;
 }
 
 .howitworks .card p:not(.card-title) {
   color: #64748b;
   line-height: 1.6;
   font-size: 0.95rem;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  margin: 0;
 }
 
 /* Mission & Vision Section */
@@ -534,43 +468,19 @@
 }
 
 /* Enhanced Responsiveness */
-@media (max-width: 1023px) {
-  .howitworks .container {
-    padding: 0 1rem;
-  }
-}
-
 @media (max-width: 768px) {
   .howitworks {
     padding: 3rem 0;
-    margin: 0;
-  }
-
-  .howitworks .container {
-    padding: 0 1rem;
-  }
-
-  .howitworks h3 {
-    margin-bottom: 1.5rem;
-    padding: 0 1rem;
   }
 
   .howitworks .banner {
     grid-template-columns: 1fr;
     gap: 1.5rem;
     margin-top: 2rem;
-    padding: 0;
   }
 
   .howitworks .card {
     padding: 2rem 1.5rem;
-    margin: 0;
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .howitworks .card-title {
-    font-size: 1.1rem;
   }
 
   .mission,
@@ -581,52 +491,20 @@
 
   .mcontainer {
     padding: 0 1rem;
-    flex-direction: column;
   }
 }
 
 @media (max-width: 480px) {
-  .howitworks {
-    padding: 2.5rem 0;
-  }
-
-  .howitworks .container {
-    padding: 0 0.75rem;
-  }
-
   .howitworks h3 {
     font-size: 1.75rem;
-    margin-bottom: 1.25rem;
-    padding: 0 0.5rem;
-  }
-
-  .howitworks h3::after {
-    width: 60px;
-  }
-
-  .howitworks .banner {
-    gap: 1.25rem;
-    margin-top: 1.5rem;
   }
 
   .howitworks .card {
     padding: 1.5rem 1rem;
-    border-radius: 0.75rem;
   }
 
   .howitworks .card svg {
     font-size: 2.5rem;
-    margin-bottom: 1rem;
-  }
-
-  .howitworks .card-title {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .howitworks .card p:not(.card-title) {
-    font-size: 0.875rem;
-    line-height: 1.5;
   }
 
   .mission h3,
@@ -637,37 +515,6 @@
   .mission p,
   .vision p {
     font-size: 1rem;
-  }
-}
-
-@media (max-width: 360px) {
-  .howitworks {
-    padding: 2rem 0;
-  }
-
-  .howitworks .container {
-    padding: 0 0.5rem;
-  }
-
-  .howitworks h3 {
-    font-size: 1.5rem;
-    padding: 0 0.25rem;
-  }
-
-  .howitworks .card {
-    padding: 1.25rem 0.75rem;
-  }
-
-  .howitworks .card svg {
-    font-size: 2rem;
-  }
-
-  .howitworks .card-title {
-    font-size: 0.95rem;
-  }
-
-  .howitworks .card p:not(.card-title) {
-    font-size: 0.8rem;
   }
 }
 

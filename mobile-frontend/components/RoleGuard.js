@@ -38,10 +38,13 @@ const RoleGuard = ({
     }
 
     // Check role-based access
-    // Service Providers can access all pages regardless of allowedRoles
-    // Allow access if user has one of the allowed roles, or if no specific roles are required, or if user is Service Provider
-    if (allowedRoles.length > 0 && !allowedRoles.includes(userRole) && userRole !== "Service Provider") {
-      navigation?.replace(fallbackRoute);
+    // Allow access if user has one of the allowed roles
+    if (allowedRoles.length > 0) {
+      const isRoleAllowed = allowedRoles.includes(userRole);
+      
+      if (!isRoleAllowed) {
+        navigation?.replace(fallbackRoute);
+      }
     }
   }, [loading, isLoggedIn, userRole, allowedRoles, fallbackRoute, navigation, requireAuth]);
 
@@ -65,19 +68,23 @@ const RoleGuard = ({
     );
   }
 
-  // Service Providers can access all pages regardless of role restrictions
-  if (allowedRoles.length > 0 && !allowedRoles.includes(userRole) && userRole !== "Service Provider") {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.title}>Access restricted</Text>
-        <Text style={styles.copy}>
-          This section is limited to: {allowedRoles.join(", ")} users.
-        </Text>
-        <TouchableOpacity style={styles.button} onPress={() => navigation?.replace(fallbackRoute)}>
-          <Text style={styles.buttonText}>Back to {fallbackRoute}</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  // Check role-based access
+  if (allowedRoles.length > 0) {
+    const isRoleAllowed = allowedRoles.includes(userRole);
+    
+    if (!isRoleAllowed) {
+      return (
+        <View style={styles.center}>
+          <Text style={styles.title}>Access restricted</Text>
+          <Text style={styles.copy}>
+            This section is limited to: {allowedRoles.join(", ")} users.
+          </Text>
+          <TouchableOpacity style={styles.button} onPress={() => navigation?.replace(fallbackRoute)}>
+            <Text style={styles.buttonText}>Back to {fallbackRoute}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
   }
 
   return children;

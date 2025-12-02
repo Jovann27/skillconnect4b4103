@@ -77,6 +77,11 @@ if (process.env.NODE_ENV !== 'production') {
         }
       }
 
+      // Check token type
+      if (!decoded || decoded.type !== "user") {
+        return next(new Error("Not a user token"));
+      }
+
       // Check if user exists
       const user = await User.findById(decoded.id);
       if (!user) {

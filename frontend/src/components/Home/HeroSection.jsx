@@ -34,7 +34,7 @@ const HeroSection = () => {
         <div className="hero-buttons">
           <Link to="/register" className="cta-button primary hero-cta">
             <FaTools className="btn-icon" />
-            Post Service Request
+            Find Services
             <FaArrowRight className="btn-arrow" />
           </Link>
           <Link to="/register" className="cta-button secondary hero-cta">

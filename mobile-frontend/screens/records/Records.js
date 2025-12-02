@@ -257,37 +257,61 @@ const RecordsScreen = () => {
   };
 
   const handleCancelRequest = async (request) => {
+    // First confirm cancellation
     Alert.alert(
       "Cancel Request",
       "Are you sure you want to cancel this request?",
       [
-        { text: "Cancel", style: "cancel" },
+        { text: "No", style: "cancel" },
         {
-          text: "OK",
-          onPress: async () => {
-            try {
-              console.log("Cancelling request:", request._id);
-              const response = await apiClient.delete(`/user/service-request/${request._id}/cancel`);
-              console.log("Cancel request response:", response.data);
+          text: "Yes",
+          onPress: () => {
+            // Prompt for cancellation reason
+            Alert.prompt(
+              "Cancellation Reason",
+              "Please provide a reason for cancelling this request:",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Submit",
+                  onPress: async (reason) => {
+                    if (!reason || !reason.trim()) {
+                      Alert.alert("Error", "Cancellation reason is required.");
+                      return;
+                    }
 
-              if (response.data.success) {
-                Alert.alert("Success", "Request cancelled successfully!");
-                console.log("Request cancelled, refreshing data...");
-                // Refresh all data to ensure UI reflects database changes
-                await Promise.all([
-                  fetchMyRequests(),
-                  fetchCurrentRequests(),
-                  fetchWorkRecords()
-                ]);
-                console.log("Data refreshed after cancellation");
-              } else {
-                console.error("Cancel request failed:", response.data);
-                Alert.alert("Error", "Failed to cancel request. Please try again.");
-              }
-            } catch (err) {
-              console.error("Error cancelling request:", err);
-              Alert.alert("Error", "Failed to cancel request. Please try again.");
-            }
+                    try {
+                      console.log("Cancelling request:", request._id);
+                      const response = await apiClient.delete(`/user/service-request/${request._id}/cancel`, {
+                        data: { cancellationReason: reason.trim() }
+                      });
+                      console.log("Cancel request response:", response.data);
+
+                      if (response.data.success) {
+                        Alert.alert("Success", "Request cancelled successfully!");
+                        console.log("Request cancelled, refreshing data...");
+                        // Refresh all data to ensure UI reflects database changes
+                        await Promise.all([
+                          fetchMyRequests(),
+                          fetchCurrentRequests(),
+                          fetchWorkRecords()
+                        ]);
+                        console.log("Data refreshed after cancellation");
+                      } else {
+                        console.error("Cancel request failed:", response.data);
+                        Alert.alert("Error", "Failed to cancel request. Please try again.");
+                      }
+                    } catch (err) {
+                      console.error("Error cancelling request:", err);
+                      Alert.alert("Error", "Failed to cancel request. Please try again.");
+                    }
+                  }
+                }
+              ],
+              "plain-text",
+              "",
+              "default"
+            );
           }
         }
       ]

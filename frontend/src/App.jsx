@@ -66,9 +66,15 @@ const RoleGuard = ({ allowedRoles, children, fallback = null }) => {
   const { user } = useMainContext();
   const userRole = user?.role;
 
-  // Service Providers can access all pages regardless of role restrictions
-  // Allow access if user has one of the allowed roles, or if no specific roles are required, or if user is Service Provider
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole) && userRole !== "Service Provider") {
+  // If no specific roles are required, allow access
+  if (!allowedRoles || allowedRoles.length === 0) {
+    return children;
+  }
+
+  // Check if user's role matches allowed roles
+  const isRoleAllowed = allowedRoles.includes(userRole);
+
+  if (!isRoleAllowed) {
     return fallback || <Navigate to="/user/service-request" />;
   }
 

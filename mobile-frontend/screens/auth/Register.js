@@ -53,31 +53,31 @@ export default function RegisterScreen({ navigation }) {
   // Date Picker State
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // --- Validation Logic (Same as Web) ---
+  // --- Validation Logic (Role-specific) ---
   const validateForm = () => {
     const errors = {};
     if (!formData.username || formData.username.length < 3) errors.username = "Username must be at least 3 characters long";
     if (!formData.password || formData.password.length < 8) errors.password = "Password must be at least 8 characters long";
     if (formData.password !== formData.confirmPassword) errors.confirmPassword = "Passwords do not match";
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email || !emailRegex.test(formData.email)) errors.email = "Please enter a valid email address";
-    
+
     const phoneRegex = /^(\+63|0)[0-9]{10}$/;
     if (!formData.phone || !phoneRegex.test(formData.phone)) errors.phone = "Invalid phone number format. Use +63XXXXXXXXXX or 0XXXXXXXXXX";
 
     if (!formData.firstName.trim()) errors.firstName = "First name is required";
     if (!formData.lastName.trim()) errors.lastName = "Last name is required";
-    if (!formData.address.trim()) errors.address = "Address is required";
     if (!formData.role) errors.role = "Role selection is required";
-    // Birthdate is usually pre-filled with 'new Date()', check if user actually changed it if strictly required, or just accept default.
-    if (!formData.employed) errors.employed = "Employment status is required";
+    if (!formData.validId) errors.validId = "Valid ID is required";
 
+    // Role-specific validations
     if (formData.role === "Service Provider") {
+      if (!formData.address.trim()) errors.address = "Address is required for Service Providers";
+      if (!formData.employed) errors.employed = "Employment status is required for Service Providers";
       if (!formData.skills || formData.skills.length === 0) errors.skills = "At least one skill is required for Service Providers";
       else if (formData.skills.length > 3) errors.skills = "You can select a maximum of 3 skills";
-      if (formData.certificates.length === 0) errors.certificates = "Certificates are required for Service Providers";
-      if (!formData.validId) errors.validId = "Valid ID is required for Service Providers";
+      if (formData.certificates.length === 0) errors.certificates = "At least one certificate is required for Service Providers";
     }
 
     setValidationErrors(errors);
@@ -174,9 +174,8 @@ export default function RegisterScreen({ navigation }) {
          if (key === 'profilePic') {
              appendImage('profilePic', formData.profilePic);
          } else if (key === 'validId') {
-             if (formData.role === "Service Provider") {
-                 appendImage('validId', formData.validId);
-             }
+             // Send validId for all users (required for both Community Members and Service Provider Applicants)
+             appendImage('validId', formData.validId);
          } else if (key === 'certificates') {
              formData.certificates.forEach((cert, index) => {
                   // For multiple files, you might need to append with same name 'certificates'
@@ -396,18 +395,20 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.helpText}>Use +63XXXXXXXXXX or 0XXXXXXXXXX format</Text>
         </View>
 
-        {/* Address */}
-        <View style={styles.formGroup}>
-            <Text style={styles.fieldLabel}>Address</Text>
-            <Input
-              icon="map-marker-alt"
-              placeholder="Address"
-              value={formData.address}
-              onChangeText={(val) => handleChange('address', val)}
-              error={validationErrors.address}
-              showSuccess={formData.address && !validationErrors.address}
-            />
-        </View>
+        {/* Address - Required for Service Providers */}
+        {formData.role === "Service Provider" && (
+            <View style={styles.formGroup}>
+                <Text style={styles.fieldLabel}>Address</Text>
+                <Input
+                  icon="map-marker-alt"
+                  placeholder="Address"
+                  value={formData.address}
+                  onChangeText={(val) => handleChange('address', val)}
+                  error={validationErrors.address}
+                  showSuccess={formData.address && !validationErrors.address}
+                />
+            </View>
+        )}
 
         {/* Occupation */}
         <View style={styles.formGroup}>
@@ -526,6 +527,22 @@ export default function RegisterScreen({ navigation }) {
                 onChange={handleDateChange}
             />
         )}
+        
+        {/* Valid ID (Single) */}
+        <View style={styles.formGroup}>
+            <Text style={styles.fieldLabel}>Valid ID</Text>
+            <TouchableOpacity style={[styles.fileUploadBtn, validationErrors.validId && styles.inputError]} onPress={() => pickImage('validId', false)}>
+                <FontAwesome5 name="id-badge" size={20} color="#666" />
+                <Text style={styles.fileUploadText}>
+                     {formData.validId ? "Change ID Photo" : "Select ID Photo"}
+                </Text>
+            </TouchableOpacity>
+            {formData.validId && (
+                 <Image source={{ uri: formData.validId.uri }} style={styles.idPreview} resizeMode="cover" />
+            )}
+             {validationErrors.validId && <Text style={styles.errorText}>{validationErrors.validId}</Text>}
+             <Text style={styles.helpText}>Upload a government-issued ID (images only)</Text>
+        </View>
 
         {/* Employment Status Picker */}
         <View style={styles.formGroup}>
@@ -566,21 +583,6 @@ export default function RegisterScreen({ navigation }) {
                     <Text style={styles.helpText}>Upload certificates or licenses that prove your skills</Text>
                 </View>
 
-                {/* Valid ID (Single) */}
-                <View style={styles.formGroup}>
-                    <Text style={styles.fieldLabel}>Valid ID</Text>
-                    <TouchableOpacity style={[styles.fileUploadBtn, validationErrors.validId && styles.inputError]} onPress={() => pickImage('validId', false)}>
-                        <FontAwesome5 name="id-badge" size={20} color="#666" />
-                        <Text style={styles.fileUploadText}>
-                             {formData.validId ? "Change ID Photo" : "Select ID Photo"}
-                        </Text>
-                    </TouchableOpacity>
-                    {formData.validId && (
-                         <Image source={{ uri: formData.validId.uri }} style={styles.idPreview} resizeMode="cover" />
-                    )}
-                     {validationErrors.validId && <Text style={styles.errorText}>{validationErrors.validId}</Text>}
-                     <Text style={styles.helpText}>Upload a government-issued ID (images only)</Text>
-                </View>
             </>
         )}
 

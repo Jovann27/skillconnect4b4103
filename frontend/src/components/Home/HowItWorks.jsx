@@ -19,7 +19,7 @@ const HowItWorks = () => {
               </div>
               <div className="card">
                 <MdFindInPage />
-                <p className="card-title">Find a Job/Post a Job</p>
+                <p>Find a Job/Post a Job</p>
                 <p>
                   Lorem, ipsum dolor sit amet consectetur adipisicing elit.
                   Consequuntur, culpa.

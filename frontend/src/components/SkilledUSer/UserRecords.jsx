@@ -166,11 +166,21 @@ const UserWorkRecord = () => {
 
   const handleCancelRequest = async (request, e) => {
     e.stopPropagation();
-    if (!window.confirm("Are you sure you want to cancel this request?")) return;
+
+    // Prompt for cancellation reason
+    const cancellationReason = window.prompt("Please provide a reason for cancelling this request:");
+    if (cancellationReason === null) return; // User cancelled the prompt
+
+    if (!cancellationReason.trim()) {
+      showNotification("Cancellation reason is required.", "error", 3000, "Error");
+      return;
+    }
 
     try {
       console.log("Cancelling request:", request._id);
-      const response = await api.delete(`/user/service-request/${request._id}/cancel`);
+      const response = await api.delete(`/user/service-request/${request._id}/cancel`, {
+        data: { cancellationReason: cancellationReason.trim() }
+      });
       console.log("Cancel request response:", response.data);
 
       if (response.data.success) {

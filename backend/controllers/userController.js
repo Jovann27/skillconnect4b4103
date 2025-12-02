@@ -20,25 +20,39 @@ const uploadToCloudinary = async (filePath, folder) => {
 export const register = catchAsyncError(async (req, res, next) => {
   const { username, firstName, lastName, email, phone, address, birthdate, employed, password, confirmPassword, role } = req.body;
 
-  if (!username || !firstName || !lastName || !email || !phone || !address || !birthdate || !employed || !password || !confirmPassword || !role) {
-    return next(new ErrorHandler("Please fill up all required fields", 400));
+  if (!role) {
+    return next(new ErrorHandler("Role is required", 400));
   }
 
-  if (!["Community Member", "Service Provider Applicant"].includes(role)) {
+  if (!["Community Member", "Service Provider"].includes(role)) {
     return next(new ErrorHandler("Invalid role selected", 400));
   }
 
-  if (!["employed", "unemployed"].includes(employed)) {
+  // Role-specific field validation
+  if (role === "Community Member") {
+    if (!username || !firstName || !lastName || !email || !phone || !password || !confirmPassword) {
+      return next(new ErrorHandler("Please fill up all required fields", 400));
+    }
+  } else if (role === "Service Provider") {
+    if (!username || !firstName || !lastName || !email || !phone || !address || !birthdate || !employed || !password || !confirmPassword) {
+      return next(new ErrorHandler("Please fill up all required fields", 400));
+    }
+  }
+
+  // Validate employed status only for Service Providers
+  if (role === "Service Provider" && !["employed", "unemployed"].includes(employed)) {
     return next(new ErrorHandler("Employment status must be Employed or Unemployed", 400));
   }
 
   if (password !== confirmPassword) return next(new ErrorHandler("Passwords do not match", 400));
   if (password.length < 8) return next(new ErrorHandler("Password must be at least 8 characters", 400));
 
-  // Validate birthdate
-  const birthDate = new Date(birthdate);
-  if (isNaN(birthDate.getTime())) return next(new ErrorHandler("Invalid birthdate format", 400));
-  if (birthDate > new Date()) return next(new ErrorHandler("Birthdate cannot be in the future", 400));
+  // Validate birthdate only for Service Providers
+  if (role === "Service Provider") {
+    const birthDate = new Date(birthdate);
+    if (isNaN(birthDate.getTime())) return next(new ErrorHandler("Invalid birthdate format", 400));
+    if (birthDate > new Date()) return next(new ErrorHandler("Birthdate cannot be in the future", 400));
+  }
 
   // Validate phone number format
   if (!/^(\+63|0)[0-9]{10}$/.test(phone)) return next(new ErrorHandler("Invalid phone number format. Use +63XXXXXXXXXX or 0XXXXXXXXXX", 400));
@@ -56,19 +70,19 @@ export const register = catchAsyncError(async (req, res, next) => {
   const validIdFile = req.files?.validId;
   let uploadedFiles = {};
 
+  // Valid ID is required for both Community Members and Service Provider Applicants
+  if (!validIdFile) return next(new ErrorHandler("Valid ID is required", 400));
+  if (!validIdFile.mimetype.startsWith("image/")) {
+    return next(new ErrorHandler("Valid ID must be an image file (JPG, PNG, etc.)", 400));
+  }
+
+  // Upload validId for both roles
+  const uploadPromises = [];
+  uploadPromises.push(uploadToCloudinary(validIdFile.tempFilePath, "skillconnect/validIds").then(url => { uploadedFiles.validId = url; }));
+
   // Optimize registration based on role
-  if (role === "Service Provider Applicant") {
-    // Service Provider Applicants need file processing
-    // Require validId for Service Provider Applicants
-    if (!validIdFile) return next(new ErrorHandler("Valid ID is required for Service Provider applications", 400));
-    if (!validIdFile.mimetype.startsWith("image/")) {
-      return next(new ErrorHandler("Valid ID must be an image file (JPG, PNG, etc.)", 400));
-    }
-
-    // Process all files in parallel for Service Providers
-    const uploadPromises = [];
-    uploadPromises.push(uploadToCloudinary(validIdFile.tempFilePath, "skillconnect/validIds").then(url => { uploadedFiles.validId = url; }));
-
+  if (role === "Service Provider") {
+    // Service Providers need additional file processing
     if (req.files?.profilePic) {
       uploadPromises.push(uploadToCloudinary(req.files.profilePic.tempFilePath, "skillconnect/profiles").then(url => { uploadedFiles.profilePic = url; }));
     }
@@ -94,31 +108,31 @@ export const register = catchAsyncError(async (req, res, next) => {
     // Create user with Service Provider data
     const user = await User.create({
       username, firstName, lastName, email, phone, address, birthdate, employed,
-      password, role,
+      password, role: role,
       validId: uploadedFiles.validId,
       profilePic: uploadedFiles.profilePic || "",
       certificates: certificatePaths,
       skills: normalizedSkills,
     });
 
-    // Send notification for Service Provider Applicants (non-blocking)
-    sendNotification(
-      user._id,
-      "Application Under Review",
-      "Your application to become a Service Provider is being reviewed by our administrators. You will receive a notification once your application is approved."
-    ).catch(err => console.error("Notification error:", err));
-
     sendToken(user, 201, res, "User registered successfully");
     return;
   }
 
   // For Community Members: Fast path - minimal processing
-  // Create user immediately, profile picture can be uploaded later if needed
+  // Wait for validId upload to complete
+  await Promise.all(uploadPromises);
+
+  // Create user with Community Member data including validId
+  // Provide defaults for optional fields
   const user = await User.create({
-    username, firstName, lastName, email, phone, address, birthdate, employed,
-    password, role,
+    username, firstName, lastName, email, phone,
+    address: address || "",
+    birthdate: birthdate ? new Date(birthdate) : new Date('2000-01-01'),
+    employed: employed || "unemployed",
+    password, role: dbRole,
     profilePic: "",
-    validId: "",
+    validId: uploadedFiles.validId,
     certificates: [],
     skills: [],
   });

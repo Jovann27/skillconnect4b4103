@@ -75,6 +75,11 @@ const Register = () => {
     if (!formData.role || !["Community Member", "Service Provider"].includes(formData.role)) {
       errors.role = "Please select a valid role";
     }
+    if (!formData.validId) {
+        errors.validId = "Valid ID is required";
+      } else if (!formData.validId.type.startsWith("image/")) {
+        errors.validId = "Valid ID must be an image file (JPG, PNG, etc.)";
+      }
 
     // Service Provider specific validation
     if (formData.role === "Service Provider") {
@@ -86,11 +91,7 @@ const Register = () => {
       if (formData.certificates.length === 0) {
         errors.certificates = "Certificates are required for Service Providers";
       }
-      if (!formData.validId) {
-        errors.validId = "Valid ID is required for Service Providers";
-      } else if (!formData.validId.type.startsWith("image/")) {
-        errors.validId = "Valid ID must be an image file (JPG, PNG, etc.)";
-      }
+
     }
 
     setValidationErrors(errors);
@@ -153,6 +154,11 @@ const Register = () => {
         submitData.append("profilePic", formData.profilePic);
       }
       
+      // Send validId for all users (required for both Community Members and Service Providers)
+      if (formData.validId) {
+        submitData.append("validId", formData.validId);
+      }
+
       // Service Provider specific fields (only send if role is Service Provider)
       if (formData.role === "Service Provider") {
         if (formData.skills && formData.skills.length > 0) {
@@ -162,11 +168,8 @@ const Register = () => {
         if (formData.certificates && formData.certificates.length > 0) {
           formData.certificates.forEach((file) => submitData.append("certificates", file));
         }
-        if (formData.validId) {
-          submitData.append("validId", formData.validId);
-        }
       }
-      // For Community Members, don't send skills, certificates, or validId
+      // For Community Members, don't send skills or certificates
 
       const { data } = await api.post(
         "/user/register",
@@ -185,7 +188,7 @@ const Register = () => {
       // Navigate based on user role
       // Service Provider → /user/my-service
       // Community Member → /user/service-request
-      if (data.user.role === "Service Provider") {
+      if (data.user.role === "Service Provider Applicant") {
         navigate("/user/my-service", { replace: true });
         localStorage.setItem("userLastPath", "/user/my-service");
       } else {
@@ -305,9 +308,11 @@ const Register = () => {
 
           {/* Password */}
           <div className="input-container">
+            <label htmlFor="password" className="field-label">Password</label>
             <div className="icon-input">
               <i className="fas fa-lock"></i>
               <input
+                id="password"
                 type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Enter Password"
@@ -340,9 +345,11 @@ const Register = () => {
 
           {/* Confirm Password */}
           <div className="input-container">
+            <label htmlFor="confirmPassword" className="field-label">Confirm Password</label>
             <div className="icon-input">
               <i className="fas fa-lock"></i>
               <input
+                id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 name="confirmPassword"
                 placeholder="Confirm Password"
@@ -538,15 +545,22 @@ const Register = () => {
                 value={formData.role}
                 onChange={handleChange}
                 required
-                className={`register-input ${formData.role ? 'success' : ''}`}
-                aria-describedby="role-help"
+                className={`register-input ${validationErrors.role ? 'error' : formData.role ? 'success' : ''}`}
+                aria-describedby={validationErrors.role ? 'role-error' : 'role-help'}
+                aria-invalid={!!validationErrors.role}
                 aria-label="Select your role in the community"
               >
+                <option value="">Select your role</option>
                 <option value="Community Member">Community Member</option>
                 <option value="Service Provider">Service Provider</option>
               </select>
             </div>
           </div>
+          {validationErrors.role && (
+            <small id="role-error" className="field-error" role="alert">
+              {validationErrors.role}
+            </small>
+          )}
           <small id="role-help" className="form-help">
             Community Members can request services, Service Providers can offer services
           </small>
@@ -681,7 +695,45 @@ const Register = () => {
             </small>
           )}
           </div>
-
+          
+              {/* Valid ID */}
+              <div className="form-group file-upload">
+                <label htmlFor="validId" className="register-label">
+                  Upload Valid ID *
+                </label>
+                <input
+                  type="file"
+                  id="validId"
+                  name="validId"
+                  accept="image/*"
+                  onChange={handleChange}
+                  className={`register-input ${validationErrors.validId ? 'error' : formData.validId ? 'success' : ''}`}
+                  aria-describedby={validationErrors.validId ? 'validId-error' : 'validId-help'}
+                  aria-invalid={!!validationErrors.validId}
+                />
+                <div className="file-preview" aria-live="polite">
+                  {formData.validId ? (
+                    formData.validId.type.startsWith("image/") ? (
+                      <img
+                        src={URL.createObjectURL(formData.validId)}
+                        alt="Valid ID preview"
+                      />
+                    ) : (
+                      <span className="file-name">Invalid file type. Please select an image.</span>
+                    )
+                  ) : (
+                    <span className="no-file">No file selected</span>
+                  )}
+                </div>
+                {validationErrors.validId && (
+                  <small id="validId-error" className="field-error" role="alert">
+                    {validationErrors.validId}
+                  </small>
+                )}
+                <small id="validId-help" className="form-help">
+                  Upload a government-issued ID (images only: JPG, PNG, etc.)
+                </small>
+              </div>
           {/* Service Provider Documents */}
           {formData.role === "Service Provider" && (
             <>
@@ -729,44 +781,6 @@ const Register = () => {
                 </small>
               </div>
 
-              {/* Valid ID */}
-              <div className="form-group file-upload">
-                <label htmlFor="validId" className="register-label">
-                  Upload Valid ID *
-                </label>
-                <input
-                  type="file"
-                  id="validId"
-                  name="validId"
-                  accept="image/*"
-                  onChange={handleChange}
-                  className={`register-input ${validationErrors.validId ? 'error' : formData.validId ? 'success' : ''}`}
-                  aria-describedby={validationErrors.validId ? 'validId-error' : 'validId-help'}
-                  aria-invalid={!!validationErrors.validId}
-                />
-                <div className="file-preview" aria-live="polite">
-                  {formData.validId ? (
-                    formData.validId.type.startsWith("image/") ? (
-                      <img
-                        src={URL.createObjectURL(formData.validId)}
-                        alt="Valid ID preview"
-                      />
-                    ) : (
-                      <span className="file-name">Invalid file type. Please select an image.</span>
-                    )
-                  ) : (
-                    <span className="no-file">No file selected</span>
-                  )}
-                </div>
-                {validationErrors.validId && (
-                  <small id="validId-error" className="field-error" role="alert">
-                    {validationErrors.validId}
-                  </small>
-                )}
-                <small id="validId-help" className="form-help">
-                  Upload a government-issued ID (images only: JPG, PNG, etc.)
-                </small>
-              </div>
             </>
           )}
 

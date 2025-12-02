@@ -399,9 +399,10 @@ const UserManagement = () => {
                 )}
               </tbody>
             </table>
-          </div>
         </div>
-      )}
+      </div>
+      );
+    })()}
 
       {tab === "new-users" && (
         <div className="content-card">
@@ -708,8 +709,16 @@ const UserManagement = () => {
                     <p className="user-email">{selectedUser.email}</p>
                     <p className="user-id">ID: {selectedUser._id.slice(-6)}</p>
                     <div className="user-status-badges">
-                      <span className={`status-badge ${selectedUser.banned ? 'banned' : selectedUser.role === 'Service Provider' ? 'approved' : 'pending'}`}>
-                        {selectedUser.banned ? 'Banned' : selectedUser.role === 'Service Provider' ? 'Verified Provider' : 'Unverified'}
+                      <span className={`status-badge ${
+                        selectedUser.banned ? 'banned' :
+                        selectedUser.suspended ? 'suspended' :
+                        selectedUser.verified ? 'approved' :
+                        'pending'
+                      }`}>
+                        {selectedUser.banned ? 'Banned' :
+                         selectedUser.suspended ? 'Suspended' :
+                         selectedUser.verified ? 'Verified' :
+                         'Unverified'}
                       </span>
                       <span className={`status-badge ${selectedUser.isOnline ? 'approved' : 'pending'}`}>
                         {selectedUser.isOnline ? 'Online' : 'Offline'}

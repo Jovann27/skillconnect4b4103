@@ -14,6 +14,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.8.0",
@@ -33,6 +34,7 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.10",
     "nodemon": "^3.1.10",
+    "openai": "^4.52.7",
     "path": "^0.12.7",
     "react-date-range": "^2.0.1",
     "recharts": "^3.2.0",

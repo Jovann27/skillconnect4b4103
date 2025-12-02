@@ -14,6 +14,7 @@ import {
 import './SystemAnalytics.css';
 import api from "../../api";
 import toast from "react-hot-toast";
+import socketClient from "../../utils/socket";
 
 const SystemRecommendations = () => {
   const [analyticsData, setAnalyticsData] = useState({
@@ -41,19 +42,51 @@ const SystemRecommendations = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
+
+    // Listen for real-time AI recommendations updates
+    const handleRecommendationsUpdate = (data) => {
+      console.log('📡 Received real-time AI recommendations update:', data);
+
+      if (data.recommendations) {
+        // Add icons to recommendations
+        const iconMap = {
+          barangayProjects: [FaTools, FaChartLine, FaBuilding, FaHandshake],
+          skillsTraining: [FaUsers, FaTools, FaChartLine, FaProjectDiagram],
+          communityPrograms: [FaGraduationCap, FaUsers],
+          priorityActions: [FaUsers, FaChartLine, FaTools]
+        };
+
+        // Add icons to each recommendation
+        Object.keys(data.recommendations).forEach(category => {
+          if (data.recommendations[category] && Array.isArray(data.recommendations[category])) {
+            data.recommendations[category].forEach((item, index) => {
+              const icons = iconMap[category] || [FaLightbulb];
+              item.icon = icons[index % icons.length];
+            });
+          }
+        });
+
+        setRecommendations(data.recommendations);
+        toast.success("AI recommendations updated in real-time!");
+      }
+    };
+
+    socketClient.on('ai-recommendations-update', handleRecommendationsUpdate);
+
+    // Cleanup listener on unmount
+    return () => {
+      socketClient.off('ai-recommendations-update', handleRecommendationsUpdate);
+    };
   }, [timeRange]);
 
-  useEffect(() => {
-    if (analyticsData.totals.totalUsers > 0) {
-      generateRecommendations();
-    }
-  }, [analyticsData]);
+
 
   const fetchAnalyticsData = async () => {
     setLoading(true);
     setError(null);
 
     try {
+      console.log('📊 Fetching analytics data with timeRange:', timeRange);
       const [
         totalsRes,
         demographicsRes,
@@ -69,6 +102,13 @@ const SystemRecommendations = () => {
         api.get("/reports/most-booked-services"),
         api.get(`/reports/totals-over-time?months=${timeRange}`)
       ]);
+
+      console.log('📊 Totals:', totalsRes.data);
+      console.log('📊 Demographics:', demographicsRes.data);
+      console.log('📊 Skills:', skillsRes.data);
+      console.log('📊 SkilledPerTrade:', skilledPerTradeRes.data);
+      console.log('📊 MostBooked:', mostBookedRes.data);
+      console.log('📊 TotalsOverTime:', totalsOverTimeRes.data);
 
       const totalsData = totalsRes.data?.data || totalsRes.data || {};
       const demographicsData = demographicsRes.data?.data || demographicsRes.data || {};
@@ -91,7 +131,7 @@ const SystemRecommendations = () => {
             .slice(0, 10)
         : [];
 
-      setAnalyticsData({
+      const newAnalyticsData = {
         totals: totalsData,
         demographics: demographicsData,
         skills: skillsData,
@@ -101,7 +141,16 @@ const SystemRecommendations = () => {
         activeUsers: Math.floor((totalsData?.totalUsers || 0) * 0.7),
         totalBookings,
         popularServices
-      });
+      };
+
+      console.log('📦 Complete Analytics Data:', newAnalyticsData);
+      console.log('📦 Total Users:', newAnalyticsData.totals?.totalUsers);
+
+      setAnalyticsData(newAnalyticsData);
+
+      // Generate AI recommendations regardless of data size
+      console.log('✨ Generating AI recommendations after data load...');
+      generateAIRecommendations();
 
       toast.success("Analytics data loaded successfully!");
     } catch (err) {
@@ -114,208 +163,61 @@ const SystemRecommendations = () => {
     }
   };
 
-  const generateRecommendations = () => {
-    const { totals, demographics, skills, popularServices, totalsOverTime } = analyticsData;
+  const generateAIRecommendations = async () => {
+    try {
+      setLoading(true);
+      console.log('🚀 Sending analytics data to AI:', analyticsData);
+      const response = await api.post('/admin/ai/recommendations', analyticsData);
+      
+      console.log('📥 AI Response:', response);
+      console.log('📥 Response Data:', response.data);
+      console.log('📥 Response Data.data:', response.data.data);
 
-    // Calculate key metrics
-    const employmentRate = (() => {
-      const worker = demographics.employment?.worker || 0;
-      const nonWorker = demographics.employment?.nonWorker || 0;
-      const total = worker + nonWorker;
-      return total > 0 ? (worker / total) * 100 : 0;
-    })();
+      if (response.data.success) {
+        const aiRecommendations = response.data.data;
+        
+        console.log('✅ AI Recommendations received:', aiRecommendations);
 
-    const growthRate = totalsOverTime.values.length > 1 ?
-      ((totalsOverTime.values[totalsOverTime.values.length - 1] - totalsOverTime.values[totalsOverTime.values.length - 2]) /
-       (totalsOverTime.values[totalsOverTime.values.length - 2] || 1)) * 100 : 0;
+        // Add icons to recommendations
+        const iconMap = {
+          barangayProjects: [FaTools, FaChartLine, FaBuilding, FaHandshake],
+          skillsTraining: [FaUsers, FaTools, FaChartLine, FaProjectDiagram],
+          communityPrograms: [FaGraduationCap, FaUsers],
+          priorityActions: [FaUsers, FaChartLine, FaTools]
+        };
 
-    const topSkills = Object.entries(skills)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5);
+        // Add icons to each recommendation
+        Object.keys(aiRecommendations).forEach(category => {
+          if (aiRecommendations[category] && Array.isArray(aiRecommendations[category])) {
+            aiRecommendations[category].forEach((item, index) => {
+              const icons = iconMap[category] || [FaLightbulb];
+              item.icon = icons[index % icons.length];
+            });
+          }
+        });
 
-    const topServices = popularServices.slice(0, 5);
+        console.log('🎨 After adding icons:', aiRecommendations);
+        setRecommendations(aiRecommendations);
+        toast.success("AI recommendations generated successfully!");
+      } else {
+        console.error('❌ API response success is false:', response.data);
+        throw new Error(response.data.message || 'Failed to generate recommendations');
+      }
+    } catch (error) {
+      console.error('❌ AI Recommendations Error:', error);
+      console.error('❌ Error response:', error.response);
+      toast.error(error.response?.data?.message || 'Failed to generate AI recommendations');
 
-    // Generate barangay projects recommendations
-    const barangayProjects = [];
-
-    // Infrastructure projects based on popular services
-    if (topServices.some(s => s.service.toLowerCase().includes('repair') || s.service.toLowerCase().includes('maintenance'))) {
-      barangayProjects.push({
-        title: "Community Maintenance Hub",
-        description: "Establish a centralized facility for equipment repair and maintenance services",
-        priority: "High",
-        impact: "Economic",
-        rationale: `${topServices.find(s => s.service.toLowerCase().includes('repair') || s.service.toLowerCase().includes('maintenance'))?.count || 0} repair service bookings indicate strong demand`,
-        estimatedCost: "₱500,000 - ₱1,000,000",
-        timeline: "6-12 months",
-        icon: FaTools
+      // Fallback to basic recommendations if AI fails
+      setRecommendations({
+        barangayProjects: [],
+        skillsTraining: [],
+        communityPrograms: [],
+        priorityActions: []
       });
+    } finally {
+      setLoading(false);
     }
-
-    // Digital literacy projects
-    if (growthRate > 10) {
-      barangayProjects.push({
-        title: "Digital Skills Center",
-        description: "Create a community center for digital literacy and online service access",
-        priority: "High",
-        impact: "Educational",
-        rationale: `${growthRate.toFixed(1)}% user growth indicates need for digital skills development`,
-        estimatedCost: "₱300,000 - ₱600,000",
-        timeline: "3-6 months",
-        icon: FaChartLine
-      });
-    }
-
-    // Employment-focused projects
-    if (employmentRate < 50) {
-      barangayProjects.push({
-        title: "Skills Training Center",
-        description: "Build a dedicated facility for vocational training and skill development programs",
-        priority: "Critical",
-        impact: "Economic",
-        rationale: `Only ${employmentRate.toFixed(1)}% employment rate suggests urgent need for job training`,
-        estimatedCost: "₱1,000,000 - ₱2,000,000",
-        timeline: "12-18 months",
-        icon: FaBuilding
-      });
-    }
-
-    // Community service projects
-    barangayProjects.push({
-      title: "Multi-Service Community Center",
-      description: "Develop a comprehensive center offering various community services under one roof",
-      priority: "Medium",
-      impact: "Social",
-      rationale: `${totals.totalUsers?.toLocaleString() || 0} users and ${popularServices.length} service types indicate need for centralized services`,
-      estimatedCost: "₱2,000,000 - ₱3,000,000",
-      timeline: "18-24 months",
-      icon: FaHandshake
-    });
-
-    // Generate skills training recommendations
-    const skillsTraining = [];
-
-    // Based on employment gap
-    if (employmentRate < 60) {
-      skillsTraining.push({
-        title: "Unemployment Reduction Program",
-        description: "Comprehensive training program targeting unemployed residents with high-demand skills",
-        targetAudience: "Unemployed adults (18-45)",
-        duration: "6 months",
-        expectedParticipants: Math.floor((demographics.employment?.nonWorker || 0) * 0.3),
-        priority: "Critical",
-        rationale: `${(100 - employmentRate).toFixed(1)}% unemployment rate requires immediate intervention`,
-        skills: topSkills.slice(0, 3).map(([skill]) => skill),
-        icon: FaUsers
-      });
-    }
-
-    // Based on popular services
-    if (topServices.length > 0) {
-      skillsTraining.push({
-        title: "Service Provider Upskilling",
-        description: "Advanced training for existing service providers to improve quality and expand services",
-        targetAudience: "Current service providers",
-        duration: "3 months",
-        expectedParticipants: Math.floor(totals.serviceProviders * 0.4),
-        priority: "High",
-        rationale: `${topServices[0]?.count || 0} bookings in top service indicate opportunity for specialization`,
-        skills: [topServices[0]?.service, ...topSkills.slice(0, 2).map(([skill]) => skill)],
-        icon: FaTools
-      });
-    }
-
-    // Digital skills training
-    skillsTraining.push({
-      title: "Digital Literacy & Online Services",
-      description: "Training program for basic computer skills, online platforms, and digital service access",
-      targetAudience: "All residents (16+)",
-      duration: "2 months",
-      expectedParticipants: Math.floor(totals.totalUsers * 0.6),
-      priority: "Medium",
-      rationale: "Platform growth suggests increasing need for digital competencies",
-      skills: ["Computer Basics", "Online Safety", "Digital Communication"],
-      icon: FaChartLine
-    });
-
-    // Entrepreneurship training
-    if (totals.serviceProviders < totals.totalUsers * 0.1) {
-      skillsTraining.push({
-        title: "Entrepreneurship Development",
-        description: "Business skills training to encourage service provider entrepreneurship",
-        targetAudience: "Aspiring entrepreneurs",
-        duration: "4 months",
-        expectedParticipants: Math.floor(totals.totalUsers * 0.15),
-        priority: "Medium",
-        rationale: `Only ${((totals.serviceProviders / totals.totalUsers) * 100).toFixed(1)}% are service providers, indicating growth potential`,
-        skills: ["Business Planning", "Financial Management", "Marketing"],
-        icon: FaProjectDiagram
-      });
-    }
-
-    // Generate community programs
-    const communityPrograms = [];
-
-    communityPrograms.push({
-      title: "Youth Skills Development Initiative",
-      description: "Age-appropriate training programs for young residents entering the workforce",
-      targetGroup: "Youth (16-25)",
-      focus: "Career preparation and skill building",
-      duration: "Ongoing",
-      rationale: `${Object.entries(demographics.ageGroups).find(([age]) => age.includes('18-25'))?.[1] || 0} young users need career guidance`,
-      icon: FaGraduationCap
-    });
-
-    communityPrograms.push({
-      title: "Senior Citizen Digital Inclusion",
-      description: "Specialized programs to help elderly residents access digital services",
-      targetGroup: "Seniors (60+)",
-      focus: "Basic digital literacy and online service access",
-      duration: "3 months",
-      rationale: "Digital transformation requires inclusive programs for all age groups",
-      icon: FaUsers
-    });
-
-    // Generate priority actions
-    const priorityActions = [];
-
-    if (employmentRate < 50) {
-      priorityActions.push({
-        action: "Launch Emergency Employment Program",
-        description: "Immediate skills training for unemployed residents",
-        timeline: "Start within 1 month",
-        responsible: "Barangay Administration",
-        priority: "Critical",
-        icon: FaUsers
-      });
-    }
-
-    if (growthRate > 15) {
-      priorityActions.push({
-        action: "Scale Digital Infrastructure",
-        description: "Expand online service access and digital literacy programs",
-        timeline: "Start within 2 months",
-        responsible: "Technical Committee",
-        priority: "High",
-        icon: FaChartLine
-      });
-    }
-
-    priorityActions.push({
-      action: "Conduct Skills Gap Analysis",
-      description: "Comprehensive assessment of community skills needs vs market demands",
-      timeline: "Complete within 3 months",
-      responsible: "Planning Committee",
-      priority: "Medium",
-      icon: FaTools
-    });
-
-    setRecommendations({
-      barangayProjects,
-      skillsTraining,
-      communityPrograms,
-      priorityActions
-    });
   };
 
   const handleExportRecommendations = () => {
@@ -568,30 +470,39 @@ const SystemRecommendations = () => {
           <div className="card-subinfo">Infrastructure and facility development based on community needs</div>
         </div>
         <div className="recommendations-grid">
-          {recommendations.barangayProjects.map((project, index) => (
-            <div key={index} className={`recommendation-card priority-${project.priority.toLowerCase()}`}>
-              <div className="recommendation-header">
-                <project.icon className="recommendation-icon" />
-                <div className="recommendation-priority">{project.priority}</div>
-              </div>
-              <h3 className="recommendation-title">{project.title}</h3>
-              <p className="recommendation-description">{project.description}</p>
-              <div className="recommendation-details">
-                <div className="detail-item">
-                  <strong>Impact:</strong> {project.impact}
+          {recommendations.barangayProjects && recommendations.barangayProjects.length > 0 ? (
+            recommendations.barangayProjects.map((project, index) => {
+              const Icon = project.icon;
+              return (
+                <div key={index} className={`recommendation-card priority-${project.priority.toLowerCase()}`}>
+                  <div className="recommendation-header">
+                    <Icon className="recommendation-icon" />
+                    <div className="recommendation-priority">{project.priority}</div>
+                  </div>
+                <h3 className="recommendation-title">{project.title}</h3>
+                <p className="recommendation-description">{project.description}</p>
+                <div className="recommendation-details">
+                  <div className="detail-item">
+                    <strong>Impact:</strong> {project.impact}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Cost:</strong> {project.estimatedCost}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Timeline:</strong> {project.timeline}
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <strong>Cost:</strong> {project.estimatedCost}
-                </div>
-                <div className="detail-item">
-                  <strong>Timeline:</strong> {project.timeline}
+                <div className="recommendation-rationale">
+                  <strong>Why this project:</strong> {project.rationale}
                 </div>
               </div>
-              <div className="recommendation-rationale">
-                <strong>Why this project:</strong> {project.rationale}
-              </div>
+            );
+          })
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#999' }}>
+              <p>No barangay project recommendations available yet.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -602,33 +513,42 @@ const SystemRecommendations = () => {
           <div className="card-subinfo">Education and training initiatives to address skills gaps</div>
         </div>
         <div className="recommendations-grid">
-          {recommendations.skillsTraining.map((training, index) => (
-            <div key={index} className={`recommendation-card priority-${training.priority.toLowerCase()}`}>
-              <div className="recommendation-header">
-                <training.icon className="recommendation-icon" />
-                <div className="recommendation-priority">{training.priority}</div>
-              </div>
-              <h3 className="recommendation-title">{training.title}</h3>
-              <p className="recommendation-description">{training.description}</p>
-              <div className="recommendation-details">
-                <div className="detail-item">
-                  <strong>Target:</strong> {training.targetAudience}
+          {recommendations.skillsTraining && recommendations.skillsTraining.length > 0 ? (
+            recommendations.skillsTraining.map((training, index) => {
+              const Icon = training.icon;
+              return (
+                <div key={index} className={`recommendation-card priority-${training.priority.toLowerCase()}`}>
+                  <div className="recommendation-header">
+                    <Icon className="recommendation-icon" />
+                    <div className="recommendation-priority">{training.priority}</div>
+                  </div>
+                <h3 className="recommendation-title">{training.title}</h3>
+                <p className="recommendation-description">{training.description}</p>
+                <div className="recommendation-details">
+                  <div className="detail-item">
+                    <strong>Target:</strong> {training.targetAudience}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Duration:</strong> {training.duration}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Participants:</strong> {training.expectedParticipants}
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <strong>Duration:</strong> {training.duration}
+                <div className="training-skills">
+                  <strong>Skills:</strong> {training.skills.join(', ')}
                 </div>
-                <div className="detail-item">
-                  <strong>Participants:</strong> {training.expectedParticipants}
+                <div className="recommendation-rationale">
+                  <strong>Why this program:</strong> {training.rationale}
                 </div>
               </div>
-              <div className="training-skills">
-                <strong>Skills:</strong> {training.skills.join(', ')}
-              </div>
-              <div className="recommendation-rationale">
-                <strong>Why this program:</strong> {training.rationale}
-              </div>
+            );
+          })
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#999' }}>
+              <p>No skills training recommendations available yet.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -639,30 +559,39 @@ const SystemRecommendations = () => {
           <div className="card-subinfo">Inclusive programs for different community segments</div>
         </div>
         <div className="recommendations-grid">
-          {recommendations.communityPrograms.map((program, index) => (
-            <div key={index} className="recommendation-card">
-              <div className="recommendation-header">
-                <program.icon className="recommendation-icon" />
-                <div className="recommendation-priority">Ongoing</div>
-              </div>
-              <h3 className="recommendation-title">{program.title}</h3>
-              <p className="recommendation-description">{program.description}</p>
-              <div className="recommendation-details">
-                <div className="detail-item">
-                  <strong>Target Group:</strong> {program.targetGroup}
+          {recommendations.communityPrograms && recommendations.communityPrograms.length > 0 ? (
+            recommendations.communityPrograms.map((program, index) => {
+              const Icon = program.icon;
+              return (
+                <div key={index} className="recommendation-card">
+                  <div className="recommendation-header">
+                    <Icon className="recommendation-icon" />
+                    <div className="recommendation-priority">Ongoing</div>
+                  </div>
+                <h3 className="recommendation-title">{program.title}</h3>
+                <p className="recommendation-description">{program.description}</p>
+                <div className="recommendation-details">
+                  <div className="detail-item">
+                    <strong>Target Group:</strong> {program.targetGroup}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Focus:</strong> {program.focus}
+                  </div>
+                  <div className="detail-item">
+                    <strong>Duration:</strong> {program.duration}
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <strong>Focus:</strong> {program.focus}
-                </div>
-                <div className="detail-item">
-                  <strong>Duration:</strong> {program.duration}
+                <div className="recommendation-rationale">
+                  <strong>Why this program:</strong> {program.rationale}
                 </div>
               </div>
-              <div className="recommendation-rationale">
-                <strong>Why this program:</strong> {program.rationale}
-              </div>
+            );
+          })
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#999' }}>
+              <p>No community programs recommendations available yet.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
@@ -673,37 +602,38 @@ const SystemRecommendations = () => {
           <div className="card-subinfo">Immediate steps to implement recommendations</div>
         </div>
         <div className="priority-actions-list">
-          {recommendations.priorityActions.map((action, index) => (
-            <div key={index} className={`priority-action priority-${action.priority.toLowerCase()}`}>
-              <div className="action-header">
-                <action.icon className="action-icon" />
-                <div className="action-priority">{action.priority}</div>
-              </div>
-              <div className="action-content">
-                <h3 className="action-title">{action.action}</h3>
-                <p className="action-description">{action.description}</p>
-                <div className="action-meta">
-                  <span className="action-timeline">⏰ {action.timeline}</span>
-                  <span className="action-responsible">👤 {action.responsible}</span>
+          {recommendations.priorityActions && recommendations.priorityActions.length > 0 ? (
+            recommendations.priorityActions.map((action, index) => {
+              const Icon = action.icon;
+              return (
+                <div key={index} className={`priority-action priority-${action.priority.toLowerCase()}`}>
+                  <div className="action-header">
+                    <Icon className="action-icon" />
+                    <div className="action-priority">{action.priority}</div>
+                  </div>
+                <div className="action-content">
+                  <h3 className="action-title">{action.action}</h3>
+                  <p className="action-description">{action.description}</p>
+                  <div className="action-meta">
+                    <span className="action-timeline">⏰ {action.timeline}</span>
+                    <span className="action-responsible">👤 {action.responsible}</span>
+                  </div>
                 </div>
               </div>
+            );
+          })
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: '#999' }}>
+              <p>No priority actions available yet.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* Export Actions */}
-      <div className="analytics-card">
-        <div className="card-header">
-          <h2>📋 Export & Actions</h2>
-          <div className="card-subinfo">Download recommendations and access detailed reports</div>
-        </div>
-        <div className="actions-grid">
-          <button className="export-btn" onClick={handleExportRecommendations}>
-            <FaDownload /> Export Recommendations Report
-          </button>
-        </div>
-      </div>
+      {/* Fixed Export Button */}
+      <button className="fixed-export-btn" onClick={handleExportRecommendations} title="Export Recommendations Report">
+        <FaDownload /> Export Recommendations Report
+      </button>
     </div>
   );
 };

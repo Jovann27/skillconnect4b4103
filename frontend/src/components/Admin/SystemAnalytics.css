@@ -13,6 +13,9 @@
   padding: 32px;
   color: #fff;
   box-shadow: 0 30px 60px rgba(221, 48, 106, 0.25);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
 }
 
 .analytics-header h1 {
@@ -238,6 +241,35 @@
   box-shadow: 0 20px 40px rgba(221, 48, 106, 0.2);
 }
 
+.fixed-export-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  border: none;
+  border-radius: var(--admin-radius-md);
+  padding: 14px 24px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--admin-gradient);
+  color: #fff;
+  box-shadow: 0 20px 40px rgba(221, 48, 106, 0.3);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 1000;
+  font-size: 0.95rem;
+}
+
+.fixed-export-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 50px rgba(221, 48, 106, 0.4);
+}
+
+.fixed-export-btn:active {
+  transform: translateY(0);
+}
+
 .loading-card,
 .error-card {
   min-height: 200px;
@@ -325,6 +357,13 @@
 @media (max-width: 1024px) {
   .analytics-header {
     padding: 24px;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .header-actions {
+    margin-top: 0;
+    align-self: flex-start;
   }
 
   .charts-grid {
@@ -593,5 +632,12 @@
 
   .action-meta {
     justify-content: center;
+  }
+
+  .fixed-export-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 12px 18px;
+    font-size: 0.85rem;
   }
 }
