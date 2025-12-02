@@ -3,6 +3,7 @@ import Mission from "./Mission";
 import DevelopmentCards from "./DevelopmentCards";
 import ContactForm from "./ContactForm";
 import "./home-styles.css";
+import "./about.css";
 
 const About = () => {
   return (

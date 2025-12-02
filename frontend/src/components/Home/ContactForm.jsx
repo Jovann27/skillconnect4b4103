@@ -1,7 +1,3 @@
-import React from "react";
-import contactimages from "../About/images/contactimages.png";
-import "../About/About.css";
-
 const ContactForm = () => {
   return (
     <div className="contact-section">
@@ -18,8 +14,10 @@ const ContactForm = () => {
         </form>
       </div>
       <div className="contact-image">
-        <img src={contactimages} alt="Contact Person" />
+        <img src="https://images.unsplash.com/photo-1556157382-97eda2d62296?w=400&h=400&fit=crop" alt="Contact Person" />
       </div>
     </div>
   );
 };
+
+export default ContactForm;

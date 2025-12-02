@@ -20,6 +20,8 @@ const sendToken = (user, statusCode, res, message) => {
     role: user.role || "User",
     profilePic: user.profilePic || "",
     skills: user.skills || [],
+    verified: user.verified || false,
+    banned: user.banned || false,
     type: "user",
   };
 

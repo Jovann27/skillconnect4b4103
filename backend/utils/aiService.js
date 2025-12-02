@@ -98,6 +98,7 @@ Ensure recommendations are:
 - Prioritized appropriately
 - Cost-effective where possible
 - Focused on community development and skill enhancement
+- Use simple, clear language that is easy to understand
 
 Provide 3-5 recommendations per category.
 
@@ -153,20 +154,20 @@ const generateFallbackRecommendations = (analyticsData) => {
   // Always provide basic barangay projects
   recommendations.barangayProjects.push({
     title: "Community Skills Hub",
-    description: "Establish a dedicated center for skill training and service coordination",
+    description: "Build a center for skill training and service coordination",
     priority: "High",
     impact: "Educational",
-    rationale: `With ${analyticsData.totals?.serviceProviders || 0} service providers and ${analyticsData.totalBookings || 0} bookings, a centralized hub would improve service delivery`,
+    rationale: `With ${analyticsData.totals?.serviceProviders || 0} providers and ${analyticsData.totalBookings || 0} bookings, a center would improve service delivery`,
     estimatedCost: "PHP 500,000 - 1,000,000",
     timeline: "6-12 months"
   });
 
   recommendations.barangayProjects.push({
     title: "Digital Literacy Center",
-    description: "Create a space for technology training and online service access",
+    description: "Create a place for technology training and online service access",
     priority: "Medium",
     impact: "Educational",
-    rationale: `Platform has ${analyticsData.totals?.totalUsers || 0} users who could benefit from digital skills training`,
+    rationale: `Platform has ${analyticsData.totals?.totalUsers || 0} users who could learn digital skills`,
     estimatedCost: "PHP 200,000 - 500,000",
     timeline: "3-6 months"
   });
@@ -176,8 +177,8 @@ const generateFallbackRecommendations = (analyticsData) => {
   if (topSkills.length > 0) {
     recommendations.skillsTraining.push({
       title: "Advanced Skills Workshop",
-      description: `Specialized training in high-demand skills`,
-      targetAudience: "Existing service providers and unemployed residents",
+      description: `Training in high-demand skills`,
+      targetAudience: "Service providers and unemployed people",
       duration: "3 months",
       expectedParticipants: Math.min(analyticsData.totals?.totalUsers || 5, 30),
       priority: "High",
@@ -187,24 +188,24 @@ const generateFallbackRecommendations = (analyticsData) => {
   } else {
     recommendations.skillsTraining.push({
       title: "Basic Skills Development Program",
-      description: "Foundation training in essential skills for community development",
-      targetAudience: "All residents interested in skill development",
+      description: "Training in essential skills for community development",
+      targetAudience: "People interested in learning skills",
       duration: "3 months",
       expectedParticipants: Math.min(analyticsData.totals?.totalUsers || 5, 20),
       priority: "High",
-      rationale: "Building foundational skills to support community growth and employment",
+      rationale: "Building basic skills to support community growth and jobs",
       skills: ["Basic computer skills", "Communication", "Problem solving"]
     });
   }
 
   recommendations.skillsTraining.push({
     title: "Employment Skills Program",
-    description: "Training program for residents to improve job prospects",
-    targetAudience: "Residents seeking employment opportunities",
+    description: "Training to improve job prospects",
+    targetAudience: "People seeking employment opportunities",
     duration: "6 months",
     expectedParticipants: Math.max(analyticsData.demographics?.employment?.nonWorker || 5, 10),
     priority: "Critical",
-    rationale: `${analyticsData.demographics?.employment?.nonWorker || 0} residents need skills training for better employment opportunities`,
+    rationale: `${analyticsData.demographics?.employment?.nonWorker || 0} people need skills training for better jobs`,
     skills: ["Basic computer skills", "Communication", "Job search techniques"]
   });
 
@@ -215,22 +216,22 @@ const generateFallbackRecommendations = (analyticsData) => {
     targetGroup: "Elderly residents (55+ years)",
     focus: "Digital inclusion and social engagement",
     duration: "Ongoing",
-    rationale: "Ensures all community members can benefit from the platform"
+    rationale: "Helps seniors benefit from the platform"
   });
 
   recommendations.communityPrograms.push({
     title: "Youth Skills Mentorship",
-    description: "Pair young residents with experienced service providers for guidance",
+    description: "Pair young people with experienced service providers for guidance",
     targetGroup: "Young adults (18-30 years)",
     focus: "Career development and knowledge transfer",
     duration: "6 months",
-    rationale: "Leverages existing expertise to develop the next generation of service providers"
+    rationale: "Uses existing expertise to help the next generation of providers"
   });
 
   // Always provide priority actions
   recommendations.priorityActions.push({
     action: "Increase User Engagement",
-    description: "Implement strategies to boost platform usage and service bookings",
+    description: "Use strategies to boost platform usage and service bookings",
     timeline: "Immediate (1-2 weeks)",
     responsible: "Community Coordinator",
     priority: "High"
@@ -246,7 +247,7 @@ const generateFallbackRecommendations = (analyticsData) => {
 
   recommendations.priorityActions.push({
     action: "Gather User Feedback",
-    description: "Conduct surveys to understand user needs and platform improvements",
+    description: "Do surveys to understand user needs and platform improvements",
     timeline: "1 month",
     responsible: "Community Coordinator",
     priority: "Medium"

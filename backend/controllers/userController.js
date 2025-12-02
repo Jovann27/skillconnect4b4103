@@ -170,8 +170,8 @@ export const login = catchAsyncError(async (req, res, next) => {
 
   if (user.banned) return next(new ErrorHandler("Account is banned", 403));
 
-  if (!user.verified) return next(new ErrorHandler("Account is not verified yet. Please wait for admin verification.", 403));
-
+  // Allow login for both verified and unverified users
+  // Frontend AccountStatusGuard will handle showing VerificationPending screen for unverified users
   sendToken(user, 200, res, `${user.role} logged in successfully`);
 });
 

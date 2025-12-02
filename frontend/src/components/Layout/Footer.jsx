@@ -54,7 +54,6 @@ const Footer = () => {
           <h3>Quick Links</h3>
           <ul className="footer-links">
             <li><Link to="/">Home</Link></li>
-            <li><Link to="/about">About</Link></li>
             <li><a href="/services">Services</a></li>
             <li><a href="/contact">Contact</a></li>
           </ul>
@@ -128,7 +127,7 @@ const Footer = () => {
       </div>
 
       <div className="footer-bottom">
-        <p>© {new Date().getFullYear()} SkillConnect4b410. All rights reserved.</p>
+        <p>Â© {new Date().getFullYear()} SkillConnect4b410. All rights reserved.</p>
         <div className="footer-legal">
           <a href="/terms">Terms & Conditions</a>
           <span className="footer-separator"> | </span>

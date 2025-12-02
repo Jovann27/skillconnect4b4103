@@ -169,13 +169,13 @@ const SystemRecommendations = () => {
     // Barangay Projects based on system analytics
     // 1. High-demand facility based on booking volume
     if (totalBookings > 50) {
-      const demandLevel = totalBookings > 200 ? "High" : totalBookings > 100 ? "Medium" : "Low";
+      const demandLevel = totalBookings > 200 ? "Critical" : totalBookings > 100 ? "Medium" : "Low";
       recommendationsData.barangayProjects.push({
         title: "Skills Training and Community Hub",
-        description: "Establish a dedicated multi-purpose facility for skills training, job placement, and community services",
+        description: "Build a community center for skills training, jobs, and services",
         priority: demandLevel === "High" && skillsCount < 6 ? "Critical" : demandLevel === "High" ? "High" : "Medium",
-        impact: "Accelerated skills development and local economic growth",
-        rationale: `System analytics show ${totalBookings} service bookings across ${skillsCount} skill categories, indicating strong community engagement and training facility needs.`,
+        impact: "Helps people learn skills and grow local economy",
+        rationale: `Community has ${totalBookings} service requests across ${skillsCount} skill areas, showing need for training facilities.`,
         estimatedCost: "₱2.0M - ₱3.0M",
         timeline: "6-9 months"
       });
@@ -186,10 +186,10 @@ const SystemRecommendations = () => {
       const severity = employmentRate < 40 || unemployed > 100 ? "Critical" : "High";
       recommendationsData.barangayProjects.push({
         title: "Employment and Skills Development Center",
-        description: "Build a comprehensive center for job placement, career counseling, and skills certification",
+        description: "Build a center for job placement, career help, and skills certificates",
         priority: severity,
-        impact: "Reduction in unemployment and improved economic stability",
-        rationale: `Analytics indicate ${employmentRate.toFixed(1)}% employment rate with ${unemployed} unemployed residents requiring immediate support infrastructure.`,
+        impact: "Reduces unemployment and makes economy more stable",
+        rationale: `Employment rate is ${employmentRate.toFixed(1)}% with ${unemployed} people without jobs who need support.`,
         estimatedCost: "₱750K - ₱1.25M",
         timeline: "3-6 months"
       });
@@ -200,10 +200,10 @@ const SystemRecommendations = () => {
       const digitalReadiness = growthRate > 25 ? "Critical" : growthRate > 15 ? "High" : "Medium";
       recommendationsData.barangayProjects.push({
         title: "Community Digital Access and Training Center",
-        description: "Upgrade digital infrastructure and establish training programs for online service platforms",
+        description: "Improve digital tools and teach people how to use online service platforms",
         priority: digitalReadiness,
-        impact: "Enhanced platform utilization and digital literacy",
-        rationale: `${growthRate.toFixed(1)}% user growth rate and ${activeUsers} active users indicate rapidly increasing digital platform usage requiring infrastructure support.`,
+        impact: "Makes platform easier to use and teaches digital skills",
+        rationale: `${growthRate.toFixed(1)}% monthly user growth and ${activeUsers} active users show more people using the platform.`,
         estimatedCost: "₱400K - ₱700K",
         timeline: "2-4 months"
       });
@@ -215,13 +215,13 @@ const SystemRecommendations = () => {
       const trainingPriority = popularServiceBookings > 100 ? "Critical" : popularServiceBookings > 50 ? "High" : "Medium";
       recommendationsData.skillsTraining.push({
         title: `${popularService} Excellence Program`,
-        description: `Advanced training and certification program for high-demand ${popularService} skills`,
-        targetAudience: "Aspiring service providers and current practitioners",
+        description: `Training and certification for high-demand ${popularService} work`,
+        targetAudience: "People wanting to become service providers or improve their skills",
         duration: "4 months",
         expectedParticipants: Math.min(Math.floor(popularServiceBookings / 5), 40),
         priority: trainingPriority,
         skills: [popularService, "Quality Assurance", "Customer Relations", "Basic Entrepreneurship"],
-        rationale: `Analytics show ${popularServiceBookings} bookings for ${popularService}, representing ${(popularServiceBookings/totalMarketSize*100).toFixed(1)}% of total market demand.`
+        rationale: `${popularService} has ${popularServiceBookings} requests, which is ${(popularServiceBookings/totalMarketSize*100).toFixed(1)}% of all service requests.`
       });
     }
 
@@ -230,13 +230,13 @@ const SystemRecommendations = () => {
       const gapPriority = skillsCount < 5 || totalBookings < serviceProviders * 10 ? "Critical" : "High";
       recommendationsData.skillsTraining.push({
         title: "Comprehensive Skills Diversification Program",
-        description: "Multi-track training covering essential skills for complete workforce development",
-        targetAudience: "Unemployed adults and career changers",
+        description: "Training in many essential skills to build a stronger workforce",
+        targetAudience: "Unemployed adults and people changing jobs",
         duration: "8 months",
         expectedParticipants: Math.max(75, Math.floor(unemployed * 0.3)),
         priority: gapPriority,
         skills: ["Construction & Carpentry", "Electrical & Plumbing", "Welding & Fabrication", "Automotive Services", "Digital Skills"],
-        rationale: `With only ${skillsCount} skill categories tracked and ${totalBookings} bookings across ${serviceProviders} providers, there is clear need for workforce diversification.`
+        rationale: `Only ${skillsCount} skill areas found with ${totalBookings} bookings from ${serviceProviders} providers. More skills training needed.`
       });
     }
 
@@ -244,13 +244,13 @@ const SystemRecommendations = () => {
     if (serviceProviders > 0 && avgBookingsPerProvider < 10) {
       recommendationsData.skillsTraining.push({
         title: "Service Provider Business Development Program",
-        description: "Business skills, marketing, and service quality enhancement for registered providers",
-        targetAudience: "Existing service providers with low booking volume",
+        description: "Business skills, marketing, and better services for existing providers",
+        targetAudience: "Providers who get few bookings",
         duration: "3 months",
         expectedParticipants: Math.floor(serviceProviders * 0.6),
         priority: "Medium",
         skills: ["Digital Marketing", "Customer Service Excellence", "Business Management", "Pricing Strategy"],
-        rationale: `Average of ${avgBookingsPerProvider} bookings per provider indicates need for entrepreneurship and marketing training.`
+        rationale: `Providers get only ${avgBookingsPerProvider} bookings each. They need business and marketing training.`
       });
     }
 
@@ -259,11 +259,11 @@ const SystemRecommendations = () => {
     if (totalYouth > 20 || youthUnemploymentRate > 0.3) {
       recommendationsData.communityPrograms.push({
         title: "Youth Skills Apprenticeship Program",
-        description: "Structured apprenticeship providing hands-on training and mentorship for unemployed youth",
-        targetGroup: "Youth aged 16-30 with limited work experience",
-        focus: "Immediate employability and skill acquisition",
+        description: "Hands-on training with mentors for young people without jobs",
+        targetGroup: "Young people aged 16-30 with little work experience",
+        focus: "Helps youth find jobs quickly",
         duration: "12 months program",
-        rationale: `Demographics show ${totalYouth} youth with unemployment challenges, requiring intensive workforce development initiatives.`
+        rationale: `${totalYouth} young people have trouble finding work. They need more training chances.`
       });
     }
 
@@ -271,11 +271,11 @@ const SystemRecommendations = () => {
     if (totalUsers > 500 || totalBookings > 100) {
       recommendationsData.communityPrograms.push({
         title: "Community Skills Marketplace Events",
-        description: "Quarterly networking events connecting service providers with clients and job seekers",
-        targetGroup: "Entire community including employers and job seekers",
-        focus: "Job creation and economic networking",
+        description: "Quarterly events where providers and customers meet and job seekers find work",
+        targetGroup: "Everyone in the community, including employers and job seekers",
+        focus: "Creates more jobs and business connections",
         duration: "Ongoing quarterly events",
-        rationale: `${totalUsers} registered users and ${totalBookings} service transactions demonstrate need for enhanced marketplace connectivity.`
+        rationale: `${totalUsers} registered users make ${totalBookings} transactions. More connections needed.`
       });
     }
 
@@ -283,11 +283,11 @@ const SystemRecommendations = () => {
     if (employmentRate < 80) {
       recommendationsData.communityPrograms.push({
         title: "Inclusive Skills Development Initiative",
-        description: "Targeted programs supporting underrepresented groups in skilled workforce participation",
-        targetGroup: "Women, persons with disabilities, and other underrepresented groups",
-        focus: "Inclusive workforce development and community equity",
+        description: "Special programs for groups who need more help to join the workforce",
+        targetGroup: "Women, people with disabilities, and other groups who face barriers",
+        focus: "Makes workforce more inclusive and fair",
         duration: "6 months pilot program",
-        rationale: "Data indicates opportunities for more inclusive workforce participation and skill development equity."
+        rationale: "More people from different groups should have access to skill training."
       });
     }
 
@@ -296,7 +296,8 @@ const SystemRecommendations = () => {
     if (employmentRate < 50 || unemployed > 75) {
       recommendationsData.priorityActions.push({
         action: "Implement Emergency Employment Program",
-        description: "Launch immediate job placement and basic skills training for unemployed residents",
+        description: "Start job help and basic skills training right away for unemployed people",
+        rationale: `${Math.round(employmentRate)}% employment with ${unemployed} people unemployed means we need immediate help.`,
         timeline: "Within 30 days",
         responsible: "Barangay Employment and Development Office",
         priority: "Critical"
@@ -307,7 +308,8 @@ const SystemRecommendations = () => {
     if (skillsCount < 8 || !popularService || popularService === 'General Services') {
       recommendationsData.priorityActions.push({
         action: "Conduct Comprehensive Skills Assessment",
-        description: "Complete skills gap analysis and workforce needs survey across all demographics",
+        description: "Check what skills people need and survey all community groups",
+        rationale: `System shows only ${skillsCount} skill areas with unclear service needs. Need better understanding first.`,
         timeline: "Within 45 days",
         responsible: "Barangay Development Planning Committee",
         priority: "High"
@@ -318,7 +320,8 @@ const SystemRecommendations = () => {
     if (totalBookings > 0 && serviceProviders > 0) {
       recommendationsData.priorityActions.push({
         action: "Establish Industry Training Partnerships",
-        description: `Develop training partnerships for ${popularService} and other high-demand skills certification programs`,
+        description: `Partner with industry for ${popularService} training and other skills certificates`,
+        rationale: `${totalBookings} service requests from ${serviceProviders} providers show chance to work with industry.`,
         timeline: "Within 60 days",
         responsible: "Barangay Education and Training Coordinator",
         priority: "High"
@@ -329,7 +332,8 @@ const SystemRecommendations = () => {
     if (growthRate > 20 || activeUsers > totalUsers * 0.5) {
       recommendationsData.priorityActions.push({
         action: "Enhance Platform Adoption Strategy",
-        description: "Implement targeted promotion and user engagement programs to manage rapid growth",
+        description: "Promote platform and help users to manage growing use",
+        rationale: `Users growing ${growthRate.toFixed(1)}% monthly with ${activeUsers} active. Need promotion to keep growing.`,
         timeline: "Ongoing - Monthly",
         responsible: "Community Outreach and Communications Team",
         priority: "Medium"
@@ -388,15 +392,58 @@ const SystemRecommendations = () => {
 
           <div class="metric">
             <h3>Key Metrics Summary</h3>
-            <p>Total Users: ${analyticsData.totals.totalUsers?.toLocaleString() || 0}</p>
-            <p>Service Providers: ${analyticsData.totals.serviceProviders?.toLocaleString() || 0}</p>
-            <p>Employment Rate: ${(() => {
-              const worker = analyticsData.demographics.employment?.worker || 0;
-              const nonWorker = analyticsData.demographics.employment?.nonWorker || 0;
-              const total = worker + nonWorker;
-              return total > 0 ? ((worker / total) * 100).toFixed(1) : 0;
-            })()}%</p>
-            <p>Total Service Bookings: ${analyticsData.totalBookings.toLocaleString()}</p>
+            ${
+              (() => {
+                const allMetrics = [];
+                const totalUsers = analyticsData.totals.totalUsers?.toLocaleString() || 0;
+                const serviceProviders = analyticsData.totals.serviceProviders?.toLocaleString() || 0;
+                const employmentRate = (() => {
+                  const worker = analyticsData.demographics.employment?.worker || 0;
+                  const nonWorker = analyticsData.demographics.employment?.nonWorker || 0;
+                  const total = worker + nonWorker;
+                  return total > 0 ? ((worker / total) * 100).toFixed(1) : 0;
+                })();
+                const totalBookings = analyticsData.totalBookings.toLocaleString();
+                const skillsCount = Object.keys(analyticsData.skills || {}).length;
+                const popularService = analyticsData.popularServices[0]?.service || 'N/A';
+
+                const userGrowth = analyticsData.totalsOverTime.values.length > 1 ?
+                  Math.round(((analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] -
+                             analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2]) /
+                            (analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2] || 1)) * 100) : 0;
+
+                const totalUsers_text = analyticsData.totals.totalUsers || 0;
+                const serviceProviders_text = analyticsData.totals.serviceProviders || 0;
+                const popularService_text = popularService || 'various services';
+
+                allMetrics.push(`
+                  <div class="metric-item">
+                    <h4>Total Users: ${totalUsers}</h4>
+                    <p>The platform has ${totalUsers_text} registered users. There are ${analyticsData.activeUsers} active users. Monthly growth is ${userGrowth >= 0 ? '+' + userGrowth : userGrowth}%. The platform serves local community needs with users seeking services and providers offering skills.</p>
+                  </div>
+                `);
+                allMetrics.push(`
+                  <div class="metric-item">
+                    <h4>Service Providers: ${serviceProviders}</h4>
+                    <p>The platform has ${serviceProviders_text} registered service providers offering ${Object.keys(analyticsData.skilledPerTrade.byRole || {}).length} different types of work. They provide construction, electrical, plumbing, and other skills. ${Math.round((serviceProviders * 100) / totalUsers)}% of users are service providers, showing good community participation.</p>
+                  </div>
+                `);
+                allMetrics.push(`
+                  <div class="metric-item">
+                    <h4>Employment Rate: ${employmentRate}%</h4>
+                    <p>${employmentRate}% of people are employed. There are ${(analyticsData.demographics.employment?.worker || 0).toLocaleString()} workers and ${(analyticsData.demographics.employment?.nonWorker || 0).toLocaleString()} non-workers. ${employmentRate < 50 ? 'Employment is low - need more job training' : employmentRate < 70 ? 'Jobs available - can improve with training' : 'Good employment level - keep growing'}. ${Object.entries(analyticsData.demographics.ageGroups || {}).sort(([,a],[,b]) => b-a)[0]?.[0] || 'working-age'} groups have most employment.</p>
+                  </div>
+                `);
+                allMetrics.push(`
+                  <div class="metric-item">
+                    <h4>Total Service Bookings: ${totalBookings}</h4>
+                    <p>The platform has ${totalBookings} completed service bookings across ${skillsCount} skill areas. "${popularService_text}" is most popular with ${popularServiceBookings} requests, making ${(popularServiceBookings/totalBookings*100).toFixed(1)}% of all bookings. This shows ${totalBookings > totalUsers * 0.5 ? 'very active use' : totalBookings > totalUsers * 0.25 ? 'good use' : 'growing use'}. Users need services and providers deliver them successfully.</p>
+                  </div>
+                `);
+
+                return allMetrics.join('');
+              })()
+            }
           </div>
 
           <div class="section">
@@ -450,6 +497,7 @@ const SystemRecommendations = () => {
               <div class="recommendation priority-${action.priority.toLowerCase()}">
                 <h3>${action.action}</h3>
                 <p><strong>Description:</strong> ${action.description}</p>
+                <p><strong>Rationale:</strong> ${action.rationale}</p>
                 <p><strong>Timeline:</strong> ${action.timeline}</p>
                 <p><strong>Responsible:</strong> ${action.responsible}</p>
                 <p><strong>Priority:</strong> ${action.priority}</p>
@@ -755,6 +803,9 @@ const SystemRecommendations = () => {
                   <div className="action-meta">
                     <span className="action-timeline">⏰ {action.timeline}</span>
                     <span className="action-responsible">👤 {action.responsible}</span>
+                  </div>
+                  <div className="recommendation-rationale">
+                    <strong>Why this action:</strong> {action.rationale}
                   </div>
                 </div>
               </div>

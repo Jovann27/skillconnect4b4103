@@ -1,5 +1,14 @@
-import React from 'react';
-import chairmanImage from '../About/images/chairman.png';
+import './images/Chairwoman.png';
+import './images/Kagwadomar.png';
+import './images/treasurer.png';
+import './images/Fired.png';
+import './images/DSC_0028-removebg-preview.png';
+import './images/DSC_9666-removebg-preview.png';
+import './images/DSC_9677-removebg-preview.png';
+import './images/DSC_9822-removebg-preview.png';
+
+import './images/DSC_9875-removebg-preview.png';
+import { fromUnixTime } from 'date-fns';
 const styles = `
   .team-section {
     min-height: 100vh;
@@ -156,11 +165,9 @@ const TeamMember = ({ name, role, imageUrl }) => (
     <div className="team-member-image-container">
       <img 
         src={imageUrl} 
-        alt={name}
         className="team-member-image"
       />
     </div>
-    <h3 className="team-member-name">{name}</h3>
     <p className="team-member-role">{role}</p>
   </div>
 );
@@ -169,47 +176,47 @@ export default function TeamSection() {
   const teamMembers = [
     {
       role: "Barangay Chairman",
-      imageUrl: "/images/Chairman.png"
+      imageUrl: "./images/Chairwoman.png"
     },
     {
       role: "Sk Chairman",
-      imageUrl: "/images/skChairwoman.png"
+      imageUrl: "./images/skChiarwoman.png"
     },
     {
       role: "Kagawad",
-      imageUrl: "/images/kagwadomar.png"
+      imageUrl: "./images/Kagwadomar.png"
     },
     {
       role: "Treasurer",
-      imageUrl: "/images/tresurer.png"
+      imageUrl: "./images/treasurer.png"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/Fired.png"
+      imageUrl: "./images/Fired.png"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/DSC_0028-removebg-preview.png"
+      imageUrl: "./images/DSC_0028-removebg-preview.png"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/DSC_9666-removebg-preview.png"
+      imageUrl: "./images/DSC_9666-removebg-preview.png"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/DSC_9677-removebg-preview.png"
+      imageUrl: "./images/DSC_9677-removebg-preview.png"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/DSC_9822-removebg-preview.png"
+      imageUrl: "./images/DSC_9822-removebg-preview.png"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/DSC_9860-removebg-preview.png"
+      imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"
     },
     {
       role: "Barangay Official",
-      imageUrl: "/images/DSC_9875-removebg-preview.png"
+      imageUrl: "./images/DSC_9875-removebg-preview.png"
     }
   ];
 
