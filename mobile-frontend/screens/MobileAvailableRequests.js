@@ -49,8 +49,9 @@ const MobileAvailableRequests = ({ searchTerm, filterStatus, filterServiceType, 
       return false;
     }
 
-    // Only show requests that are available (status: "Available", "Waiting", "Open")
-    const isAvailableRequest = request.status === "Available" || request.status === "Waiting" || request.status === "Open";
+    // Only show requests that are available (status: "Available", "Waiting", "Open") and not expired
+    const isAvailableRequest = (request.status === "Available" || request.status === "Waiting" || request.status === "Open") &&
+                              request.status !== "No Longer Available";
     if (!isAvailableRequest) return false;
 
     // Exclude current user's own requests
@@ -107,7 +108,7 @@ const MobileAvailableRequests = ({ searchTerm, filterStatus, filterServiceType, 
           renderItem={({ item }) => (
             <TouchableOpacity style={[styles.orderCard, { borderLeftColor: getStatusColor(item.status) }]} onPress={() => handleRequestClick(item)}>
               <Text style={styles.date}>
-                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}
+                Needed by: {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "N/A"}
               </Text>
               <View style={styles.addressRow}>
                 <Ionicons name="location-outline" size={14} color="#444" />

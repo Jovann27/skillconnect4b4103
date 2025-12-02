@@ -183,7 +183,7 @@ export default function Chat({ route, navigation }) {
         id: 4,
         category: "Booking",
         title: "Track Service Requests",
-        description: "Monitor the status of your service bookings",
+        description: "Monitor the status of your service requests",
         content: "Check your dashboard for active requests. You'll receive notifications when workers respond or accept your requests."
       },
       {

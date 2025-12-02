@@ -19,6 +19,7 @@ import settingsRouter from "./routes/settingsRouter.js";
 import verificationRouter from "./routes/verificationRouter.js";
 import helpRouter from "./routes/helpRouter.js";
 import reviewRouter from "./routes/reviewRouter.js";
+import residentRouter from "./routes/residentRouter.js";
 
 import { errorMiddleware } from "./middlewares/error.js";
 
@@ -89,6 +90,7 @@ app.use("/api/v1/user", userFlowRouter);
 app.use("/api/v1/admin/auth", adminAuthRouter);
 app.use("/api/v1/admin", adminFlowRouter);
 app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/admin/residents", residentRouter);
 app.use("/api/v1/contact", contactRoutes);
 app.use("/api/v1/settings", settingsRouter);
 app.use("/api/v1/reports", reportRoutes);

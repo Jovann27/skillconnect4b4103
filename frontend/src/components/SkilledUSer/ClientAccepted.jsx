@@ -15,16 +15,24 @@ const ClientAccepted = ({ requestId }) => {
   const [requesterStats, setRequesterStats] = useState(null);
 
   const effectiveRequestId = requestId || location.state?.requestId;
+  const requestFromState = location.state?.request;
 
   // Fetch request data on component mount
   useEffect(() => {
-    if (effectiveRequestId) {
+    if (requestFromState) {
+      // Use request data passed from navigation state
+      setRequest(requestFromState);
+      if (requestFromState.requester?._id) {
+        fetchRequesterStats(requestFromState.requester._id);
+      }
+      setLoading(false);
+    } else if (effectiveRequestId) {
       fetchRequestData();
     } else {
       // If no requestId provided, fetch all accepted requests and use the first one
       fetchAcceptedRequests();
     }
-  }, [effectiveRequestId]);
+  }, [effectiveRequestId, requestFromState]);
 
   const fetchRequestData = async () => {
     try {

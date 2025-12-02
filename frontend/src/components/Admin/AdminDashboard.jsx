@@ -7,7 +7,9 @@ import {
   FaClipboardList,
   FaUsers,
   FaTools,
-  FaSignOutAlt
+  FaSignOutAlt,
+  FaUserFriends,
+  FaLightbulb
 } from "react-icons/fa";
 import "./admin-theme.css";
 
@@ -15,9 +17,11 @@ const AdminDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isDashboardHome = location.pathname === "/admin/analytics";
+  const isRecommendations = location.pathname === "/admin/recommendations";
   const isJobFairs = location.pathname === "/admin/jobfairs";
   const isServiceRequests = location.pathname === "/admin/service-requests";
   const isUsers = location.pathname === "/admin/users";
+  const isResidents = location.pathname === "/admin/residents";
   const isAdminSettings = location.pathname === "/admin/admin-settings";
   const isAdminRegister = location.pathname === "/admin/admin-register";
 
@@ -59,9 +63,11 @@ const AdminDashboard = () => {
 
   const navItems = [
     { to: "/admin/analytics", label: "Dashboard", icon: FaHome, active: isDashboardHome },
+    { to: "/admin/recommendations", label: "Recommendations", icon: FaLightbulb, active: isRecommendations },
     { to: "/admin/jobfairs", label: "Job Fairs", icon: FaCalendarAlt, active: isJobFairs },
     { to: "/admin/service-requests", label: "Requests", icon: FaClipboardList, active: isServiceRequests },
     { to: "/admin/users", label: "Users", icon: FaUsers, active: isUsers },
+    { to: "/admin/residents", label: "Residents", icon: FaUserFriends, active: isResidents },
     { to: "/admin/admin-settings", label: "Settings", icon: FaTools, active: isAdminSettings },
     // { to: "/admin/admin-register", label: "Admin Register", icon: FaTools, active: isAdminRegister }
   ];

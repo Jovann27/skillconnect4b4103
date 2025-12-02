@@ -73,7 +73,7 @@ export default function RegisterScreen({ navigation }) {
     // Birthdate is usually pre-filled with 'new Date()', check if user actually changed it if strictly required, or just accept default.
     if (!formData.employed) errors.employed = "Employment status is required";
 
-    if (formData.role === "Service Provider Applicant") {
+    if (formData.role === "Service Provider") {
       if (!formData.skills || formData.skills.length === 0) errors.skills = "At least one skill is required for Service Providers";
       else if (formData.skills.length > 3) errors.skills = "You can select a maximum of 3 skills";
       if (formData.certificates.length === 0) errors.certificates = "Certificates are required for Service Providers";
@@ -174,7 +174,7 @@ export default function RegisterScreen({ navigation }) {
          if (key === 'profilePic') {
              appendImage('profilePic', formData.profilePic);
          } else if (key === 'validId') {
-             if (formData.role === "Service Provider Applicant") {
+             if (formData.role === "Service Provider") {
                  appendImage('validId', formData.validId);
              }
          } else if (key === 'certificates') {
@@ -436,7 +436,7 @@ export default function RegisterScreen({ navigation }) {
                  >
                     <Picker.Item label="Select your role" value="" color="#999" />
                     <Picker.Item label="Community Member" value="Community Member" />
-                    <Picker.Item label="Service Provider" value="Service Provider Applicant" />
+                    <Picker.Item label="Service Provider" value="Service Provider" />
                  </Picker>
             </View>
             {validationErrors.role && <Text style={styles.errorText}>{validationErrors.role}</Text>}
@@ -444,7 +444,7 @@ export default function RegisterScreen({ navigation }) {
         </View>
 
         {/* --- CONDITIONAL SERVICE PROVIDER FIELDS --- */}
-        {formData.role === "Service Provider Applicant" && (
+        {formData.role === "Service Provider" && (
             <>
                 <View style={styles.formGroup}>
                     <Text style={[styles.fieldLabel, validationErrors.skills && { color: '#F44336' }]}>
@@ -546,7 +546,7 @@ export default function RegisterScreen({ navigation }) {
         </View>
 
         {/* --- MORE PROVIDER DOCUMENTS --- */}
-        {formData.role === "Service Provider Applicant" && (
+        {formData.role === "Service Provider" && (
             <>
                 {/* Certificates (Multi) */}
                  <View style={styles.formGroup}>

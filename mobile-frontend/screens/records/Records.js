@@ -184,6 +184,8 @@ const RecordsScreen = () => {
         return "#4CAF50";
       case "Cancelled":
         return "#E53935";
+      case "No Longer Available":
+        return "#9E9E9E"; // Gray color for expired requests
       default:
         return "#2196F3";
     }

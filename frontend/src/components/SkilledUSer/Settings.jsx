@@ -373,7 +373,7 @@ const Settings = () => {
         {activeSection === 'notifications' && (
           <section className="settings-card">
             <h2>Notification Preferences</h2>
-            <p>Manage how we keep you updated about bookings and account activity.</p>
+            <p>Manage how we keep you updated about service requests and account activity.</p>
             <div className="toggle-row">
               <label>
                 <input
@@ -383,7 +383,7 @@ const Settings = () => {
                 />
                 Email reminders
               </label>
-              <p className="option-description">Receive booking confirmations, updates, and important account notifications via email.</p>
+              <p className="option-description">Receive service request confirmations, updates, and important account notifications via email.</p>
             </div>
             <div className="toggle-row">
               <label>
@@ -394,7 +394,7 @@ const Settings = () => {
                 />
                 SMS alerts
               </label>
-              <p className="option-description">Get urgent notifications about booking changes and service updates via text message.</p>
+              <p className="option-description">Get urgent notifications about service request changes and service updates via text message.</p>
             </div>
             <div className="toggle-row">
               <label>
@@ -405,7 +405,7 @@ const Settings = () => {
                 />
                 Push notifications
               </label>
-              <p className="option-description">Receive instant notifications on your device for new messages, booking requests, and updates.</p>
+              <p className="option-description">Receive instant notifications on your device for new messages, service requests, and updates.</p>
             </div>
             <button className="primary-btn" type="button" onClick={handleSaveNotificationPreferences} disabled={saving}>
               {saving ? 'Saving...' : 'Save Preferences'}

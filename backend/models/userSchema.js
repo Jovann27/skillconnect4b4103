@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema({
 
   employed: { type: String, required: true },
 
-  role: { type: String, required: true, enum: ["Community Member", "Service Provider Applicant", "Service Provider"], default: "Community Member" },
+  role: { type: String, required: true, enum: ["Community Member", "Service Provider"], default: "Community Member" },
 
   skills: {
     type: [String],
@@ -34,7 +34,9 @@ const userSchema = new mongoose.Schema({
   },
   certificates: { type: [String], default: [] },
   profilePic: { type: String, default: "" },
-  validId: { type: String, default: "" },
+  validId: { type: String, required: true },
+  verified: { type: Boolean, default: false },
+  verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
 
   availability: { type: String, enum: ["Available", "Currently Working", "Not Available"], default: "Not Available" },
   acceptedWork: { type: Boolean, default: false },

@@ -5,10 +5,12 @@ import ServiceRequest from "../models/serviceRequest.js";
 import Review from "../models/review.js";
 import verificationAppointmentSchema from "../models/verificationSchema.js";
 import { sendNotification } from "../utils/socketNotify.js";
+import { sendTargetedRequestNotification } from "../utils/emailService.js";
 import Booking from "../models/booking.js";
 import Chat from "../models/chat.js";
 import { io, onlineUsers } from "../server.js";
 import cloudinary from "cloudinary";
+import { checkAndUpdateExpiredRequests, getActiveRequestsFilter } from "../utils/expirationHandler.js";
 
 
 
@@ -61,8 +63,21 @@ export const applyProvider = catchAsyncError(async (req, res, next) => {
 
 export const postServiceRequest = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
-  const { name, address, phone, typeOfWork, time, budget, notes, location, targetProvider } = req.body;
+  const { name, address, phone, typeOfWork, preferredDate, time, budget, notes, location, targetProvider } = req.body;
   if (!name || !address || !phone || !typeOfWork || !time) return next(new ErrorHandler("Missing required fields", 400));
+
+  // Calculate expiration date based on preferred date and time
+  let expiresAt;
+  if (preferredDate) {
+    // Combine preferred date with time to create expiration datetime
+    const [hours, minutes] = time.split(':').map(Number);
+    const expirationDate = new Date(preferredDate);
+    expirationDate.setHours(hours, minutes, 0, 0);
+    expiresAt = expirationDate;
+  } else {
+    // Default to 24 hours from now if no preferred date
+    expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  }
 
   const request = await ServiceRequest.create({
     requester: req.user._id,
@@ -70,36 +85,31 @@ export const postServiceRequest = catchAsyncError(async (req, res, next) => {
     address,
     phone,
     typeOfWork,
+    preferredDate: preferredDate || "",
     time,
     budget: budget || 0,
     notes,
     location: location || null,
     targetProvider,
     status: "Waiting",
+    expiresAt,
   });
 
-  // Find matching VERIFIED providers based on service type and budget within 200 of their rate
-  // Only verified service providers should receive new service request notifications
+  // Find all providers whose skills match the service request
+  // Send notification to all matching providers regardless of availability or budget
   const matchingProviders = await User.find({
     role: "Service Provider",
-    isOnline: true, // Only notify online providers
-    skills: { $in: [new RegExp(typeOfWork, 'i')] }, // Match against skills array
-  }).select("_id serviceRate");
+    skills: { $in: [new RegExp(typeOfWork, 'i')] }, // Match Service Needed against skills array
+  }).select("_id");
 
+  // Send notification to all matching providers
   for (const provider of matchingProviders) {
-    const providerRate = provider.serviceRate || 0;
-    const tolerance = 200;
-    const minBudget = providerRate - tolerance;
-    const maxBudget = providerRate + tolerance;
-
-    if (budget >= minBudget && budget <= maxBudget) {
-      await sendNotification(
-        provider._id,
-        "New Service Request",
-        `A new "${typeOfWork}" request has been posted.`,
-        { requestId: request._id, type: "service-request"}
-      );
-    }
+    await sendNotification(
+      provider._id,
+      "New Service Request",
+      "Someone has posted a request that matches your service and skills.",
+      { requestId: request._id, type: "service-request"}
+    );
   }
 
   // Notify the requester that their request was posted
@@ -109,8 +119,6 @@ export const postServiceRequest = catchAsyncError(async (req, res, next) => {
     `Your "${typeOfWork}" request has been posted successfully.`,
     { requestId: request._id, type: "service-request-posted"}
   );
- 
-  // Optionally notify providers in the same category (not implemented here, but can query by skill)
 
   // Emit socket event for real-time updates (to relevant users only)
   // This could be improved by emitting to specific provider rooms
@@ -188,11 +196,35 @@ export const leaveReview = catchAsyncError(async (req, res, next) => {
 export const getServiceRequests = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
-  // Get provider's skills for filtering
-  const providerSkills = req.user.skills || [];
+  // Get provider's details for matching
+  const provider = await User.findById(req.user._id);
+  if (!provider || provider.role !== "Service Provider") {
+    return next(new ErrorHandler("Not a service provider", 403));
+  }
 
-  // First, let's see all available requests
-  const allRequests = await ServiceRequest.find({ status: "Waiting" })
+  const providerSkills = provider.skills || [];
+  const providerRate = provider.serviceRate || 0;
+  const providerAvailability = provider.availability || "Not Available";
+
+  // Only show requests if provider is available or currently working
+  if (!["Available", "Currently Working"].includes(providerAvailability)) {
+    return res.status(200).json({
+      success: true,
+      requests: [],
+      message: "You must be available to view service requests."
+    });
+  }
+
+  const tolerance = 200;
+  const minBudget = providerRate - tolerance;
+  const maxBudget = providerRate + tolerance;
+
+  // First, let's see all available requests (filter out expired ones)
+  const activeRequestsFilter = getActiveRequestsFilter();
+  const allRequests = await ServiceRequest.find({
+    ...activeRequestsFilter,
+    status: "Waiting"
+  })
     .populate({
       path: 'requester',
       select: 'firstName lastName username email phone',
@@ -205,20 +237,37 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-  // Filter requests based on provider's skills if they have skills
+  // Filter requests based on Service Needed, Budget, and Time compatibility
   let filteredRequests = allRequests;
 
   if (providerSkills.length > 0) {
     filteredRequests = allRequests.filter(request => {
-      // Check if request typeOfWork matches any of provider's skills
-      return providerSkills.some(skill =>
+      // Check Service Needed compatibility
+      const serviceCompatible = providerSkills.some(skill =>
         request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
         skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
       );
+
+      // Check Budget compatibility
+      const budgetCompatible = request.budget >= minBudget && request.budget <= maxBudget;
+
+      // Check Time compatibility - providers with "Available" status can handle any time,
+      // providers with "Currently Working" can only handle flexible times
+      let timeCompatible = false;
+      if (providerAvailability === "Available") {
+        timeCompatible = true; // Available providers can handle any time
+      } else if (providerAvailability === "Currently Working") {
+        // Currently working providers can only handle flexible times
+        timeCompatible = ["ASAP", "Today", "Flexible"].some(flexibleTime =>
+          request.time.toLowerCase().includes(flexibleTime.toLowerCase())
+        );
+      }
+
+      return serviceCompatible && budgetCompatible && timeCompatible;
     });
   }
 
-  // Also include requests specifically targeted to this provider
+  // Also include requests specifically targeted to this provider (bypass normal matching)
   const targetedRequests = await ServiceRequest.find({
     status: "Waiting",
     targetProvider: req.user._id
@@ -242,10 +291,17 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
     ...filteredRequests.filter(r => !targetedIds.includes(r._id.toString()))
   ];
 
-  // For testing purposes, if no requests match skills, return all working requests
+  // For testing purposes, if no requests match all criteria, return requests that at least match skills
   let finalRequests = combinedRequests;
-  if (combinedRequests.length === 0 && allRequests.length > 0) {
-    finalRequests = allRequests;
+  if (combinedRequests.length === 0 && allRequests.length > 0 && providerSkills.length > 0) {
+    // Fallback to skill-only matching for better UX during testing
+    const skillOnlyRequests = allRequests.filter(request => {
+      return providerSkills.some(skill =>
+        request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+        skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+      );
+    });
+    finalRequests = skillOnlyRequests;
   }
 
   res.status(200).json({
@@ -253,12 +309,15 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
     requests: finalRequests,
     debug: {
       totalRequests: finalRequests.length,
-      allWorkingRequests: allRequests.length,
+      allWaitingRequests: allRequests.length,
       filteredRequests: filteredRequests.length,
       targetedRequests: targetedRequests.length,
       userId: req.user._id,
       userRole: req.user.role,
       userSkills: providerSkills,
+      providerRate,
+      providerAvailability,
+      budgetRange: { minBudget, maxBudget },
       sampleRequester: finalRequests[0]?.requester || null
     }
   });
@@ -460,34 +519,67 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
   }
 
   const providerRate = provider.serviceRate || 0;
-  const providerService = provider.service || '';
+  const providerSkills = provider.skills || [];
+  const providerAvailability = provider.availability || "Not Available";
+
+  // Only show requests if provider is available or currently working
+  if (!["Available", "Currently Working"].includes(providerAvailability)) {
+    return res.status(200).json({
+      success: true,
+      requests: [],
+      message: "You must be available to receive matching requests."
+    });
+  }
 
   const tolerance = 200;
   const minBudget = providerRate - tolerance;
   const maxBudget = providerRate + tolerance;
 
-  const requests = await ServiceRequest.find({
+  // First get requests that match Service Needed and Budget (filter out expired ones)
+  const activeRequestsFilter = getActiveRequestsFilter();
+  const skillAndBudgetMatchedRequests = await ServiceRequest.find({
+    ...activeRequestsFilter,
     status: "Waiting",
     budget: { $gte: minBudget, $lte: maxBudget },
-    typeOfWork: new RegExp(providerService, 'i') // Case insensitive match
+    typeOfWork: { $in: providerSkills.map(skill => new RegExp(skill, 'i')) } // Match against provider's skills
   })
   .populate({
     path: 'requester',
     select: 'firstName lastName username email phone',
     model: 'User'
   })
-  .sort({ createdAt: -1 })
-  .limit(10);
+  .sort({ createdAt: -1 });
+
+  // Now filter by Time compatibility
+  const timeCompatibleRequests = skillAndBudgetMatchedRequests.filter(request => {
+    // Check Time compatibility - providers with "Available" status can handle any time,
+    // providers with "Currently Working" can only handle flexible times
+    if (providerAvailability === "Available") {
+      return true; // Available providers can handle any time
+    } else if (providerAvailability === "Currently Working") {
+      // Currently working providers can only handle flexible times
+      return ["ASAP", "Today", "Flexible"].some(flexibleTime =>
+        request.time.toLowerCase().includes(flexibleTime.toLowerCase())
+      );
+    }
+    return false;
+  });
+
+  // Limit results to 10
+  const requests = timeCompatibleRequests.slice(0, 10);
 
   res.status(200).json({
     success: true,
     requests,
     debug: {
       providerRate,
-      providerService,
+      providerSkills,
+      providerAvailability,
       minBudget,
       maxBudget,
       totalRequests: requests.length,
+      skillAndBudgetMatched: skillAndBudgetMatchedRequests.length,
+      timeCompatible: timeCompatibleRequests.length,
       isOnline: provider.isOnline
     }
   });
@@ -519,16 +611,34 @@ export const updateServiceRequest = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Cannot edit request that is in progress", 400));
   }
 
-  const { name, address, phone, typeOfWork, time, budget, notes, location } = req.body;
+  const { name, address, phone, typeOfWork, preferredDate, time, budget, notes, location } = req.body;
 
   request.name = name || request.name;
   request.address = address || request.address;
   request.phone = phone || request.phone;
   request.typeOfWork = typeOfWork || request.typeOfWork;
+  request.preferredDate = preferredDate || request.preferredDate;
   request.time = time || request.time;
   request.budget = budget || request.budget;
   request.notes = notes || request.notes;
   request.location = location || request.location;
+
+  // Recalculate expiration date if preferredDate or time was updated
+  if (preferredDate || time) {
+    let expiresAt;
+    const dateToUse = preferredDate || request.preferredDate;
+    const timeToUse = time || request.time;
+
+    if (dateToUse) {
+      const [hours, minutes] = timeToUse.split(':').map(Number);
+      const expirationDate = new Date(dateToUse);
+      expirationDate.setHours(hours, minutes, 0, 0);
+      expiresAt = expirationDate;
+    } else {
+      expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
+    request.expiresAt = expiresAt;
+  }
 
   await request.save();
 
@@ -772,13 +882,69 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
       role: "Service Provider",
       banned: { $ne: true }
     })
-      .select("firstName lastName skills availability profilePic service serviceRate serviceDescription createdAt")
+      .select("firstName lastName skills availability profilePic service serviceRate serviceDescription createdAt certificates services isOnline")
       .sort({ createdAt: -1 });
 
     res.json({ success: true, count: workers.length, workers });
   } catch (err) {
     console.error(err);
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+export const notifyProvider = catchAsyncError(async (req, res, next) => {
+  if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
+
+  const { providerId, requestId, message } = req.body;
+
+  if (!providerId || !requestId || !message) {
+    return next(new ErrorHandler("Provider ID, request ID, and message are required", 400));
+  }
+
+  try {
+    // Verify the request belongs to the user
+    const request = await ServiceRequest.findById(requestId).populate('requester', 'firstName lastName');
+    if (!request || String(request.requester) !== String(req.user._id)) {
+      return next(new ErrorHandler("Request not found or not authorized", 404));
+    }
+
+    // Get provider details
+    const provider = await User.findById(providerId).select('firstName lastName email');
+    if (!provider) {
+      return next(new ErrorHandler("Provider not found", 404));
+    }
+
+    // Send in-app notification to the provider
+    await sendNotification(
+      providerId,
+      "Targeted Service Request",
+      message,
+      { requestId, type: "targeted-service-request" }
+    );
+
+    // Send email notification if provider has email
+    if (provider.email) {
+      try {
+        await sendTargetedRequestNotification(
+          provider.email,
+          `${provider.firstName} ${provider.lastName}`,
+          `${request.requester.firstName} ${request.requester.lastName}`,
+          request.typeOfWork,
+          requestId
+        );
+      } catch (emailErr) {
+        console.error("Email sending failed:", emailErr);
+        // Don't fail the whole request if email fails
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Notification sent to provider"
+    });
+  } catch (err) {
+    console.error("Error sending notification:", err);
+    res.status(500).json({ success: false, message: "Failed to send notification" });
   }
 });
 

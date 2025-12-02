@@ -79,7 +79,7 @@ const MobileMyRequests = ({ searchTerm, filterStatus, filterServiceType, filterB
           renderItem={({ item }) => (
             <TouchableOpacity style={[styles.orderCard, { borderLeftColor: getStatusColor(item.status) }]} onPress={() => handleRequestClick(item)}>
               <Text style={styles.date}>
-                {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "-"}
+                Needed by: {item.expiresAt ? new Date(item.expiresAt).toLocaleDateString() : "N/A"}
               </Text>
               <View style={styles.addressRow}>
                 <Ionicons name="location-outline" size={14} color="#444" />
@@ -102,12 +102,16 @@ const MobileMyRequests = ({ searchTerm, filterStatus, filterServiceType, filterB
                   <View style={styles.actionButton}>
                     <Text style={[styles.actionText, { color: "#999" }]}>Cancelled</Text>
                   </View>
+                ) : item.status === "No Longer Available" ? (
+                  <View style={styles.actionButton}>
+                    <Text style={[styles.actionText, { color: "#999" }]}>Expired</Text>
+                  </View>
                 ) : (
                   <TouchableOpacity style={styles.actionButton} onPress={() => handleEditRequest(item)}>
                     <Text style={styles.actionText}>Edit</Text>
                   </TouchableOpacity>
                 )}
-                {item.status !== "Cancelled" && item.status !== "Complete" && (
+                {item.status !== "Cancelled" && item.status !== "Complete" && item.status !== "No Longer Available" && (
                   <TouchableOpacity style={styles.actionButton} onPress={() => handleCancelRequest(item)}>
                     <Text style={styles.actionText}>Cancel</Text>
                   </TouchableOpacity>

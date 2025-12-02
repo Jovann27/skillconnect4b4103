@@ -1,5 +1,5 @@
 import express from "express";
-import { isUserAuthenticated } from "../middlewares/auth.js";
+import { isUserAuthenticated, isUserVerified } from "../middlewares/auth.js";
 import ServiceRequest from '../models/serviceRequest.js';
 import Review from '../models/review.js';
 
@@ -22,6 +22,7 @@ import {
   getUserServices,
   updateServiceRequest,
   getServiceProviders,
+  notifyProvider,
   reverseGeocode
 } from '../controllers/userFlowController.js';
 import { getServices } from '../controllers/adminFlowController.js';
@@ -29,7 +30,7 @@ import { getServices } from '../controllers/adminFlowController.js';
 const router = express.Router();
 
 // Dashboard routes
-router.get('/dashboard/stats', isUserAuthenticated, async (req, res) => {
+router.get('/dashboard/stats', isUserAuthenticated, isUserVerified, async (req, res) => {
   try {
     const userId = req.user._id;
 
@@ -99,7 +100,7 @@ router.get('/dashboard/stats', isUserAuthenticated, async (req, res) => {
   }
 });
 
-router.get('/dashboard/recent-activity', isUserAuthenticated, async (req, res) => {
+router.get('/dashboard/recent-activity', isUserAuthenticated, isUserVerified, async (req, res) => {
   try {
     const userId = req.user._id;
 
@@ -166,20 +167,20 @@ router.get('/dashboard/recent-activity', isUserAuthenticated, async (req, res) =
 });
 
 // Booking routes
-router.get('/bookings', isUserAuthenticated, getBookings);
-router.get('/booking/:id', isUserAuthenticated, getBooking);
-router.put('/booking/:id/status', isUserAuthenticated, updateBookingStatus);
-router.put('/booking/:id/complete', isUserAuthenticated, completeBooking);
-router.post('/review', isUserAuthenticated, leaveReview);
+router.get('/bookings', isUserAuthenticated, isUserVerified, getBookings);
+router.get('/booking/:id', isUserAuthenticated, isUserVerified, getBooking);
+router.put('/booking/:id/status', isUserAuthenticated, isUserVerified, updateBookingStatus);
+router.put('/booking/:id/complete', isUserAuthenticated, isUserVerified, completeBooking);
+router.post('/review', isUserAuthenticated, isUserVerified, leaveReview);
 
 // Service Request routes
-router.get('/service-requests', isUserAuthenticated, getServiceRequests);
-router.post('/post-service-request', isUserAuthenticated, postServiceRequest);
-router.get('/user-service-requests', isUserAuthenticated, getUserServiceRequests);
-router.get('/service-request/:id', isUserAuthenticated, getServiceRequest);
-router.delete('/service-request/:id/cancel', isUserAuthenticated, cancelServiceRequest);
-router.put('/service-request/:id/update', isUserAuthenticated, updateServiceRequest);
-router.post('/service-request/:id/accept', isUserAuthenticated, acceptServiceRequest);
+router.get('/service-requests', isUserAuthenticated, isUserVerified, getServiceRequests);
+router.post('/post-service-request', isUserAuthenticated, isUserVerified, postServiceRequest);
+router.get('/user-service-requests', isUserAuthenticated, isUserVerified, getUserServiceRequests);
+router.get('/service-request/:id', isUserAuthenticated, isUserVerified, getServiceRequest);
+router.delete('/service-request/:id/cancel', isUserAuthenticated, isUserVerified, cancelServiceRequest);
+router.put('/service-request/:id/update', isUserAuthenticated, isUserVerified, updateServiceRequest);
+router.post('/service-request/:id/accept', isUserAuthenticated, isUserVerified, acceptServiceRequest);
 
 // Helper function to calculate time ago
 function getTimeAgo(date) {
@@ -195,22 +196,24 @@ function getTimeAgo(date) {
 }
 
 // Service Profile routes
-router.get('/service-profile', isUserAuthenticated, getServiceProfile);
-router.post('/service-profile', isUserAuthenticated, updateServiceProfile);
-router.put('/service-status', isUserAuthenticated, updateServiceStatus);
+router.get('/service-profile', isUserAuthenticated, isUserVerified, getServiceProfile);
+router.post('/service-profile', isUserAuthenticated, isUserVerified, updateServiceProfile);
+router.put('/service-status', isUserAuthenticated, isUserVerified, updateServiceStatus);
 
 // Matching requests route
-router.get('/matching-requests', isUserAuthenticated, getMatchingRequests);
+router.get('/matching-requests', isUserAuthenticated, isUserVerified, getMatchingRequests);
 
 // User services route
-router.get('/services', isUserAuthenticated, getUserServices);
-router.get('/predefined-services', isUserAuthenticated, getServices);
-
+router.get('/services', isUserAuthenticated, isUserVerified, getUserServices);
+router.get('/predefined-services', isUserAuthenticated, isUserVerified, getServices);
 
 // Service Providers route
-router.get('/service-providers', isUserAuthenticated, getServiceProviders);
+router.get('/service-providers', isUserAuthenticated, isUserVerified, getServiceProviders);
+
+// Notify provider route
+router.post('/notify-provider', isUserAuthenticated, isUserVerified, notifyProvider);
 
 // Reverse geocoding route
-router.get('/reverse-geocode', isUserAuthenticated, reverseGeocode);
+router.get('/reverse-geocode', isUserAuthenticated, isUserVerified, reverseGeocode);
 
 export default router;

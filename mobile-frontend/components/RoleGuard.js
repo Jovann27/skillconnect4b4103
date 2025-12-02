@@ -15,7 +15,7 @@ import { useMainContext } from "../contexts/MainContext";
  * 
  * Usage:
  * - Service Provider only: allowedRoles={["Service Provider"]}
- * - Service flow (all users): allowedRoles={["Community Member", "Service Provider", "Service Provider Applicant"]}
+ * - Service flow (all users): allowedRoles={["Community Member", "Service Provider"]}
  * - No role restriction: allowedRoles={[]} or omit prop
  */
 const RoleGuard = ({
@@ -138,4 +138,3 @@ const styles = StyleSheet.create({
 });
 
 export default RoleGuard;
-

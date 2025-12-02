@@ -19,6 +19,7 @@ const ServiceRequestForm = () => {
     time: "",
     budget: "",
     notes: "",
+    preferredDate: "",
   });
 
 
@@ -195,6 +196,7 @@ const ServiceRequestForm = () => {
         address: formData.address,
         phone: formData.phone,
         typeOfWork: formData.typeOfWork,
+        preferredDate: formData.preferredDate,
         time: formData.time,
         budget: formData.budget,
         notes: formData.notes,
@@ -210,6 +212,7 @@ const ServiceRequestForm = () => {
         address: formData.address,
         phone: formData.phone,
         typeOfWork: formData.typeOfWork,
+        preferredDate: formData.preferredDate,
         time: formData.time,
         budget: formData.budget,
         notes: formData.notes,
@@ -225,6 +228,7 @@ const ServiceRequestForm = () => {
         address: "",
         phone: user?.phone ,
         typeOfWork: "",
+        preferredDate: "",
         time: "",
         budget: "",
         notes: "",
@@ -331,6 +335,17 @@ const ServiceRequestForm = () => {
         </div>
 
         <div className="requestForm-group">
+          <label>Preferred Date</label>
+          <input
+            type="date"
+            name="preferredDate"
+            value={formData.preferredDate}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="requestForm-group">
           <label>Time</label>
           <input
             type="time"
@@ -342,7 +357,7 @@ const ServiceRequestForm = () => {
         </div>
 
         <button type="submit" className="requestForm-submitBtn">
-          Place Order
+          Post Request
         </button>
       </form>
 

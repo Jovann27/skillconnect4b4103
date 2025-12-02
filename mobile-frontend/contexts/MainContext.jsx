@@ -20,11 +20,11 @@ export const MainProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isUserVerified, setIsUserVerified] = useState(false);
 
   // Role-based access helpers
   const userRole = user?.role;
   const isCommunityMember = userRole === "Community Member";
-  const isServiceProviderApplicant = userRole === "Service Provider Applicant";
   const isServiceProvider = userRole === "Service Provider";
 
   // Initialize user from AsyncStorage
@@ -37,6 +37,7 @@ export const MainProvider = ({ children }) => {
         if (userData && token) {
           const parsedUser = JSON.parse(userData);
           setUser(parsedUser);
+          setIsUserVerified(parsedUser.verified || false);
           setIsLoggedIn(true);
 
           // Set token in apiClient
@@ -92,6 +93,7 @@ export const MainProvider = ({ children }) => {
       await AsyncStorage.setItem('token', token);
 
       setUser(user);
+      setIsUserVerified(user.verified || false);
       setIsLoggedIn(true);
 
       notifyUserDataChange();
@@ -116,6 +118,7 @@ export const MainProvider = ({ children }) => {
       await AsyncStorage.removeItem('token');
 
       setUser(null);
+      setIsUserVerified(false);
       setIsLoggedIn(false);
 
       // Clear token from apiClient
@@ -135,6 +138,7 @@ export const MainProvider = ({ children }) => {
       const newUserData = { ...user, ...updatedUserData };
       await AsyncStorage.setItem('user', JSON.stringify(newUserData));
       setUser(newUserData);
+      setIsUserVerified(newUserData.verified || false);
       notifyUserDataChange();
     } catch (error) {
       console.error('Error updating user:', error);
@@ -152,7 +156,19 @@ export const MainProvider = ({ children }) => {
     // User related
     // Backend exposes the authenticated user's profile at /api/v1/user/me
     // and update at /api/v1/user/update-profile
-    getUserProfile: () => apiClient.get('/user/me'),
+    getUserProfile: async () => {
+      try {
+        const response = await apiClient.get('/user/me');
+        return response;
+      } catch (error) {
+        // Handle verification error
+        if (error.response?.data?.code === "ACCOUNT_NOT_VERIFIED") {
+          setIsUserVerified(false);
+          throw error;
+        }
+        throw error;
+      }
+    },
     updateUserProfile: (data) => apiClient.put('/user/update-profile', data),
 
     // Orders
@@ -209,6 +225,7 @@ export const MainProvider = ({ children }) => {
     loading,
     notifications,
     unreadCount,
+    isUserVerified,
     login,
     logout,
     updateUser,

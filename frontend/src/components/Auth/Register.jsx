@@ -72,12 +72,12 @@ const Register = () => {
     if (!formData.employed || !["employed", "unemployed"].includes(formData.employed)) {
       errors.employed = "Employment status must be Employed or Unemployed";
     }
-    if (!formData.role || !["Community Member", "Service Provider Applicant"].includes(formData.role)) {
+    if (!formData.role || !["Community Member", "Service Provider"].includes(formData.role)) {
       errors.role = "Please select a valid role";
     }
 
     // Service Provider specific validation
-    if (formData.role === "Service Provider Applicant") {
+    if (formData.role === "Service Provider") {
       if (!formData.skills || formData.skills.length === 0) {
         errors.skills = "At least one skill is required for Service Providers";
       } else if (formData.skills.length > 3) {
@@ -153,8 +153,8 @@ const Register = () => {
         submitData.append("profilePic", formData.profilePic);
       }
       
-      // Service Provider specific fields (only send if role is Service Provider Applicant)
-      if (formData.role === "Service Provider Applicant") {
+      // Service Provider specific fields (only send if role is Service Provider)
+      if (formData.role === "Service Provider") {
         if (formData.skills && formData.skills.length > 0) {
           // Backend expects array - FormData will handle multiple values with same key as array
           formData.skills.forEach((skill) => submitData.append("skills", skill));
@@ -184,12 +184,12 @@ const Register = () => {
       
       // Navigate based on user role
       // Service Provider → /user/my-service
-      // Community Member and Service Provider Applicant → /user/service-request
+      // Community Member → /user/service-request
       if (data.user.role === "Service Provider") {
         navigate("/user/my-service", { replace: true });
         localStorage.setItem("userLastPath", "/user/my-service");
       } else {
-        // Community Member or Service Provider Applicant
+        // Community Member
         navigate("/user/service-request", { replace: true });
         localStorage.setItem("userLastPath", "/user/service-request");
       }
@@ -543,7 +543,7 @@ const Register = () => {
                 aria-label="Select your role in the community"
               >
                 <option value="Community Member">Community Member</option>
-                <option value="Service Provider Applicant">Service Provider</option>
+                <option value="Service Provider">Service Provider</option>
               </select>
             </div>
           </div>
@@ -551,7 +551,7 @@ const Register = () => {
             Community Members can request services, Service Providers can offer services
           </small>
 
-          {formData.role === "Service Provider Applicant" && (
+          {formData.role === "Service Provider" && (
             <>
               {/* Skills Selection */}
               <div className="skills-selection">
@@ -683,7 +683,7 @@ const Register = () => {
           </div>
 
           {/* Service Provider Documents */}
-          {formData.role === "Service Provider Applicant" && (
+          {formData.role === "Service Provider" && (
             <>
               {/* Certificates */}
               <div className="form-group file-upload">

@@ -33,6 +33,7 @@ export default function PlaceOrder() {
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState(user?.phone || "");
   const [typeOfWork, setTypeOfWork] = useState("");
+  const [preferredDate, setPreferredDate] = useState(new Date());
   const [time, setTime] = useState(new Date());
   const [budget, setBudget] = useState("");
   const [notes, setNotes] = useState("");
@@ -44,6 +45,7 @@ export default function PlaceOrder() {
   const mapRef = useRef(null);
   const [locationError, setLocationError] = useState(null);
   const [currentAddress, setCurrentAddress] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
 
   useEffect(() => {
@@ -137,6 +139,7 @@ export default function PlaceOrder() {
         address,
         phone,
         typeOfWork,
+        preferredDate: preferredDate.toISOString().split('T')[0],
         time: time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         budget: Number(budget),
         notes,
@@ -151,6 +154,7 @@ export default function PlaceOrder() {
       setAddress("");
       setPhone(user?.phone || "");
       setTypeOfWork("");
+      setPreferredDate(new Date());
       setTime(new Date());
       setBudget("");
       setNotes("");
@@ -228,6 +232,30 @@ export default function PlaceOrder() {
                 <Picker.Item label="Laundry / Labandera" value="Laundry / Labandera" />
               </Picker>
             </View>
+
+            {/* Preferred Date */}
+            <Text style={styles.label}>Preferred Date *</Text>
+            <TouchableOpacity
+              style={styles.input}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ fontSize: 14, color: preferredDate ? "#333" : "#999" }}>
+                {preferredDate ? preferredDate.toLocaleDateString() : "Select date"}
+              </Text>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <DateTimePicker
+                value={preferredDate}
+                mode="date"
+                display="default"
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) {
+                    setPreferredDate(selectedDate);
+                  }
+                }}
+              />
+            )}
 
             {/* Preferred Time */}
             <Text style={styles.label}>Preferred Time *</Text>

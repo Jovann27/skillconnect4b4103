@@ -41,8 +41,8 @@ const UserWorkRecord = () => {
 
   const fetchWorkRecords = async () => {
     try {
-      const { data } = await api.get("/user/bookings");
-      setRecords(data.bookings || []);
+      const { data } = await api.get("/user/service-requests");
+      setRecords(data.serviceRequests || []);
     } catch (err) {
       console.error("Error fetching records:", err);
     }
@@ -84,7 +84,7 @@ const UserWorkRecord = () => {
   // Popup handlers
   const handleRequestClick = (request) => {
     if (request.serviceRequest) {
-      // It's a booking from work-records, navigate to ClientAccepted
+      // It's a service request from work-records, navigate to ClientAccepted
       navigate('/user/client-accepted', { state: { requestId: request.serviceRequest._id } });
     } else {
       // Regular request
@@ -138,19 +138,19 @@ const UserWorkRecord = () => {
     console.log("Chat button clicked for request:", request._id, "Provider:", request.serviceProvider);
     if (request.serviceProvider) {
       try {
-        // Find the booking associated with this request
-        const response = await api.get("/user/bookings");
-        const bookings = response.data.bookings || [];
-        const booking = bookings.find(b => b.serviceRequest && b.serviceRequest._id === request._id);
+        // Find the service request associated with this request
+        const response = await api.get("/user/service-requests");
+        const serviceRequests = response.data.serviceRequests || [];
+        const serviceRequest = serviceRequests.find(b => b.serviceRequest && b.serviceRequest._id === request._id);
 
-        if (booking) {
-          openChat(booking._id);
+        if (serviceRequest) {
+          openChat(serviceRequest._id);
           showNotification(`Opening chat with ${request.serviceProvider.firstName || request.serviceProvider.username}`, "success", 2000, "Success");
         } else {
-          showNotification("No active booking found for this request.", "error", 3000, "Error");
+          showNotification("No active service request found for this request.", "error", 3000, "Error");
         }
       } catch (err) {
-        console.error("Error finding booking for chat:", err);
+        console.error("Error finding service request for chat:", err);
         showNotification("Failed to open chat. Please try again.", "error", 4000, "Error");
       }
     } else {

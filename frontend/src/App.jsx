@@ -36,9 +36,11 @@ import JobFairs from "./components/Admin/JobFairs";
 import ReviewServiceRequest from "./components/Admin/ReviewServiceRequest";
 import UserManagement from "./components/Admin/UserManagement";
 import SystemAnalytics from "./components/Admin/SystemAnalytics";
+import SystemRecommendations from "./components/Admin/SystemRecommendations";
 import SkillCategories from "./components/Admin/SkillCategories"
 import AdminSettings from "./components/Admin/AdminSettings";
 import AdminRegister from "./components/Admin/AdminRegister";
+import Residents from "./components/Admin/Residents";
 
 
 // User pages
@@ -47,11 +49,14 @@ import ServiceRequest from "./components/SkilledUSer/ServiceRequest";
 import UserWorkRecord from "./components/SkilledUSer/UserRecords";
 import UserRequest from "./components/SkilledUSer/UsersRequest";
 import ManageProfile from "./components/SkilledUSer/ManageProfile";
-import WaitingForWorker from "./components/SkilledUSer/WaitingForWorker";
+import WaitingForWorkerPage from "./components/WaitingForWorkerPage";
+import AcceptedOrderPage from "./components/AcceptedOrderPage";
 import AcceptedRequest from "./components/SkilledUSer/AcceptedRequest";
 import ClientAccepted from "./components/SkilledUSer/ClientAccepted";
 import AcceptedOrderWeb from "./components/SkilledUSer/AcceptedOrderWeb";
 import Settings from "./components/SkilledUSer/Settings";
+import VerificationPending from "./components/VerificationPending";
+import AccountBanned from "./components/AccountBanned";
 
 import ErrorBoundary from "./components/Layout/ErrorBoundary";
 import { PopupProvider } from "./components/Layout/PopupContext";
@@ -70,6 +75,23 @@ const RoleGuard = ({ allowedRoles, children, fallback = null }) => {
   return children;
 };
 
+// Account status guard component (checks banned status first, then verification)
+const AccountStatusGuard = ({ children }) => {
+  const { user } = useMainContext();
+
+  // Check if user is banned first
+  if (user?.banned) {
+    return <AccountBanned />;
+  }
+
+  // Check if user is verified
+  if (!user?.verified) {
+    return <VerificationPending />;
+  }
+
+  return children;
+};
+
 const AppContent = () => {
   const { isAuthorized, tokenType, authLoaded, user, admin } = useMainContext();
   const location = useLocation();
@@ -80,7 +102,6 @@ const AppContent = () => {
   // Role-based access helpers
   const userRole = user?.role;
   const isCommunityMember = userRole === "Community Member";
-  const isServiceProviderApplicant = userRole === "Service Provider Applicant";
   const isServiceProvider = userRole === "Service Provider";
 
 
@@ -120,12 +141,12 @@ const AppContent = () => {
           } else {
             // Navigate based on user role
             // Service Provider → /user/my-service
-            // Community Member and Service Provider Applicant → /user/service-request
+            // Community Member → /user/service-request
             if (userRole === "Service Provider") {
               navigate("/user/my-service", { replace: true });
               localStorage.setItem("userLastPath", "/user/my-service");
             } else {
-              // Community Member or Service Provider Applicant
+              // Community Member
               navigate("/user/service-request", { replace: true });
               localStorage.setItem("userLastPath", "/user/service-request");
             }
@@ -155,12 +176,20 @@ const AppContent = () => {
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/admin/login" element={<AdminLogin />} />
-      
+
 
         {/* User Routes */}
         <Route
           path="/user/*"
-          element={isUser ? <Outlet /> : <Navigate to="/login" />}
+          element={
+            isUser ? (
+              <AccountStatusGuard>
+                <Outlet />
+              </AccountStatusGuard>
+            ) : (
+              <Navigate to="/login" />
+            )
+          }
         >
           {/* Routes available to all authenticated users */}
           <Route index element={<MyService />} />
@@ -181,7 +210,7 @@ const AppContent = () => {
           <Route
             path="service-request"
             element={
-              <RoleGuard allowedRoles={["Community Member", "Service Provider", "Service Provider Applicant"]}>
+              <RoleGuard allowedRoles={["Community Member", "Service Provider"]}>
                 <ServiceRequest />
               </RoleGuard>
             }
@@ -189,7 +218,7 @@ const AppContent = () => {
           <Route
             path="records"
             element={
-              <RoleGuard allowedRoles={["Community Member", "Service Provider", "Service Provider Applicant"]}>
+              <RoleGuard allowedRoles={["Community Member", "Service Provider"]}>
                 <UserWorkRecord />
               </RoleGuard>
             }
@@ -197,8 +226,16 @@ const AppContent = () => {
           <Route
             path="waiting-for-worker"
             element={
-              <RoleGuard allowedRoles={["Community Member", "Service Provider", "Service Provider Applicant"]}>
-                <WaitingForWorker />
+              <RoleGuard allowedRoles={["Community Member", "Service Provider"]}>
+                <WaitingForWorkerPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="accepted-order"
+            element={
+              <RoleGuard allowedRoles={["Community Member", "Service Provider"]}>
+                <AcceptedOrderPage />
               </RoleGuard>
             }
           />
@@ -238,6 +275,7 @@ const AppContent = () => {
         >
           <Route index element={<Navigate to="/admin/analytics" />} />
           <Route path="analytics" element={<SystemAnalytics />} />
+          <Route path="recommendations" element={<SystemRecommendations />} />
           <Route path="service-providers" element={<ServiceProviders />} />
           <Route path="jobfairs" element={<JobFairs />} />
           <Route path="service-requests" element={<ReviewServiceRequest />} />
@@ -245,6 +283,7 @@ const AppContent = () => {
           <Route path="admin-register" element={<AdminRegister />} />
           <Route path="admin-settings" element={<AdminSettings />} />
           <Route path="skill-category" element={<SkillCategories />} />
+          <Route path="residents" element={<Residents />} />
         </Route>
 
         {/* Catch-all */}

@@ -4,6 +4,7 @@ import ServiceRequest from "../models/serviceRequest.js";
 import Booking from "../models/booking.js";
 import ErrorHandler from "../middlewares/error.js";
 import { catchAsyncError } from "../middlewares/catchAsyncError.js";
+import { sendNotification } from "../utils/socketNotify.js";
 
 // Create Job Fair
 export const createJobFair = async (req, res) => {
@@ -82,23 +83,32 @@ export const adminGetAllServiceRequests = async (req, res) => {
   }
 };
 
-// Verify user - DEPRECATED: verified field removed from schema
-// export const verifyUser = async (req, res) => {
-//   try {
-//     const user = await User.findById(req.params.id);
-//     if (!user) return res.status(404).json({ success: false, message: "User not found" });
+// Verify user
+export const verifyUser = catchAsyncError(async (req, res, next) => {
+  const { id } = req.params;
+  const user = await User.findById(id);
 
-//     if (user.verified) return res.status(400).json({ success: false, message: "User is already verified" });
+  if (!user) return next(new ErrorHandler("User not found", 404));
+  if (user.verified) return next(new ErrorHandler("User is already verified", 400));
 
-//     user.verified = true;
-//     await user.save();
+  user.verified = true;
+  user.verifiedBy = req.user._id; // Admin who verified the user
+  await user.save();
 
-//     res.json({ success: true, message: "User verified successfully", user });
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ success: false, message: err.message });
-//   }
-// };
+  // Send notification to the user
+  await sendNotification(
+    user._id,
+    "Account Verified",
+    "Your account has been verified by an administrator. You can now log in to the system.",
+    { type: "account-verified" }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: `User (${user.firstName} ${user.lastName}) has been verified successfully`,
+    user
+  });
+});
 
 // Get all users
 export const getAllUsers = async (req, res) => {

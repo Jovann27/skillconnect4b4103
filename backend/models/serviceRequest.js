@@ -6,11 +6,13 @@ const serviceRequestSchema = new mongoose.Schema({
   address: { type: String, required: true },
   phone: { type: String, required: true },
   typeOfWork: { type: String, required: true },
+  preferredDate: { type: String, default: "" },
   time: { type: String, required: true },
   budget: { type: Number, default: 0 },
   notes: { type: String, default: ""},
   location: { type: { lat: Number, lng: Number }, default: null },
-  status: { type: String, enum: ["Waiting", "Working", "Complete", "Cancelled"], default: "Waiting" },
+  status: { type: String, enum: ["Waiting", "Working", "Complete", "Cancelled", "No Longer Available"], default: "Waiting" },
+  expiresAt: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) }, // 24 hours from creation
   serviceProvider: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   targetProvider: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   eta: { type: Date }, // Estimated time of arrival

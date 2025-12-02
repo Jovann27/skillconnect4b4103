@@ -5,9 +5,19 @@ dotenv.config();
 import app from "./app.js";
 import { dbConnection } from "./database/dbConnection.js";
 import "./config/cloudinaryConfig.js";
+import { checkAndUpdateExpiredRequests } from "./utils/expirationHandler.js";
 
 // Initialize database connection
 dbConnection();
+
+// Check and update expired service requests on server start
+checkAndUpdateExpiredRequests().then(count => {
+  if (count > 0) {
+    console.log(`Server startup: Updated ${count} expired service requests`);
+  }
+}).catch(error => {
+  console.error("Error during server startup expiration check:", error);
+});
 
 // For Vercel deployment, export the app
 export default app;

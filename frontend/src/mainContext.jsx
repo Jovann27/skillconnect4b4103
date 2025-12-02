@@ -14,7 +14,7 @@ export const MainProvider = ({ children }) => {
   const [isUserVerified, setIsUserVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [openChatAppointmentId, setOpenChatAppointmentId] = useState(null);
-  
+
   const initialized = useRef(false);
 
   const fetchProfile = async (navigate = null) => {
@@ -36,8 +36,24 @@ export const MainProvider = ({ children }) => {
       } else {
         // Only fetch user data if we have a stored user token
         if (storedUser) {
-          const response = await api.get("/user/me");
-          data = response.data;
+          try {
+            const response = await api.get("/user/me");
+            data = response.data;
+          } catch (error) {
+            // Handle verification error
+            if (error.response?.data?.code === "ACCOUNT_NOT_VERIFIED") {
+              // User is authenticated but not verified
+              setUser(storedUser);
+              setIsAuthorized(true);
+              setTokenType("user");
+              setAdmin(null);
+              setIsUserVerified(false);
+              localStorage.setItem("user", JSON.stringify(storedUser));
+              toast.error("Account not verified. Please wait for admin verification.");
+              return;
+            }
+            throw error;
+          }
         }
       }
 
@@ -68,7 +84,7 @@ export const MainProvider = ({ children }) => {
           setIsAuthorized(true);
           setTokenType("user");
           setAdmin(null);
-          setIsUserVerified(userData.isVerified || false);
+          setIsUserVerified(userData.verified || false);
           localStorage.setItem("user", JSON.stringify(userData));
         }
 
@@ -92,7 +108,7 @@ export const MainProvider = ({ children }) => {
               navigate("/user/my-service", { replace: true });
               localStorage.setItem("userLastPath", "/user/my-service");
             } else {
-              // Community Member or Service Provider Applicant
+              // Community Member
               navigate("/user/service-request", { replace: true });
               localStorage.setItem("userLastPath", "/user/service-request");
             }
@@ -125,7 +141,7 @@ export const MainProvider = ({ children }) => {
               setIsAuthorized(true);
               setTokenType("user");
               setAdmin(null);
-              setIsUserVerified(storedUser.isVerified || false);
+              setIsUserVerified(storedUser.verified || false);
               return;
             }
           }
@@ -191,7 +207,7 @@ export const MainProvider = ({ children }) => {
       setIsAuthorized(true);
       setTokenType("user");
       setAdmin(null);
-      setIsUserVerified(storedUser.isVerified || false);
+      setIsUserVerified(storedUser.verified || false);
       setAuthLoaded(true);
       // Fetch fresh user data
       fetchProfile();

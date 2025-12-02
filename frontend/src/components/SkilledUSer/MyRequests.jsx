@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import socket from "../../utils/socket";
-import WaitingForWorker from "./WaitingForWorker";
 
 const MyRequests = ({
   searchTerm,
@@ -19,9 +18,6 @@ const MyRequests = ({
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  const [showWaiting, setShowWaiting] = useState(false);
 
   const fetchMyRequests = async () => {
     try {
@@ -93,8 +89,7 @@ const MyRequests = ({
     const normalized = normalizeStatus(request.status);
 
     if (normalized === "Available") {
-      setSelectedRequest(request);
-      setShowWaiting(true);
+      navigate('/user/waiting-for-worker', { state: { requestData: request } });
     } else {
       handleRequestClick(request);
     }
@@ -167,14 +162,6 @@ const MyRequests = ({
             })}
           </tbody>
         </table>
-      )}
-
-      {showWaiting && (
-        <WaitingForWorker
-          isOpen={showWaiting}
-          onClose={() => setShowWaiting(false)}
-          requestData={selectedRequest}
-        />
       )}
     </>
   );

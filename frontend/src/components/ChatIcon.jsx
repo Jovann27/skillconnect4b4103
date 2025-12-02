@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMainContext } from '../mainContext';
 import api from '../api';
 import socket from '../utils/socket';
 import './ChatIcon.css';
-import { FaFacebookMessenger, FaLocationArrow  } from 'react-icons/fa';
+import { FaFacebookMessenger } from 'react-icons/fa';
 import { BsThreeDotsVertical } from 'react-icons/bs';
 import { MdClose } from 'react-icons/md';
 
@@ -19,6 +20,7 @@ const sortChatList = (list) => {
 };
 
 const ChatIcon = () => {
+  const navigate = useNavigate();
   const { isAuthorized, tokenType, user, admin, openChatAppointmentId, setOpenChatAppointmentId } = useMainContext();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState('list'); // 'list' or 'chat' or 'help' or 'help-topics'
@@ -242,7 +244,7 @@ const ChatIcon = () => {
         id: 4,
         category: "Booking",
         title: "Track Service Requests",
-        description: "Monitor the status of your service bookings",
+        description: "Monitor the status of your service requests",
         content: "Check your dashboard for active requests. You'll receive notifications when workers respond or accept your requests."
       },
       {
@@ -462,9 +464,24 @@ const ChatIcon = () => {
     }
   };
 
-  const openChat = (chat, specificAppointmentId = null) => {
+  const openChat = async (chat, specificAppointmentId = null) => {
     const appointmentId = specificAppointmentId || chat.appointmentId;
-    const selectedChatData = { ...chat, appointmentId };
+    let selectedChatData = { ...chat, appointmentId };
+
+    // Fetch latest booking details to ensure accurate status
+    if (appointmentId) {
+      try {
+        const booking = await fetchBookingDetails(appointmentId);
+        if (booking) {
+          selectedChatData.status = booking.status;
+          selectedChatData.serviceRequest = booking.serviceRequest;
+          selectedChatData.canComplete = booking.provider.toString() === user._id.toString() && booking.status === 'Working';
+        }
+      } catch (err) {
+        console.error('Error fetching booking details:', err);
+      }
+    }
+
     setSelectedChat(selectedChatData);
     setView('chat');
     setError(null);
@@ -652,54 +669,7 @@ const ChatIcon = () => {
         )}
       </button>
 
-      {/* Request Details Modal - Global Overlay */}
-      {isOpen && view === 'chat' && selectedChat?.serviceRequest && selectedChat?.status === 'Working' && (
-        <div className="request-details-modal">
-          <div className="request-details-content">
-            <h4>Request Details</h4>
-            <div className="request-info">
-              <div className="detail-row">
-                <span className="label">Service:</span>
-                <span className="value">{selectedChat.serviceRequest.typeOfWork || selectedChat.serviceRequest.name || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Budget:</span>
-                <span className="value">{selectedChat.serviceRequest.budget ? `₱${selectedChat.serviceRequest.budget}` : 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Location:</span>
-                <span className="value">{selectedChat.serviceRequest.address || 'N/A'}</span>
-              </div>
-              <div className="detail-row">
-                <span className="label">Notes:</span>
-                <span className="value">{selectedChat.serviceRequest.notes || 'N/A'}</span>
-              </div>
-            </div>
 
-            {/* Work Confirmation Section - Only show when user can complete the work */}
-            {selectedChat?.canComplete && (
-              <div className="work-confirmation-section">
-                <h4>Complete Work</h4>
-                <div className="work-confirmation-form">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setWorkProofImage(e.target.files[0])}
-                    style={{ marginBottom: '10px' }}
-                  />
-                  <button
-                    className="confirm-work-btn"
-                    onClick={handleCompleteWork}
-                    disabled={completingWork || !workProofImage}
-                  >
-                    {completingWork ? 'Completing...' : 'Confirm Work Done'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Chat Panel */}
       {isOpen && (
@@ -716,9 +686,22 @@ const ChatIcon = () => {
                   </h2>
                 </div>
                 <div className="chat-header-actions">
-                  <span className={`status-badge ${selectedChat?.status?.toLowerCase()}`}>
+                  <button
+                    className={`status-badge ${selectedChat?.status?.toLowerCase()}`}
+                    onClick={() => {
+                      if (selectedChat?.serviceRequest) {
+                        const isProvider = selectedChat.serviceRequest.provider._id === user._id;
+                        if (isProvider) {
+                          navigate('/user/client-accepted', { state: { requestId: selectedChat.appointmentId } });
+                        } else {
+                          navigate('/user/waiting-for-worker');
+                        }
+                      }
+                    }}
+                    title="View Request Details"
+                  >
                     {selectedChat?.status}
-                  </span>
+                  </button>
                   <button
                     className="user-menu-btn"
                     onClick={() => setShowUserMenu(!showUserMenu)}

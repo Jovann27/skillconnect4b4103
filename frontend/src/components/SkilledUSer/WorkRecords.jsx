@@ -12,8 +12,8 @@ const WorkRecords = ({ searchTerm, filterStatus, filterServiceType, filterBudget
   const fetchWorkRecords = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/user/bookings");
-      setRecords(data.bookings || []);
+      const { data } = await api.get("/user/service-requests");
+      setRecords(data.serviceRequests || []);
     } catch (err) {
       console.error("Error fetching records:", err);
       setError(err.message);
@@ -26,13 +26,13 @@ const WorkRecords = ({ searchTerm, filterStatus, filterServiceType, filterBudget
     fetchWorkRecords();
 
     // Listen for real-time updates
-    socket.on("booking-updated", (data) => {
-      console.log("Booking updated:", data);
+    socket.on("service-request-updated", (data) => {
+      console.log("Service request updated:", data);
       fetchWorkRecords();
     });
 
     return () => {
-      socket.off("booking-updated");
+      socket.off("service-request-updated");
     };
   }, []);
 

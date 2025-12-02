@@ -470,8 +470,19 @@ const MyService = () => {
       const response = await api.post(`/user/service-request/${requestId}/accept`);
       if (response.data.success) {
         toast.success('Request accepted successfully!');
+        // Find the accepted request details from current requests
+        const acceptedRequest = currentRequests.find(req => req._id === requestId);
+        // Remove the accepted request from current requests
+        setCurrentRequests(prev => prev.filter(req => req._id !== requestId));
+        // Remove marker from map
+        if (clientMarkers.current[requestId]) {
+          clientMarkers.current[requestId].remove();
+          delete clientMarkers.current[requestId];
+        }
+        // Update client locations
+        setClientLocations(prev => prev.filter(loc => loc.requestId !== requestId));
         // Redirect to client-accepted page with request details
-        navigate('/user/client-accepted', { state: { requestId } });
+        navigate('/user/client-accepted', { state: { request: acceptedRequest || response.data.request, requestId } });
       }
     } catch (error) {
       console.error('Failed to accept request:', error);

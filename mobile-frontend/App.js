@@ -47,22 +47,41 @@ import RoleGuard from "./components/RoleGuard";
 import AboutUs from "./screens/AboutUs";
 import TermsScreen from "./screens/TermsScreen";
 import PrivacyScreen from "./screens/PrivacyScreen";
+import VerificationPending from "./screens/VerificationPending";
+import AccountBanned from "./screens/AccountBanned";
 
 const Stack = createNativeStackNavigator();
+
+// Account status guard component (checks banned status first, then verification)
+const AccountStatusGuard = ({ children, navigation }) => {
+  const { user } = React.useContext(require('./contexts/MainContext').MainContext);
+
+  // Check if user is banned first
+  if (user?.banned) {
+    return <AccountBanned navigation={navigation} />;
+  }
+
+  // Check if user is verified
+  if (!user?.verified) {
+    return <VerificationPending navigation={navigation} />;
+  }
+
+  return children;
+};
 
 // Role constants matching web App.jsx
 /**
  * RoleGuard Implementation - Matches web App.jsx pattern
- * 
+ *
  * This file uses RoleGuard directly in Stack.Screen components, matching the web App.jsx pattern.
- * 
+ *
  * Web App.jsx pattern:
  *   <Route path="my-service" element={
  *     <RoleGuard allowedRoles={["Service Provider"]}>
  *       <MyService />
  *     </RoleGuard>
  *   } />
- * 
+ *
  * Mobile App.js pattern (matching web):
  *   <Stack.Screen name="Service">
  *     {(props) => (
@@ -71,7 +90,7 @@ const Stack = createNativeStackNavigator();
  *       </RoleGuard>
  *     )}
  *   </Stack.Screen>
- * 
+ *
  * Both use the same RoleGuard component directly as a wrapper.
  */
 
@@ -80,8 +99,8 @@ const Stack = createNativeStackNavigator();
 
 // SERVICE_FLOW_ROLES: Roles that can access service request flows
 // - PlaceOrder, Records, WaitingForWorker, OrderDetails
-// - Matches web: allowedRoles={["Community Member", "Service Provider", "Service Provider Applicant"]}
-const SERVICE_FLOW_ROLES = ["Community Member", "Service Provider", "Service Provider Applicant"];
+// - Matches web: allowedRoles={["Community Member", "Service Provider"]}
+const SERVICE_FLOW_ROLES = ["Community Member", "Service Provider"];
 
 // PROVIDER_ONLY_ROLES: Roles that can access provider-only features
 // - Service (MyService), Clients, ClientAccepted, BlockedWorker
@@ -211,12 +230,14 @@ export default function App() {
             <Stack.Screen name="Register" component={Register} />
             <Stack.Screen name="Settings">
               {(props) => (
-                <RoleGuard 
+                <RoleGuard
                   navigation={props.navigation}
                   requireAuth={true}
                   allowedRoles={[]} // Settings available to all authenticated users
                 >
-                  <Settings {...props} setIsLoggedIn={setIsLoggedIn} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Settings {...props} setIsLoggedIn={setIsLoggedIn} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -232,7 +253,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Profile">
-                  <EditFirstName {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <EditFirstName {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -247,7 +270,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Profile">
-                  <EditLastName {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <EditLastName {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -262,34 +287,40 @@ export default function App() {
               options={{ headerTitle: "Place Order", headerTitleStyle: { fontSize: 17 } }}
             >
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={SERVICE_FLOW_ROLES}
                   fallbackRoute="Home"
                 >
-                  <PlaceOrder {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <PlaceOrder {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
             <Stack.Screen name="Records">
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={SERVICE_FLOW_ROLES}
                   fallbackRoute="Home"
                 >
-                  <Records {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Records {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
             <Stack.Screen name="WaitingForWorker">
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={SERVICE_FLOW_ROLES}
                   fallbackRoute="Home"
                 >
-                  <WaitingForWorker {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <WaitingForWorker {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -300,12 +331,14 @@ export default function App() {
               options={{ headerTitle: "My Service", headerTitleStyle: { fontSize: 17 } }}
             >
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={PROVIDER_ONLY_ROLES}
                   fallbackRoute="Home"
                 >
-                  <Service {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Service {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -317,7 +350,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <ProfileReviews {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <ProfileReviews {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -327,14 +362,18 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <Workers {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Workers {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
             <Stack.Screen name="Chat" options={{ headerShown: false }}>
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <Chat {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Chat {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -359,14 +398,18 @@ export default function App() {
                   allowedRoles={PROVIDER_ONLY_ROLES}
                   fallbackRoute="Home"
                 >
-                  <ChatList {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <ChatList {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
             <Stack.Screen name="NotificationScreen" options={{ headerTitle: "Notifications" }}>
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <NotificationScreen {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <NotificationScreen {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -404,12 +447,14 @@ export default function App() {
               })}
             >
               {(props) => (
-                <RoleGuard 
+                <RoleGuard
                   navigation={props.navigation}
                   requireAuth={true}
                   allowedRoles={[]} // Profile available to all authenticated users
                 >
-                  <Profile {...props} setIsLoggedIn={setIsLoggedIn} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Profile {...props} setIsLoggedIn={setIsLoggedIn} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -430,12 +475,14 @@ export default function App() {
               })}
             >
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={PROVIDER_ONLY_ROLES}
                   fallbackRoute="Home"
                 >
-                  <ClientAccepted {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <ClientAccepted {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -457,7 +504,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Profile">
-                  <EditEmail {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <EditEmail {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -479,7 +528,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Profile">
-                  <PhoneVerification {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <PhoneVerification {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -501,12 +552,14 @@ export default function App() {
               })}
             >
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={PROVIDER_ONLY_ROLES}
                   fallbackRoute="Home"
                 >
-                  <Clients {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Clients {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -528,12 +581,14 @@ export default function App() {
               })}
             >
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={SERVICE_FLOW_ROLES}
                   fallbackRoute="Records"
                 >
-                  <OrderDetails {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <OrderDetails {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -571,7 +626,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="TermsPolicies">
-                  <TermsScreen {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <TermsScreen {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -592,7 +649,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="TermsPolicies">
-                  <PrivacyScreen {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <PrivacyScreen {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -613,7 +672,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <AboutUs {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <AboutUs {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -634,7 +695,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <Notification {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Notification {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -655,7 +718,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <Favourites {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Favourites {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -676,7 +741,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <Blocked {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <Blocked {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -696,12 +763,14 @@ export default function App() {
               })}
             >
               {(props) => (
-                <RoleGuard 
-                  navigation={props.navigation} 
+                <RoleGuard
+                  navigation={props.navigation}
                   allowedRoles={PROVIDER_ONLY_ROLES}
                   fallbackRoute="Home"
                 >
-                  <BlockedWorker {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <BlockedWorker {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>
@@ -714,7 +783,9 @@ export default function App() {
             >
               {(props) => (
                 <RoleGuard navigation={props.navigation} fallbackRoute="Home">
-                  <GiveReview {...props} />
+                  <AccountStatusGuard navigation={props.navigation}>
+                    <GiveReview {...props} />
+                  </AccountStatusGuard>
                 </RoleGuard>
               )}
             </Stack.Screen>

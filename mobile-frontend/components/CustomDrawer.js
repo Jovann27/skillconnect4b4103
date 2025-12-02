@@ -85,15 +85,6 @@ export default function CustomDrawer({ children }) {
         { name: "Settings", icon: "settings-outline", screen: "Settings" },
       ];
     }
-    else if (userRole === "Service Provider Applicant") {
-      return [
-        { name: "Place Order", icon: "cart-outline", screen: "PlaceOrder" },
-        { name: "Records", icon: "document-outline", screen: "Records" },
-        { name: "Chat", icon: "chatbubble-outline", screen: "Chat" },
-        { name: "ProfileReviews", icon: "settings-outline", screen: "ProfileReviews" },
-        { name: "Settings", icon: "settings-outline", screen: "Settings" },
-      ];
-    }
     return [];
   };
 

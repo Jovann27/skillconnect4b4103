@@ -63,12 +63,14 @@ export const isAdminAuthenticated = async (req, res, next) => {
   }
 };
 
-
-// DEPRECATED: verified field removed from schema
-// export const isUserVerified = (req, res, next) => {
-//   if (req.user.verified) {
-//     next();
-//   } else {
-//     return res.status(403).json({ success: false, message: "User not verified" });
-//   }
-// };
+export const isUserVerified = (req, res, next) => {
+  if (req.user.verified) {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: "Account not verified. Please wait for admin verification.",
+      code: "ACCOUNT_NOT_VERIFIED"
+    });
+  }
+};
