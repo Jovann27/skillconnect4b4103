@@ -130,21 +130,35 @@ const SystemRecommendations = () => {
   const generateRecommendations = () => {
     console.log('📊 Generating hard-coded recommendations based on analytics data');
 
-    // Calculate key metrics
+    // Calculate key metrics from system analytics data
     const totalUsers = analyticsData.totals?.totalUsers || 0;
     const serviceProviders = analyticsData.totals?.serviceProviders || 0;
-    const worker = analyticsData.demographics?.employment?.worker || 0;
-    const nonWorker = analyticsData.demographics?.employment?.nonWorker || 0;
-    const employmentRate = worker + nonWorker > 0 ? (worker / (worker + nonWorker)) * 100 : 0;
+    const unemployed = analyticsData.demographics?.employment?.unemployed || 0;
+    const employed = analyticsData.demographics?.employment?.employed || 0;
+    const employmentRate = employed + unemployed > 0 ? (employed / (employed + unemployed)) * 100 : 0;
+    const population = analyticsData.totals?.totalPopulation || 0;
+    const activeUsers = analyticsData.activeUsers || 0;
     const totalBookings = analyticsData.totalBookings || 0;
-    const popularService = analyticsData.popularServices?.[0]?.service || 'N/A';
+    const topServiceData = analyticsData.popularServices?.[0];
+    const popularService = topServiceData?.service || 'General Services';
+    const popularServiceBookings = topServiceData?.count || 0;
     const skillsCount = Object.keys(analyticsData.skills || {}).length;
-    const userGrowth = analyticsData.totalsOverTime?.values?.length > 1 ?
+    const marketDemand = analyticsData.mostBookedServices || {};
+    const totalMarketSize = Object.values(marketDemand).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
+    const growthRate = analyticsData.totalsOverTime?.values?.length > 1 ?
       ((analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] -
         analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2]) /
-       (analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2] || 1)) * 100 : 0;
+       Math.max(analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2], 1)) * 100 : 0;
 
-    // Hard-coded recommendations based on data analysis
+    // Unemployment and youth data from demographics
+    const youthUnemploymentRate = analyticsData.demographics?.ageGroups?.['18-35']?.unemployed || 0;
+    const totalYouth = analyticsData.demographics?.ageGroups?.['18-35']?.total || 0;
+
+    // Service provider capacity analysis
+    const avgBookingsPerProvider = serviceProviders > 0 ? Math.floor(totalBookings / serviceProviders) : 0;
+    const marketSaturation = serviceProviders > 0 && totalUsers > 0 ? (serviceProviders / totalUsers) * 100 : 0;
+
+    // Hard-coded recommendations based on accurate analytics data
     const recommendationsData = {
       barangayProjects: [],
       skillsTraining: [],
@@ -152,144 +166,172 @@ const SystemRecommendations = () => {
       priorityActions: []
     };
 
-    // Barangay Projects based on metrics
-    if (totalBookings > 100) {
+    // Barangay Projects based on system analytics
+    // 1. High-demand facility based on booking volume
+    if (totalBookings > 50) {
+      const demandLevel = totalBookings > 200 ? "High" : totalBookings > 100 ? "Medium" : "Low";
       recommendationsData.barangayProjects.push({
-        title: "Community Skills Hub Construction",
-        description: "Build a dedicated facility for skills training and community workshops",
-        priority: skillsCount < 5 ? "Critical" : "High",
-        impact: "High community engagement and skill development",
-        rationale: `With ${totalBookings} total bookings, there's strong demand for service skills that require a centralized learning space.`,
-        estimatedCost: "₱2.5M - ₱3.5M",
+        title: "Skills Training and Community Hub",
+        description: "Establish a dedicated multi-purpose facility for skills training, job placement, and community services",
+        priority: demandLevel === "High" && skillsCount < 6 ? "Critical" : demandLevel === "High" ? "High" : "Medium",
+        impact: "Accelerated skills development and local economic growth",
+        rationale: `System analytics show ${totalBookings} service bookings across ${skillsCount} skill categories, indicating strong community engagement and training facility needs.`,
+        estimatedCost: "₱2.0M - ₱3.0M",
         timeline: "6-9 months"
       });
     }
 
-    if (employmentRate < 60) {
+    // 2. Employment center based on unemployment rates
+    if (employmentRate < 70 || unemployed > 50) {
+      const severity = employmentRate < 40 || unemployed > 100 ? "Critical" : "High";
       recommendationsData.barangayProjects.push({
-        title: "Employment Support Center",
-        description: "Establish a barangay employment assistance and job placement center",
-        priority: employmentRate < 40 ? "Critical" : "High",
-        impact: "Direct improvement in employment rates and economic stability",
-        rationale: `Current employment rate of ${employmentRate.toFixed(1)}% requires immediate infrastructure to support job seekers.`,
-        estimatedCost: "₱800K - ₱1.2M",
+        title: "Employment and Skills Development Center",
+        description: "Build a comprehensive center for job placement, career counseling, and skills certification",
+        priority: severity,
+        impact: "Reduction in unemployment and improved economic stability",
+        rationale: `Analytics indicate ${employmentRate.toFixed(1)}% employment rate with ${unemployed} unemployed residents requiring immediate support infrastructure.`,
+        estimatedCost: "₱750K - ₱1.25M",
         timeline: "3-6 months"
       });
     }
 
-    if (userGrowth > 20) {
+    // 3. Digital infrastructure based on user growth and platform usage
+    if (growthRate > 15 || activeUsers > totalUsers * 0.4) {
+      const digitalReadiness = growthRate > 25 ? "Critical" : growthRate > 15 ? "High" : "Medium";
       recommendationsData.barangayProjects.push({
-        title: "Digital Infrastructure Upgrade",
-        description: "Upgrade community internet and digital access to support platform growth",
-        priority: "Medium",
-        impact: "Enhanced digital literacy and platform accessibility",
-        rationale: `${userGrowth.toFixed(1)}% monthly user growth indicates need for better digital infrastructure.`,
-        estimatedCost: "₱500K - ₱800K",
+        title: "Community Digital Access and Training Center",
+        description: "Upgrade digital infrastructure and establish training programs for online service platforms",
+        priority: digitalReadiness,
+        impact: "Enhanced platform utilization and digital literacy",
+        rationale: `${growthRate.toFixed(1)}% user growth rate and ${activeUsers} active users indicate rapidly increasing digital platform usage requiring infrastructure support.`,
+        estimatedCost: "₱400K - ₱700K",
         timeline: "2-4 months"
       });
     }
 
-    // Skills Training Programs
-    if (popularService !== 'N/A' && totalBookings > 50) {
+    // Skills Training Programs based on system analytics
+    // 1. Specialized training based on top service demand
+    if (popularServiceBookings > 20) {
+      const trainingPriority = popularServiceBookings > 100 ? "Critical" : popularServiceBookings > 50 ? "High" : "Medium";
       recommendationsData.skillsTraining.push({
-        title: `${popularService} Advanced Training Program`,
-        description: `Specialized training for ${popularService} service providers to meet community demand`,
-        targetAudience: "Unemployed youth and existing service providers",
+        title: `${popularService} Excellence Program`,
+        description: `Advanced training and certification program for high-demand ${popularService} skills`,
+        targetAudience: "Aspiring service providers and current practitioners",
+        duration: "4 months",
+        expectedParticipants: Math.min(Math.floor(popularServiceBookings / 5), 40),
+        priority: trainingPriority,
+        skills: [popularService, "Quality Assurance", "Customer Relations", "Basic Entrepreneurship"],
+        rationale: `Analytics show ${popularServiceBookings} bookings for ${popularService}, representing ${(popularServiceBookings/totalMarketSize*100).toFixed(1)}% of total market demand.`
+      });
+    }
+
+    // 2. Comprehensive skill gap addressing
+    if (skillsCount < 10 || totalBookings < serviceProviders * 15) {
+      const gapPriority = skillsCount < 5 || totalBookings < serviceProviders * 10 ? "Critical" : "High";
+      recommendationsData.skillsTraining.push({
+        title: "Comprehensive Skills Diversification Program",
+        description: "Multi-track training covering essential skills for complete workforce development",
+        targetAudience: "Unemployed adults and career changers",
+        duration: "8 months",
+        expectedParticipants: Math.max(75, Math.floor(unemployed * 0.3)),
+        priority: gapPriority,
+        skills: ["Construction & Carpentry", "Electrical & Plumbing", "Welding & Fabrication", "Automotive Services", "Digital Skills"],
+        rationale: `With only ${skillsCount} skill categories tracked and ${totalBookings} bookings across ${serviceProviders} providers, there is clear need for workforce diversification.`
+      });
+    }
+
+    // 3. Provider capacity building
+    if (serviceProviders > 0 && avgBookingsPerProvider < 10) {
+      recommendationsData.skillsTraining.push({
+        title: "Service Provider Business Development Program",
+        description: "Business skills, marketing, and service quality enhancement for registered providers",
+        targetAudience: "Existing service providers with low booking volume",
         duration: "3 months",
-        expectedParticipants: Math.min(Math.floor(totalBookings / 10), 50),
-        priority: employmentRate < 50 ? "Critical" : "High",
-        skills: [popularService, "Customer Service", "Business Management"],
-        rationale: `${popularService} has the highest demand with ${analyticsData.popularServices?.[0]?.count || 0} bookings, indicating workforce needs.`
+        expectedParticipants: Math.floor(serviceProviders * 0.6),
+        priority: "Medium",
+        skills: ["Digital Marketing", "Customer Service Excellence", "Business Management", "Pricing Strategy"],
+        rationale: `Average of ${avgBookingsPerProvider} bookings per provider indicates need for entrepreneurship and marketing training.`
       });
     }
 
-    if (skillsCount < 8) {
-      recommendationsData.skillsTraining.push({
-        title: "Multi-Skill Development Program",
-        description: "Comprehensive training covering multiple in-demand skills for job diversification",
-        targetAudience: "Unemployed residents aged 18-35",
-        duration: "6 months",
-        expectedParticipants: 100,
-        priority: skillsCount < 4 ? "Critical" : "High",
-        skills: ["Basic Electrical", "Plumbing", "Carpentry", "Welding", "Automotive"],
-        rationale: `Only ${skillsCount} skill categories available indicates significant skills gap that needs addressing.`
-      });
-    }
-
-    recommendationsData.skillsTraining.push({
-      title: "Digital Skills for Service Providers",
-      description: "Training in digital tools, online marketing, and platform utilization for service businesses",
-      targetAudience: "Registered service providers",
-      duration: "2 months",
-      expectedParticipants: Math.floor(serviceProviders * 0.8),
-      priority: "Medium",
-      skills: ["Digital Marketing", "Online Presence", "Platform Navigation"],
-      rationale: `With ${serviceProviders} service providers, digital skills training will enhance business opportunities.`
-    });
-
-    // Community Programs
-    recommendationsData.communityPrograms.push({
-      title: "Youth Apprenticeship Mentorship",
-      description: "Pair unemployed youth with experienced service providers for hands-on learning",
-      targetGroup: "Youth aged 16-25 seeking employment",
-      focus: "Practical skill acquisition through mentorship",
-      duration: "1 year program",
-      rationale: `Employment rate of ${employmentRate.toFixed(1)}% suggests need for youth employment initiatives.`
-    });
-
-    if (totalUsers > 1000) {
+    // Community Programs based on system data
+    // 1. Youth employment program
+    if (totalYouth > 20 || youthUnemploymentRate > 0.3) {
       recommendationsData.communityPrograms.push({
-        title: "Regular Skills Fair and Job Matching Events",
-        description: "Monthly events connecting service providers with potential clients and job seekers",
-        targetGroup: "All community members",
-        focus: "Job creation and service utilization",
-        duration: "Ongoing quarterly events",
-        rationale: `Growing community of ${totalUsers} users supports regular networking and job matching activities.`
+        title: "Youth Skills Apprenticeship Program",
+        description: "Structured apprenticeship providing hands-on training and mentorship for unemployed youth",
+        targetGroup: "Youth aged 16-30 with limited work experience",
+        focus: "Immediate employability and skill acquisition",
+        duration: "12 months program",
+        rationale: `Demographics show ${totalYouth} youth with unemployment challenges, requiring intensive workforce development initiatives.`
       });
     }
 
-    recommendationsData.communityPrograms.push({
-      title: "Women's Skills Empowerment Program",
-      description: "Specialized training and support for women entering skilled trades",
-      targetGroup: "Women interested in skilled trades",
-      focus: "Gender-inclusive skill development",
-      duration: "6 months program",
-      rationale: "Promoting gender equality in skilled professions and addressing potential workforce gaps."
-    });
+    // 2. Community networking and job matching
+    if (totalUsers > 500 || totalBookings > 100) {
+      recommendationsData.communityPrograms.push({
+        title: "Community Skills Marketplace Events",
+        description: "Quarterly networking events connecting service providers with clients and job seekers",
+        targetGroup: "Entire community including employers and job seekers",
+        focus: "Job creation and economic networking",
+        duration: "Ongoing quarterly events",
+        rationale: `${totalUsers} registered users and ${totalBookings} service transactions demonstrate need for enhanced marketplace connectivity.`
+      });
+    }
 
-    // Priority Actions
-    if (employmentRate < 50) {
+    // 3. Inclusive skill development
+    if (employmentRate < 80) {
+      recommendationsData.communityPrograms.push({
+        title: "Inclusive Skills Development Initiative",
+        description: "Targeted programs supporting underrepresented groups in skilled workforce participation",
+        targetGroup: "Women, persons with disabilities, and other underrepresented groups",
+        focus: "Inclusive workforce development and community equity",
+        duration: "6 months pilot program",
+        rationale: "Data indicates opportunities for more inclusive workforce participation and skill development equity."
+      });
+    }
+
+    // Priority Actions based on system analytics
+    // 1. Emergency response for critical metrics
+    if (employmentRate < 50 || unemployed > 75) {
       recommendationsData.priorityActions.push({
-        action: "Launch Emergency Employment Initiative",
-        description: "Immediate job placement program for unemployed residents with basic skills training",
+        action: "Implement Emergency Employment Program",
+        description: "Launch immediate job placement and basic skills training for unemployed residents",
         timeline: "Within 30 days",
-        responsible: "Barangay Employment Officer",
+        responsible: "Barangay Employment and Development Office",
         priority: "Critical"
       });
     }
 
-    recommendationsData.priorityActions.push({
-      action: "Conduct Skills Gap Analysis Survey",
-      description: "Comprehensive survey to identify specific skills shortages and training needs",
-      timeline: "Within 45 days",
-      responsible: "Barangay Development Committee",
-      priority: "High"
-    });
-
-    recommendationsData.priorityActions.push({
-      action: "Establish Skills Training Partnership",
-      description: `Partner with TESDA or private training institutions for ${popularService} certification programs`,
-      timeline: "Within 60 days",
-      responsible: "Barangay Administrator",
-      priority: "High"
-    });
-
-    if (userGrowth > 15) {
+    // 2. Data-driven planning
+    if (skillsCount < 8 || !popularService || popularService === 'General Services') {
       recommendationsData.priorityActions.push({
-        action: "Scale Up Platform Promotion",
-        description: "Increase community awareness campaigns and user registration drives",
+        action: "Conduct Comprehensive Skills Assessment",
+        description: "Complete skills gap analysis and workforce needs survey across all demographics",
+        timeline: "Within 45 days",
+        responsible: "Barangay Development Planning Committee",
+        priority: "High"
+      });
+    }
+
+    // 3. Partnership development based on market demand
+    if (totalBookings > 0 && serviceProviders > 0) {
+      recommendationsData.priorityActions.push({
+        action: "Establish Industry Training Partnerships",
+        description: `Develop training partnerships for ${popularService} and other high-demand skills certification programs`,
+        timeline: "Within 60 days",
+        responsible: "Barangay Education and Training Coordinator",
+        priority: "High"
+      });
+    }
+
+    // 4. Platform growth management
+    if (growthRate > 20 || activeUsers > totalUsers * 0.5) {
+      recommendationsData.priorityActions.push({
+        action: "Enhance Platform Adoption Strategy",
+        description: "Implement targeted promotion and user engagement programs to manage rapid growth",
         timeline: "Ongoing - Monthly",
-        responsible: "Communication Team",
+        responsible: "Community Outreach and Communications Team",
         priority: "Medium"
       });
     }

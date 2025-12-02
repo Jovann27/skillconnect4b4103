@@ -19,7 +19,7 @@ import Footer from "./components/Layout/Footer";
 
 // Home pages
 import Home from "./components/Home/Home";
-import About from "./components/About/About";
+import About from "./components/Home/About";
 
 // Auth pages
 import Login from "./components/Auth/Login";
