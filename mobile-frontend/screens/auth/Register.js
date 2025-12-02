@@ -236,9 +236,6 @@ export default function RegisterScreen({ navigation }) {
         errorMessage = "Network error. Please check your connection and try again.";
       }
 
-      Alert.alert("Registration Failed", errorMessage, [
-        { text: 'OK' }
-      ]);
     } finally {
       setIsSubmitting(false);
     }
