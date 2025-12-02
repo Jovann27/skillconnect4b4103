@@ -70,13 +70,13 @@ export const register = catchAsyncError(async (req, res, next) => {
   const validIdFile = req.files?.validId;
   let uploadedFiles = {};
 
-  // Valid ID is required for both Community Members and Service Provider Applicants
+  // Valid ID is required for all users
   if (!validIdFile) return next(new ErrorHandler("Valid ID is required", 400));
   if (!validIdFile.mimetype.startsWith("image/")) {
     return next(new ErrorHandler("Valid ID must be an image file (JPG, PNG, etc.)", 400));
   }
 
-  // Upload validId for both roles
+  // Upload validId for all roles
   const uploadPromises = [];
   uploadPromises.push(uploadToCloudinary(validIdFile.tempFilePath, "skillconnect/validIds").then(url => { uploadedFiles.validId = url; }));
 
@@ -115,6 +115,13 @@ export const register = catchAsyncError(async (req, res, next) => {
       skills: normalizedSkills,
     });
 
+    // Send notification for new Service Provider registration (non-blocking)
+    sendNotification(
+      user._id,
+      "Application Under Review",
+      "Your application to become a Service Provider is being reviewed by our administrators. You will receive a notification once your application is approved."
+    ).catch(err => console.error("Notification error:", err));
+
     sendToken(user, 201, res, "User registered successfully");
     return;
   }
@@ -130,7 +137,7 @@ export const register = catchAsyncError(async (req, res, next) => {
     address: address || "",
     birthdate: birthdate ? new Date(birthdate) : new Date('2000-01-01'),
     employed: employed || "unemployed",
-    password, role: dbRole,
+    password, role: role,
     profilePic: "",
     validId: uploadedFiles.validId,
     certificates: [],

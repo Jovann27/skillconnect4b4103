@@ -14,7 +14,6 @@ import {
 import './SystemAnalytics.css';
 import api from "../../api";
 import toast from "react-hot-toast";
-import socketClient from "../../utils/socket";
 
 const SystemRecommendations = () => {
   const [analyticsData, setAnalyticsData] = useState({
@@ -42,41 +41,6 @@ const SystemRecommendations = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
-
-    // Listen for real-time AI recommendations updates
-    const handleRecommendationsUpdate = (data) => {
-      console.log('📡 Received real-time AI recommendations update:', data);
-
-      if (data.recommendations) {
-        // Add icons to recommendations
-        const iconMap = {
-          barangayProjects: [FaTools, FaChartLine, FaBuilding, FaHandshake],
-          skillsTraining: [FaUsers, FaTools, FaChartLine, FaProjectDiagram],
-          communityPrograms: [FaGraduationCap, FaUsers],
-          priorityActions: [FaUsers, FaChartLine, FaTools]
-        };
-
-        // Add icons to each recommendation
-        Object.keys(data.recommendations).forEach(category => {
-          if (data.recommendations[category] && Array.isArray(data.recommendations[category])) {
-            data.recommendations[category].forEach((item, index) => {
-              const icons = iconMap[category] || [FaLightbulb];
-              item.icon = icons[index % icons.length];
-            });
-          }
-        });
-
-        setRecommendations(data.recommendations);
-        toast.success("AI recommendations updated in real-time!");
-      }
-    };
-
-    socketClient.on('ai-recommendations-update', handleRecommendationsUpdate);
-
-    // Cleanup listener on unmount
-    return () => {
-      socketClient.off('ai-recommendations-update', handleRecommendationsUpdate);
-    };
   }, [timeRange]);
 
 
@@ -148,9 +112,9 @@ const SystemRecommendations = () => {
 
       setAnalyticsData(newAnalyticsData);
 
-      // Generate AI recommendations regardless of data size
-      console.log('✨ Generating AI recommendations after data load...');
-      generateAIRecommendations();
+      // Generate recommendations based on analytics data
+      console.log('✨ Generating recommendations after data load...');
+      generateRecommendations();
 
       toast.success("Analytics data loaded successfully!");
     } catch (err) {
@@ -163,61 +127,193 @@ const SystemRecommendations = () => {
     }
   };
 
-  const generateAIRecommendations = async () => {
-    try {
-      setLoading(true);
-      console.log('🚀 Sending analytics data to AI:', analyticsData);
-      const response = await api.post('/admin/ai/recommendations', analyticsData);
-      
-      console.log('📥 AI Response:', response);
-      console.log('📥 Response Data:', response.data);
-      console.log('📥 Response Data.data:', response.data.data);
+  const generateRecommendations = () => {
+    console.log('📊 Generating hard-coded recommendations based on analytics data');
 
-      if (response.data.success) {
-        const aiRecommendations = response.data.data;
-        
-        console.log('✅ AI Recommendations received:', aiRecommendations);
+    // Calculate key metrics
+    const totalUsers = analyticsData.totals?.totalUsers || 0;
+    const serviceProviders = analyticsData.totals?.serviceProviders || 0;
+    const worker = analyticsData.demographics?.employment?.worker || 0;
+    const nonWorker = analyticsData.demographics?.employment?.nonWorker || 0;
+    const employmentRate = worker + nonWorker > 0 ? (worker / (worker + nonWorker)) * 100 : 0;
+    const totalBookings = analyticsData.totalBookings || 0;
+    const popularService = analyticsData.popularServices?.[0]?.service || 'N/A';
+    const skillsCount = Object.keys(analyticsData.skills || {}).length;
+    const userGrowth = analyticsData.totalsOverTime?.values?.length > 1 ?
+      ((analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] -
+        analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2]) /
+       (analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 2] || 1)) * 100 : 0;
 
-        // Add icons to recommendations
-        const iconMap = {
-          barangayProjects: [FaTools, FaChartLine, FaBuilding, FaHandshake],
-          skillsTraining: [FaUsers, FaTools, FaChartLine, FaProjectDiagram],
-          communityPrograms: [FaGraduationCap, FaUsers],
-          priorityActions: [FaUsers, FaChartLine, FaTools]
-        };
+    // Hard-coded recommendations based on data analysis
+    const recommendationsData = {
+      barangayProjects: [],
+      skillsTraining: [],
+      communityPrograms: [],
+      priorityActions: []
+    };
 
-        // Add icons to each recommendation
-        Object.keys(aiRecommendations).forEach(category => {
-          if (aiRecommendations[category] && Array.isArray(aiRecommendations[category])) {
-            aiRecommendations[category].forEach((item, index) => {
-              const icons = iconMap[category] || [FaLightbulb];
-              item.icon = icons[index % icons.length];
-            });
-          }
-        });
-
-        console.log('🎨 After adding icons:', aiRecommendations);
-        setRecommendations(aiRecommendations);
-        toast.success("AI recommendations generated successfully!");
-      } else {
-        console.error('❌ API response success is false:', response.data);
-        throw new Error(response.data.message || 'Failed to generate recommendations');
-      }
-    } catch (error) {
-      console.error('❌ AI Recommendations Error:', error);
-      console.error('❌ Error response:', error.response);
-      toast.error(error.response?.data?.message || 'Failed to generate AI recommendations');
-
-      // Fallback to basic recommendations if AI fails
-      setRecommendations({
-        barangayProjects: [],
-        skillsTraining: [],
-        communityPrograms: [],
-        priorityActions: []
+    // Barangay Projects based on metrics
+    if (totalBookings > 100) {
+      recommendationsData.barangayProjects.push({
+        title: "Community Skills Hub Construction",
+        description: "Build a dedicated facility for skills training and community workshops",
+        priority: skillsCount < 5 ? "Critical" : "High",
+        impact: "High community engagement and skill development",
+        rationale: `With ${totalBookings} total bookings, there's strong demand for service skills that require a centralized learning space.`,
+        estimatedCost: "₱2.5M - ₱3.5M",
+        timeline: "6-9 months"
       });
-    } finally {
-      setLoading(false);
     }
+
+    if (employmentRate < 60) {
+      recommendationsData.barangayProjects.push({
+        title: "Employment Support Center",
+        description: "Establish a barangay employment assistance and job placement center",
+        priority: employmentRate < 40 ? "Critical" : "High",
+        impact: "Direct improvement in employment rates and economic stability",
+        rationale: `Current employment rate of ${employmentRate.toFixed(1)}% requires immediate infrastructure to support job seekers.`,
+        estimatedCost: "₱800K - ₱1.2M",
+        timeline: "3-6 months"
+      });
+    }
+
+    if (userGrowth > 20) {
+      recommendationsData.barangayProjects.push({
+        title: "Digital Infrastructure Upgrade",
+        description: "Upgrade community internet and digital access to support platform growth",
+        priority: "Medium",
+        impact: "Enhanced digital literacy and platform accessibility",
+        rationale: `${userGrowth.toFixed(1)}% monthly user growth indicates need for better digital infrastructure.`,
+        estimatedCost: "₱500K - ₱800K",
+        timeline: "2-4 months"
+      });
+    }
+
+    // Skills Training Programs
+    if (popularService !== 'N/A' && totalBookings > 50) {
+      recommendationsData.skillsTraining.push({
+        title: `${popularService} Advanced Training Program`,
+        description: `Specialized training for ${popularService} service providers to meet community demand`,
+        targetAudience: "Unemployed youth and existing service providers",
+        duration: "3 months",
+        expectedParticipants: Math.min(Math.floor(totalBookings / 10), 50),
+        priority: employmentRate < 50 ? "Critical" : "High",
+        skills: [popularService, "Customer Service", "Business Management"],
+        rationale: `${popularService} has the highest demand with ${analyticsData.popularServices?.[0]?.count || 0} bookings, indicating workforce needs.`
+      });
+    }
+
+    if (skillsCount < 8) {
+      recommendationsData.skillsTraining.push({
+        title: "Multi-Skill Development Program",
+        description: "Comprehensive training covering multiple in-demand skills for job diversification",
+        targetAudience: "Unemployed residents aged 18-35",
+        duration: "6 months",
+        expectedParticipants: 100,
+        priority: skillsCount < 4 ? "Critical" : "High",
+        skills: ["Basic Electrical", "Plumbing", "Carpentry", "Welding", "Automotive"],
+        rationale: `Only ${skillsCount} skill categories available indicates significant skills gap that needs addressing.`
+      });
+    }
+
+    recommendationsData.skillsTraining.push({
+      title: "Digital Skills for Service Providers",
+      description: "Training in digital tools, online marketing, and platform utilization for service businesses",
+      targetAudience: "Registered service providers",
+      duration: "2 months",
+      expectedParticipants: Math.floor(serviceProviders * 0.8),
+      priority: "Medium",
+      skills: ["Digital Marketing", "Online Presence", "Platform Navigation"],
+      rationale: `With ${serviceProviders} service providers, digital skills training will enhance business opportunities.`
+    });
+
+    // Community Programs
+    recommendationsData.communityPrograms.push({
+      title: "Youth Apprenticeship Mentorship",
+      description: "Pair unemployed youth with experienced service providers for hands-on learning",
+      targetGroup: "Youth aged 16-25 seeking employment",
+      focus: "Practical skill acquisition through mentorship",
+      duration: "1 year program",
+      rationale: `Employment rate of ${employmentRate.toFixed(1)}% suggests need for youth employment initiatives.`
+    });
+
+    if (totalUsers > 1000) {
+      recommendationsData.communityPrograms.push({
+        title: "Regular Skills Fair and Job Matching Events",
+        description: "Monthly events connecting service providers with potential clients and job seekers",
+        targetGroup: "All community members",
+        focus: "Job creation and service utilization",
+        duration: "Ongoing quarterly events",
+        rationale: `Growing community of ${totalUsers} users supports regular networking and job matching activities.`
+      });
+    }
+
+    recommendationsData.communityPrograms.push({
+      title: "Women's Skills Empowerment Program",
+      description: "Specialized training and support for women entering skilled trades",
+      targetGroup: "Women interested in skilled trades",
+      focus: "Gender-inclusive skill development",
+      duration: "6 months program",
+      rationale: "Promoting gender equality in skilled professions and addressing potential workforce gaps."
+    });
+
+    // Priority Actions
+    if (employmentRate < 50) {
+      recommendationsData.priorityActions.push({
+        action: "Launch Emergency Employment Initiative",
+        description: "Immediate job placement program for unemployed residents with basic skills training",
+        timeline: "Within 30 days",
+        responsible: "Barangay Employment Officer",
+        priority: "Critical"
+      });
+    }
+
+    recommendationsData.priorityActions.push({
+      action: "Conduct Skills Gap Analysis Survey",
+      description: "Comprehensive survey to identify specific skills shortages and training needs",
+      timeline: "Within 45 days",
+      responsible: "Barangay Development Committee",
+      priority: "High"
+    });
+
+    recommendationsData.priorityActions.push({
+      action: "Establish Skills Training Partnership",
+      description: `Partner with TESDA or private training institutions for ${popularService} certification programs`,
+      timeline: "Within 60 days",
+      responsible: "Barangay Administrator",
+      priority: "High"
+    });
+
+    if (userGrowth > 15) {
+      recommendationsData.priorityActions.push({
+        action: "Scale Up Platform Promotion",
+        description: "Increase community awareness campaigns and user registration drives",
+        timeline: "Ongoing - Monthly",
+        responsible: "Communication Team",
+        priority: "Medium"
+      });
+    }
+
+    // Add icons to recommendations
+    const iconMap = {
+      barangayProjects: [FaTools, FaChartLine, FaBuilding, FaHandshake],
+      skillsTraining: [FaUsers, FaTools, FaChartLine, FaProjectDiagram],
+      communityPrograms: [FaGraduationCap, FaUsers],
+      priorityActions: [FaUsers, FaChartLine, FaTools]
+    };
+
+    // Add icons to each recommendation
+    Object.keys(recommendationsData).forEach(category => {
+      if (recommendationsData[category] && Array.isArray(recommendationsData[category])) {
+        recommendationsData[category].forEach((item, index) => {
+          const icons = iconMap[category] || [FaLightbulb];
+          item.icon = icons[index % icons.length];
+        });
+      }
+    });
+
+    console.log('✅ Recommendations generated:', recommendationsData);
+    setRecommendations(recommendationsData);
   };
 
   const handleExportRecommendations = () => {

@@ -133,55 +133,53 @@ export const getServiceProviders = async (req, res) => {
   }
 };
 
-// Approve Service Provider Applicant
+// Approve Service Provider (set availability to Available)
 export const approveServiceProvider = catchAsyncError(async (req, res, next) => {
   const { id } = req.params;
   const user = await User.findById(id);
 
   if (!user) return next(new ErrorHandler("User not found", 404));
-  if (user.role !== "Service Provider Applicant") return next(new ErrorHandler("User is not a Service Provider Applicant", 400));
+  if (user.role !== "Service Provider") return next(new ErrorHandler("User is not a Service Provider", 400));
 
-  user.role = "Service Provider";
-  user.availability = "Available"; // Set to available by default
+  user.availability = "Available"; // Set to available
   await user.save();
 
   res.status(200).json({
     success: true,
-    message: `User (${user.firstName} ${user.lastName}) has been approved as a Service Provider.`,
+    message: `Service Provider (${user.firstName} ${user.lastName}) has been approved.`,
     user
   });
 });
 
-// Reject Service Provider Applicant
+// Reject Service Provider (set availability to Not Available)
 export const rejectServiceProvider = catchAsyncError(async (req, res, next) => {
   const { id } = req.params;
   const { reason } = req.body;
   const user = await User.findById(id);
 
   if (!user) return next(new ErrorHandler("User not found", 404));
-  if (user.role !== "Service Provider Applicant") return next(new ErrorHandler("User is not a Service Provider Applicant", 400));
+  if (user.role !== "Service Provider") return next(new ErrorHandler("User is not a Service Provider", 400));
 
-  user.role = "Community Member"; // Revert to community member
-  user.validId = ""; // Clear the valid ID
+  user.availability = "Not Available"; // Set to not available
   await user.save();
 
   res.status(200).json({
     success: true,
-    message: `Service Provider application for (${user.firstName} ${user.lastName}) has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
+    message: `Service Provider (${user.firstName} ${user.lastName}) has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
     user
   });
 });
 
-// Get Service Provider Applicants
+// Get Service Providers
 export const getServiceProviderApplicants = catchAsyncError(async (req, res, next) => {
-  const applicants = await User.find({ role: "Service Provider Applicant" })
+  const providers = await User.find({ role: "Service Provider" })
     .select("-password")
     .sort({ createdAt: -1 });
 
   res.status(200).json({
     success: true,
-    count: applicants.length,
-    applicants
+    count: providers.length,
+    providers
   });
 });
 

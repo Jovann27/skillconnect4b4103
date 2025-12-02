@@ -67,12 +67,12 @@ const Login = () => {
 
       // Navigate based on user role (for stored session check)
       // Service Provider → /user/my-service
-      // Community Member and Service Provider Applicant → /user/service-request
+      // Community Member → /user/service-request
       if (storedUser.role === "Service Provider") {
         navigate("/user/my-service", { replace: true });
         localStorage.setItem("userLastPath", "/user/my-service");
       } else {
-        // Community Member or Service Provider Applicant
+        // Community Member
         navigate("/user/service-request", { replace: true });
         localStorage.setItem("userLastPath", "/user/service-request");
       }
@@ -140,12 +140,12 @@ const Login = () => {
 
       // Navigate based on user role (ignore last path on fresh login)
       // Service Provider → /user/my-service
-      // Community Member and Service Provider Applicant → /user/service-request
+      // Community Member → /user/service-request
       if (data.user.role === "Service Provider") {
         navigate("/user/my-service", { replace: true });
         localStorage.setItem("userLastPath", "/user/my-service");
       } else {
-        // Community Member or Service Provider Applicant
+        // Community Member
         navigate("/user/service-request", { replace: true });
         localStorage.setItem("userLastPath", "/user/service-request");
       }

@@ -188,7 +188,7 @@ const Register = () => {
       // Navigate based on user role
       // Service Provider → /user/my-service
       // Community Member → /user/service-request
-      if (data.user.role === "Service Provider Applicant") {
+      if (data.user.role === "Service Provider") {
         navigate("/user/my-service", { replace: true });
         localStorage.setItem("userLastPath", "/user/my-service");
       } else {

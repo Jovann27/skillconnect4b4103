@@ -174,7 +174,7 @@ export default function RegisterScreen({ navigation }) {
          if (key === 'profilePic') {
              appendImage('profilePic', formData.profilePic);
          } else if (key === 'validId') {
-             // Send validId for all users (required for both Community Members and Service Provider Applicants)
+             // Send validId for all users (required for all roles)
              appendImage('validId', formData.validId);
          } else if (key === 'certificates') {
              formData.certificates.forEach((cert, index) => {

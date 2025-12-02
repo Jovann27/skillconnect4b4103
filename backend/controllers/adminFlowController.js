@@ -89,8 +89,8 @@ export const updateVerificationAppointment = catchAsyncError(async (req, res, ne
 export const getPendingProviderApplications = catchAsyncError(async (req, res, next) => {
   if (!req.admin) return next(new ErrorHandler("Admin only", 401));
   const pending = await User.find({
-    role: "Service Provider Applicant",
-    isApplyingProvider: true })
+    role: "Service Provider",
+    availability: "Not Available" })
     .select("-password");
   res.json({ success: true, count: pending.length, pending });
 });
@@ -152,15 +152,15 @@ export const deleteUserService = catchAsyncError(async (req, res, next) => {
   res.json({ success: true, services: user.services });
 });
 
-// Schedule an interview for a service provider applicant (admin)
+// Schedule an interview for a service provider (admin)
 export const scheduleInterview = catchAsyncError(async (req, res, next) => {
   const { applicantId, interviewDate, location, notes } = req.body;
   if (!applicantId || !interviewDate || !location) return next(new ErrorHandler("Missing required fields", 400));
   if (!req.admin) return next(new ErrorHandler("Admin only", 401));
 
   const applicant = await User.findById(applicantId);
-  if (!applicant) return next(new ErrorHandler("Applicant not found", 404));
-  if (applicant.role !== "Service Provider Applicant") return next(new ErrorHandler("User is not a service provider applicant", 400));
+  if (!applicant) return next(new ErrorHandler("Provider not found", 404));
+  if (applicant.role !== "Service Provider") return next(new ErrorHandler("User is not a Service Provider", 400));
 
   const interview = await VerificationAppointment.create({
     provider: applicant._id,
