@@ -287,6 +287,29 @@ const ChatIcon = () => {
     }
   };
 
+  const fetchMessages = useCallback(async (appointmentId) => {
+    try {
+      // Fetch chat history and filter for this appointment
+      const response = await api.get('/user/chat-history');
+      const appointmentChat = response.data.chatHistory?.find(
+        chat => chat.appointmentId.toString() === appointmentId.toString()
+      );
+      const chatMessages = appointmentChat?.messages || [];
+      setMessages(chatMessages);
+      // Mark messages as seen
+      if (chatMessages.length > 0) {
+        await api.put(`/user/chat/${appointmentId}/mark-seen`);
+      }
+      scrollToBottom();
+
+      // Join socket room
+      socket.emit('join-chat', appointmentId);
+    } catch (err) {
+      console.error('Error fetching chat history:', err);
+      setError('Failed to load chat history');
+    }
+  }, [scrollToBottom]);
+
   const openChat = useCallback(async (chat, specificAppointmentId = null) => {
     const appointmentId = specificAppointmentId || chat.appointmentId;
     let selectedChatData = { ...chat, appointmentId };
@@ -375,30 +398,7 @@ const ChatIcon = () => {
     }
   }, [view, helpTopics.length]);
 
-  // Functions used in useEffect
 
-  const fetchMessages = useCallback(async (appointmentId) => {
-    try {
-      // Fetch chat history and filter for this appointment
-      const response = await api.get('/user/chat-history');
-      const appointmentChat = response.data.chatHistory?.find(
-        chat => chat.appointmentId.toString() === appointmentId.toString()
-      );
-      const chatMessages = appointmentChat?.messages || [];
-      setMessages(chatMessages);
-      // Mark messages as seen
-      if (chatMessages.length > 0) {
-        await api.put(`/user/chat/${appointmentId}/mark-seen`);
-      }
-      scrollToBottom();
-
-      // Join socket room
-      socket.emit('join-chat', appointmentId);
-    } catch (err) {
-      console.error('Error fetching chat history:', err);
-      setError('Failed to load chat history');
-    }
-  }, [scrollToBottom]);
 
   // Only show for authenticated users (both regular users and admins)
   if (!isAuthorized || (!user && !admin)) {

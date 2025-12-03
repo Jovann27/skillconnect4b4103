@@ -55,7 +55,7 @@ const initializeSocket = (token) => {
 
     _socket.on("connect_error", (error) => {
         console.warn("Socket connection error:", error.message);
-        if (error.message === "Authentication error") {
+        if (error.message === "Authentication error" || error.message === "Token verification failed" || error.message === "Invalid token" || error.message === "Token expired") {
             _socket.disconnect();
             _socket = null;
         }

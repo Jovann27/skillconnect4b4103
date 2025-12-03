@@ -6,6 +6,7 @@ import { FaUser, FaFileAlt, FaCartPlus, FaSignOutAlt, FaSuitcase } from "react-i
 import { IoNotificationsOutline, IoSettingsOutline } from "react-icons/io5";
 import ChatIcon from "../ChatIcon";
 import api from "../../api";
+import { getImageUrl } from "../../utils/imageUtils";
 import "./layout-styles.css";
 
 const Navbar = () => {
@@ -226,7 +227,7 @@ const Navbar = () => {
   }, [user]);
 
   const avatarUrl = useMemo(() => {
-    if (user?.profilePic) return user.profilePic;
+    if (user?.profilePic) return getImageUrl(user.profilePic);
     if (!userFullName) return "https://ui-avatars.com/api/?background=FC60AE&color=fff&name=User";
     const encoded = encodeURIComponent(userFullName);
     return `https://ui-avatars.com/api/?background=FC60AE&color=fff&name=${encoded}`;

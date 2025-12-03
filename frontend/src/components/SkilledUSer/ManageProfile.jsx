@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { FaStar, FaRegStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
+import { getImageUrl } from '../../utils/imageUtils';
 import './dashboard-content.css';
 
 const ManageProfile = () => {
@@ -150,7 +151,7 @@ const ManageProfile = () => {
           <aside className="profile-summary-card">
             <div className="summary-avatar">
               {user.profilePic ? (
-                <img src={user.profilePic} alt="Profile" />
+                <img src={getImageUrl(user.profilePic)} alt="Profile" />
               ) : (
                 <div className="avatar-placeholder-large">
                   {user.firstName?.charAt(0) || user.lastName?.charAt(0) || 'S'}
@@ -259,7 +260,7 @@ const ManageProfile = () => {
                       <div className="proof-grid">
                         {(review.images?.length ? review.images : placeholderProofs).map((img, idx) =>
                           img ? (
-                            <img src={img} alt={`Proof ${idx + 1}`} key={idx} />
+                            <img src={getImageUrl(img)} alt={`Proof ${idx + 1}`} key={idx} />
                           ) : (
                             <div className="proof-placeholder" key={idx} aria-hidden="true" />
                           )
@@ -332,7 +333,7 @@ const ManageProfile = () => {
                             <span>Proof of Work:</span>
                             <div className="proof-grid">
                               {job.proofOfWork.map((img, idx) => (
-                                <img src={img} alt={`Proof ${idx + 1}`} key={idx} />
+                                <img src={getImageUrl(img)} alt={`Proof ${idx + 1}`} key={idx} />
                               ))}
                             </div>
                           </div>

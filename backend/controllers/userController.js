@@ -3,8 +3,16 @@ import { catchAsyncError } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/error.js";
 import sendToken from "../utils/jwtToken.js";
 import { sendNotification } from "../utils/socketNotify.js";
+import { sendEmail } from "../utils/emailService.js";
 // import cloudinary from "cloudinary";
 import bcrypt from "bcryptjs";
+import nodemailer from 'nodemailer';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // const uploadToCloudinary = async (filePath, folder) => {
 //   const res = await cloudinary.v2.uploader.upload(filePath, { folder });
@@ -73,19 +81,51 @@ export const register = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Valid ID must be an image file (JPG, PNG, etc.)", 400));
   }
 
+  // Save validId locally
+  const validIdFilename = `validId_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(validIdFile.name)}`;
+  const validIdPath = path.join(__dirname, '..', 'uploads', validIdFilename);
+
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Move file from temp to uploads directory
+  fs.renameSync(validIdFile.tempFilePath, validIdPath);
+  uploadedFiles.validId = `/uploads/${validIdFilename}`;
+
+  // Handle profile picture upload if provided
+  if (req.files?.profilePic) {
+    if (!req.files.profilePic.mimetype.startsWith("image/")) {
+      return next(new ErrorHandler("Profile picture must be an image file (JPG, PNG, etc.)", 400));
+    }
+    const profilePicFilename = `profilePic_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(req.files.profilePic.name)}`;
+    const profilePicPath = path.join(uploadsDir, profilePicFilename);
+    fs.renameSync(req.files.profilePic.tempFilePath, profilePicPath);
+    uploadedFiles.profilePic = `/uploads/${profilePicFilename}`;
+  }
+
   // Upload validId for all roles
   const uploadPromises = [];
-  // uploadPromises.push(uploadToCloudinary(validIdFile.tempFilePath, "skillconnect/validIds").then(url => { uploadedFiles.validId = url; }));
 
   // Optimize registration based on role
   if (role === "Service Provider") {
-    // Service Providers need additional file processing
-    if (req.files?.profilePic) {
-      // uploadPromises.push(uploadToCloudinary(req.files.profilePic.tempFilePath, "skillconnect/profiles").then(url => { uploadedFiles.profilePic = url; }));
-    }
-
+    // Service Providers need additional file processing for certificates
     const certificatePaths = [];
-    // certificates upload commented out
+    if (req.files?.certificates) {
+      const filesArray = Array.isArray(req.files.certificates) ? req.files.certificates : [req.files.certificates];
+      for (const file of filesArray) {
+        if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("application/pdf")) {
+          return next(new ErrorHandler("Certificates must be image files or PDFs", 400));
+        }
+        const certFilename = `certificate_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(file.name)}`;
+        const certPath = path.join(uploadsDir, certFilename);
+        fs.renameSync(file.tempFilePath, certPath);
+        certificatePaths.push(`/uploads/${certFilename}`);
+      }
+      uploadedFiles.certificates = certificatePaths;
+    }
 
     // Wait for all uploads to complete
     // await Promise.all(uploadPromises);
@@ -103,7 +143,7 @@ export const register = catchAsyncError(async (req, res, next) => {
       password, role: role,
       validId: uploadedFiles.validId,
       profilePic: uploadedFiles.profilePic || "",
-      certificates: certificatePaths,
+      certificates: uploadedFiles.certificates || [],
       skills: normalizedSkills,
     });
 
@@ -130,7 +170,7 @@ export const register = catchAsyncError(async (req, res, next) => {
     birthdate: birthdate ? new Date(birthdate) : new Date('2000-01-01'),
     employed: employed || "unemployed",
     password, role: role,
-    profilePic: "",
+    profilePic: uploadedFiles.profilePic || "",
     validId: uploadedFiles.validId,
     certificates: [],
     skills: [],
@@ -206,7 +246,11 @@ export const getUserProfile = async (req, res) => {
 
 export const updateProfile = catchAsyncError(async (req, res) => {
   const userId = req.user._id;
-  const updates = req.body;
+  const updates = req.body || {};
+
+  console.log('updateProfile called with userId:', userId);
+  console.log('req.body:', req.body);
+  console.log('req.files:', req.files);
 
   delete updates.password;
   delete updates._id;
@@ -234,30 +278,65 @@ export const updateProfile = catchAsyncError(async (req, res) => {
     }
   }
 
+  // Ensure uploads directory exists
+  const uploadsDir = path.join(__dirname, '..', 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
   // Handle profile picture upload if provided
-  // if (req.files?.profilePic) {
-  //   const profilePicUrl = await uploadToCloudinary(req.files.profilePic.tempFilePath, "skillconnect/profiles");
-  //   updates.profilePic = profilePicUrl;
-  // }
+  if (req.files?.profilePic) {
+    console.log('Processing profile picture:', req.files.profilePic);
+    if (!req.files.profilePic.mimetype.startsWith("image/")) {
+      throw new ErrorHandler("Profile picture must be an image file (JPG, PNG, etc.)", 400);
+    }
+    const profilePicFilename = `profilePic_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(req.files.profilePic.name)}`;
+    const profilePicPath = path.join(uploadsDir, profilePicFilename);
+    try {
+      fs.renameSync(req.files.profilePic.tempFilePath, profilePicPath);
+      updates.profilePic = `/uploads/${profilePicFilename}`;
+      console.log('Profile picture saved:', profilePicPath);
+    } catch (error) {
+      console.error("Error saving profile picture:", error);
+      throw new ErrorHandler("Failed to save profile picture", 500);
+    }
+  }
 
   // Handle valid ID upload if provided
-  // if (req.files?.validId) {
-  //   // Validate that validId is an image
-  //   if (!req.files.validId.mimetype.startsWith("image/")) {
-  //     throw new ErrorHandler("Valid ID must be an image file (JPG, PNG, etc.)", 400);
-  //   }
-  //   const validIdUrl = await uploadToCloudinary(req.files.validId.tempFilePath, "skillconnect/validIds");
-  //   updates.validId = validIdUrl;
-  // }
+  if (req.files?.validId) {
+    // Validate that validId is an image
+    if (!req.files.validId.mimetype.startsWith("image/")) {
+      throw new ErrorHandler("Valid ID must be an image file (JPG, PNG, etc.)", 400);
+    }
+    const validIdFilename = `validId_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(req.files.validId.name)}`;
+    const validIdPath = path.join(uploadsDir, validIdFilename);
+    fs.renameSync(req.files.validId.tempFilePath, validIdPath);
+    updates.validId = `/uploads/${validIdFilename}`;
+  }
 
   // Handle certificate uploads if provided
-  // if (req.files?.certificates) {
-  //   const filesArray = Array.isArray(req.files.certificates) ? req.files.certificates : [req.files.certificates];
-  //   const certificatePaths = await Promise.all(
-  //     filesArray.map(file => uploadToCloudinary(file.tempFilePath, "skillconnect/certificates"))
-  //   );
-  //   updates.certificates = certificatePaths;
-  // }
+  if (req.files?.certificates) {
+    const filesArray = Array.isArray(req.files.certificates) ? req.files.certificates : [req.files.certificates];
+    const certificatePaths = [];
+    for (const file of filesArray) {
+      if (!file || !file.mimetype) continue; // Skip if file is invalid
+      if (!file.mimetype.startsWith("image/") && !file.mimetype.startsWith("application/pdf")) {
+        throw new ErrorHandler("Certificates must be image files or PDFs", 400);
+      }
+      const certFilename = `certificate_${Date.now()}_${Math.random().toString(36).substring(7)}${path.extname(file.name)}`;
+      const certPath = path.join(uploadsDir, certFilename);
+      try {
+        fs.renameSync(file.tempFilePath, certPath);
+        certificatePaths.push(`/uploads/${certFilename}`);
+      } catch (error) {
+        console.error("Error moving certificate file:", error);
+        throw new ErrorHandler("Failed to save certificate file", 500);
+      }
+    }
+    if (certificatePaths.length > 0) {
+      updates.certificates = certificatePaths;
+    }
+  }
 
   // Normalize skills if provided
   if (updates.skills) {
@@ -319,65 +398,95 @@ export const updateUserPassword = catchAsyncError(async (req, res, next) => {
 
 const otpStore = new Map();
 
-// export const sendVerificationOTP = catchAsyncError(async (req, res, next) => {
-//   const { email, purpose } = req.body;
+// Generate a 6-digit OTP
+const generateOTP = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+};
 
-//   if (!email) {
-//     return next(new ErrorHandler("Email is required", 400));
-//   }
+export const sendVerificationOTP = catchAsyncError(async (req, res, next) => {
+  const { email, purpose } = req.body;
 
-//   const trimmedEmail = email.trim();
-//   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//   if (!emailRegex.test(trimmedEmail)) {
-//     return next(new ErrorHandler("Invalid email format", 400));
-//   }
+  if (!email) {
+    return next(new ErrorHandler("Email is required", 400));
+  }
 
-//   // Check if user exists with this email
-//   const user = await User.findOne({ email: trimmedEmail.toLowerCase() });
-//   if (!user) {
-//     return next(new ErrorHandler("No account found with this email address", 404));
-//   }
+  const trimmedEmail = email.trim();
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmedEmail)) {
+    return next(new ErrorHandler("Invalid email format", 400));
+  }
 
-//   // Generate OTP
-//   const otp = generateOTP();
-//   const expiresAt = Date.now() + (10 * 60 * 1000);
+  // Check if user exists with this email
+  const user = await User.findOne({ email: trimmedEmail.toLowerCase() });
+  if (!user) {
+    return next(new ErrorHandler("No account found with this email address", 404));
+  }
 
-//   // Store OTP with email and purpose
-//   const key = `${trimmedEmail}_${purpose}`;
-//   otpStore.set(key, { otp, expiresAt, userId: user._id });
+  // Generate OTP
+  const otp = generateOTP();
+  const expiresAt = Date.now() + (10 * 60 * 1000);
 
-//   // Clean up expired OTPs
-//   for (const [storedKey, data] of otpStore.entries()) {
-//     if (data.expiresAt < Date.now()) {
-//       otpStore.delete(storedKey);
-//     }
-//   }
+  // Store OTP with email and purpose
+  const key = `${trimmedEmail}_${purpose}`;
+  otpStore.set(key, { otp, expiresAt, userId: user._id });
 
-//   try {
-//     // Create transporter
-//     const transporter = createTransporter();
+  // Clean up expired OTPs
+  for (const [storedKey, data] of otpStore.entries()) {
+    if (data.expiresAt < Date.now()) {
+      otpStore.delete(storedKey);
+    }
+  }
 
-//     // Email content
-//     const mailOptions = {
-//       from: "SkillConnect <noreply@skillconnect.com>",
-//       to: email,
-//       subject: "Password Reset Verification Code",
-//       html: "Please verify your email",
-//     };
+  try {
+    // Create transporter
+    const createTransporter = () => {
+      return nodemailer.createTransporter({
+        host: process.env.SMTP_HOST || "smtp.gmail.com",
+        port: process.env.SMTP_PORT || 587,
+        secure: false,
+        auth: {
+          user: process.env.SMTP_EMAIL,
+          pass: process.env.SMTP_PASSWORD,
+        },
+      });
+    };
 
-//     await transporter.sendMail(mailOptions);
+    const transporter = createTransporter();
 
-//     res.status(200).json({
-//       success: true,
-//       message: "Verification code sent to your email",
-//     });
+    // Email content
+    const mailOptions = {
+      from: `"SkillConnect" <${process.env.SMTP_EMAIL}>`,
+      to: email,
+      subject: "Password Reset Verification Code",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h2 style="color: #ce4da3ff; text-align: center;">Password Reset Verification</h2>
+          <p>Hello,</p>
+          <p>You have requested to reset your password for your SkillConnect account.</p>
+          <p>Your verification code is:</p>
+          <div style="background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 20px; text-align: center; margin: 20px 0;">
+            <h1 style="color: #ce4da3ff; margin: 0; font-size: 32px;">${otp}</h1>
+          </div>
+          <p>This code will expire in 10 minutes.</p>
+          <p>If you didn't request this password reset, please ignore this email.</p>
+          <p>Best regards,<br>SkillConnect Team</p>
+        </div>
+      `,
+    };
 
-//   } catch (error) {
-//     console.error("Email sending error:", error);
-//     otpStore.delete(key);
-//     return next(new ErrorHandler("Failed to send verification email. Please try again.", 500));
-//   }
-// });
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({
+      success: true,
+      message: "Verification code sent to your email",
+    });
+
+  } catch (error) {
+    console.error("Email sending error:", error);
+    otpStore.delete(key);
+    return next(new ErrorHandler("Failed to send verification email. Please try again.", 500));
+  }
+});
 
 export const verifyOTP = catchAsyncError(async (req, res, next) => {
   const { email, otp, purpose } = req.body;

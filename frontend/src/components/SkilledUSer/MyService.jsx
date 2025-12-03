@@ -89,14 +89,14 @@ const MyService = () => {
           setRequestsError('');
         } else {
           setCurrentRequests([]);
-          setRequestsError('No matching requests found.');
+          setRequestsError('No available requests found.');
         }
       } catch (error) {
         console.log('User ID:', user._id); // Log user ID for debugging
         if (error.response && error.response.status === 403) {
           setRequestsError('Access denied. You must be a Service Provider.');
         } else {
-          setRequestsError('No matching requests found.');
+          setRequestsError('No available requests found.');
         }
         setCurrentRequests([]);
       } finally {
@@ -429,7 +429,7 @@ const MyService = () => {
                 setRequestsError('');
               } else {
                 setCurrentRequests([]);
-                setRequestsError('No matching requests found.');
+              setRequestsError('No available requests found.');
               }
             } catch (err) {
               setRequestsError('No matching requests found.');
@@ -631,7 +631,7 @@ const MyService = () => {
             {loadingRequests ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
-                <p>Loading matching requests...</p>
+                <p>Loading available requests...</p>
               </div>
             ) : !isOnline ? (
               <div className="offline-message">
@@ -639,7 +639,7 @@ const MyService = () => {
               </div>
             ) : currentRequests.length > 0 ? (
               <div className="requests-list">
-                <h4>Matching Requests ({currentRequests.length})</h4>
+                <h4>Available Requests ({currentRequests.length})</h4>
                 {currentRequests.map((request) => (
                   <div key={request._id} className="request-card">
                     <div className="request-header">
@@ -675,7 +675,7 @@ const MyService = () => {
               </div>
             ) : (
               <div className="no-requests">
-                <p>{requestsError || 'No matching requests found. Requests will appear here when a client\'s budget matches your service rate.'}</p>
+                <p>{requestsError || 'No available requests found. Available requests will appear here when clients post service requests.'}</p>
               </div>
             )}
             <div className="orders-note">

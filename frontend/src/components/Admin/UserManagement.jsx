@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import api from "../../api.js";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+// Extract base URL without /api/v1 for static file serving
+const BASE_URL = API_BASE_URL.replace('/api/v1', '');
+
 const SERVICE_OPTIONS = [
   { name: "Plumbing", description: "Pipe installation, leak repair, and bathroom plumbing maintenance.", icon: "💧" },
   { name: "Electrical", description: "Wiring, lighting, and electrical appliance repair.", icon: "⚡" },
@@ -27,6 +31,9 @@ const UserManagement = () => {
   const [roleFilter, setRoleFilter] = useState('all');
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const [currentPageNewUsers, setCurrentPageNewUsers] = useState(1);
+  const [isEditingServices, setIsEditingServices] = useState(false);
+  const [newService, setNewService] = useState({ name: '', rate: '', description: '' });
+  const [editingServices, setEditingServices] = useState([]);
   const itemsPerPage = 10;
 
   useEffect(() => {
@@ -85,6 +92,78 @@ const UserManagement = () => {
       alert(`Error banning user: ${err.response?.data?.message || err.message}`);
     }
     return false;
+  };
+
+  const updateUserServices = async (userId, services) => {
+    try {
+      const result = await api.put(`/admin/user/service-profile/${userId}`, { services });
+      if (result.data.success) {
+        alert("Services updated successfully");
+        fetchData();
+        return true;
+      }
+    } catch (err) {
+      console.error("Error updating services:", err);
+      alert(`Error updating services: ${err.response?.data?.message || err.message}`);
+    }
+    return false;
+  };
+
+  const startEditingServices = (user) => {
+    setIsEditingServices(true);
+    setEditingServices(user.services || []);
+    setNewService({ name: '', rate: '', description: '' });
+  };
+
+  const cancelEditingServices = () => {
+    setIsEditingServices(false);
+    setEditingServices([]);
+    setNewService({ name: '', rate: '', description: '' });
+  };
+
+  const addService = () => {
+    if (!newService.name.trim()) {
+      alert("Service name is required");
+      return;
+    }
+    if (!newService.rate || isNaN(newService.rate) || newService.rate < 0) {
+      alert("Valid rate is required");
+      return;
+    }
+
+    const serviceToAdd = {
+      name: newService.name.trim(),
+      rate: parseFloat(newService.rate),
+      description: newService.description.trim() || ''
+    };
+
+    setEditingServices([...editingServices, serviceToAdd]);
+    setNewService({ name: '', rate: '', description: '' });
+  };
+
+  const removeService = (index) => {
+    const updatedServices = editingServices.filter((_, i) => i !== index);
+    setEditingServices(updatedServices);
+  };
+
+  const saveServices = async () => {
+    if (!selectedUser) return;
+
+    setActionLoading('save-services');
+    const success = await updateUserServices(selectedUser._id, editingServices);
+    setActionLoading(null);
+
+    if (success) {
+      setIsEditingServices(false);
+      setEditingServices([]);
+    }
+  };
+
+  const getProfileImageUrl = (profilePic) => {
+    if (profilePic) {
+      return profilePic.startsWith('http') ? profilePic : `${BASE_URL}${profilePic}`;
+    }
+    return '/default-avatar.png';
   };
 
 
@@ -930,7 +1009,7 @@ const UserManagement = () => {
                       <div className="um-user-info">
                         <div className="um-avatar-wrapper">
                           <img
-                            src={user.profilePic || "/default-avatar.png"}
+                            src={getProfileImageUrl(user.profilePic)}
                             alt={user.firstName}
                             className="um-avatar"
                           />
@@ -1007,7 +1086,7 @@ const UserManagement = () => {
                       <div className="um-user-info">
                         <div className="um-avatar-wrapper">
                           <img
-                            src={user.profilePic || "/default-avatar.png"}
+                            src={getProfileImageUrl(user.profilePic)}
                             alt={user.firstName}
                             className="um-avatar"
                           />
@@ -1074,7 +1153,7 @@ const UserManagement = () => {
               <div className="um-modal-header-content">
                 <div className="um-modal-profile">
                   <img
-                    src={selectedUser.profilePic || "/default-avatar.png"}
+                    src={getProfileImageUrl(selectedUser.profilePic)}
                     alt={selectedUser.firstName}
                     className="um-modal-avatar"
                   />
@@ -1135,18 +1214,215 @@ const UserManagement = () => {
                 </div>
               )}
 
-              {selectedUser.role === 'Service Provider' && selectedUser.services && selectedUser.services.length > 0 && (
+              {selectedUser.role === 'Service Provider' && (
                 <div className="um-detail-section">
-                  <h3>🛠️ Services Offered ({selectedUser.services.length})</h3>
-                  <div className="um-services-grid">
-                    {selectedUser.services.map((service, index) => (
-                      <div key={index} className="um-service-item">
-                        <h4>{service.name}</h4>
-                        <div className="um-service-rate">₱{service.rate.toLocaleString()}</div>
-                        <p className="um-service-description">{service.description || 'No description available'}</p>
+                  <h3>🛠️ Services Offered {selectedUser.services && selectedUser.services.length > 0 && `(${selectedUser.services.length})`}</h3>
+
+                  {!isEditingServices ? (
+                    <>
+                      {selectedUser.services && selectedUser.services.length > 0 ? (
+                        <div className="um-services-grid">
+                          {selectedUser.services.map((service, index) => (
+                            <div key={index} className="um-service-item">
+                              <h4>{service.name}</h4>
+                              <div className="um-service-rate">₱{service.rate.toLocaleString()}</div>
+                              <p className="um-service-description">{service.description || 'No description available'}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="um-service-description" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          No services configured yet
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                      <h4 style={{ margin: '0 0 1rem 0', color: '#1e293b', fontSize: '1rem', fontWeight: '600' }}>
+                        Edit Services
+                      </h4>
+
+                      {/* Add New Service Form */}
+                      <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.5rem', border: '1px solid #e2e8f0' }}>
+                        <h5 style={{ margin: '0 0 1rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: '600' }}>
+                          Add New Service
+                        </h5>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', alignItems: 'end' }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                              Service Name *
+                            </label>
+                            <select
+                              value={newService.name}
+                              onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+                              style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              <option value="">Select a service</option>
+                              <option value="Plumbing">Plumbing</option>
+                              <option value="Electrical">Electrical</option>
+                              <option value="Cleaning">Cleaning</option>
+                              <option value="Carpentry">Carpentry</option>
+                              <option value="Painting">Painting</option>
+                              <option value="Appliance Repair">Appliance Repair</option>
+                              <option value="Home Renovation">Home Renovation</option>
+                              <option value="Pest Control">Pest Control</option>
+                              <option value="Gardening & Landscaping">Gardening & Landscaping</option>
+                              <option value="Air Conditioning & Ventilation">Air Conditioning & Ventilation</option>
+                              <option value="Laundry / Labandera">Laundry / Labandera</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                              Rate (₱) *
+                            </label>
+                            <input
+                              type="number"
+                              value={newService.rate}
+                              onChange={(e) => setNewService({ ...newService, rate: e.target.value })}
+                              placeholder="0"
+                              min="0"
+                              step="0.01"
+                              style={{
+                                width: '100%',
+                                padding: '0.5rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem'
+                              }}
+                            />
+                          </div>
+                          <button
+                            onClick={addService}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              background: '#22c55e',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            + Add
+                          </button>
+                        </div>
+                        <div style={{ marginTop: '0.75rem' }}>
+                          <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.25rem' }}>
+                            Description
+                          </label>
+                          <textarea
+                            value={newService.description}
+                            onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                            placeholder="Brief description of the service"
+                            rows="2"
+                            style={{
+                              width: '100%',
+                              padding: '0.5rem',
+                              border: '1px solid #d1d5db',
+                              borderRadius: '0.375rem',
+                              fontSize: '0.875rem',
+                              resize: 'vertical'
+                            }}
+                          />
+                        </div>
                       </div>
-                    ))}
-                  </div>
+
+                      {/* Current Services */}
+                      {editingServices.length > 0 && (
+                        <div style={{ marginBottom: '1.5rem' }}>
+                          <h5 style={{ margin: '0 0 1rem 0', color: '#374151', fontSize: '0.875rem', fontWeight: '600' }}>
+                            Current Services ({editingServices.length})
+                          </h5>
+                          <div className="um-services-grid">
+                            {editingServices.map((service, index) => (
+                              <div key={index} className="um-service-item" style={{ position: 'relative' }}>
+                                <button
+                                  onClick={() => removeService(index)}
+                                  style={{
+                                    position: 'absolute',
+                                    top: '0.5rem',
+                                    right: '0.5rem',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    width: '24px',
+                                    height: '24px',
+                                    fontSize: '0.75rem',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                  title="Remove service"
+                                >
+                                  ×
+                                </button>
+                                <h4>{service.name}</h4>
+                                <div className="um-service-rate">₱{service.rate.toLocaleString()}</div>
+                                <p className="um-service-description">{service.description || 'No description available'}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Edit Action Buttons */}
+                      <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={cancelEditingServices}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#6b7280',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={saveServices}
+                          disabled={actionLoading === 'save-services'}
+                          style={{
+                            padding: '0.5rem 1rem',
+                            background: '#2563eb',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '0.375rem',
+                            fontSize: '0.875rem',
+                            fontWeight: '500',
+                            cursor: actionLoading === 'save-services' ? 'not-allowed' : 'pointer',
+                            opacity: actionLoading === 'save-services' ? 0.5 : 1
+                          }}
+                        >
+                          {actionLoading === 'save-services' ? 'Saving...' : 'Save Services'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isEditingServices && (
+                    <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                      <button
+                        onClick={() => startEditingServices(selectedUser)}
+                        className="um-action-btn edit"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                      >
+                        ✏️ Edit Services
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 

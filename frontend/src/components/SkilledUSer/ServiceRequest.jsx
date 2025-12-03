@@ -167,12 +167,20 @@ const ServiceRequestForm = () => {
       });
     }
     return () => {
-      if (map) {
-        map.remove();
+      if (map && typeof map.remove === 'function') {
+        try {
+          map.remove();
+        } catch (error) {
+          console.error('Error removing map:', error);
+        }
         setMap(null);
       }
-      if (markerRef.current) {
-        markerRef.current.remove();
+      if (markerRef.current && typeof markerRef.current.remove === 'function') {
+        try {
+          markerRef.current.remove();
+        } catch (error) {
+          console.error('Error removing marker:', error);
+        }
         markerRef.current = null;
       }
     };

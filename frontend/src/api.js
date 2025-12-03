@@ -1,4 +1,5 @@
 import axios from "axios";
+import { clearSocket } from "./utils/socket";
 
 // Constants for configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -70,6 +71,9 @@ api.interceptors.response.use(
     //   localStorage.removeItem("admin");
     //   localStorage.removeItem("isAuthorized");
     //   localStorage.removeItem("tokenType");
+
+    //   // Clear socket connection
+    //   clearSocket();
 
     //   // Redirect to appropriate login page based on current path or stored type
     //   if (typeof window !== 'undefined') {

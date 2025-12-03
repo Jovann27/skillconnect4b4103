@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import api from "../../api";
+import { getImageUrl } from "../../utils/imageUtils";
 
 const SkilledWorkers = () => {
   const [workers, setWorkers] = useState([]);
@@ -8,10 +10,9 @@ const SkilledWorkers = () => {
   useEffect(() => {
     const fetchWorkers = async () => {
       try {
-        const res = await fetch("http://localhost:4000/api/v1/settings/skilled-users");
-        const data = await res.json();
-        if (data.success) {
-          setWorkers(data.workers);
+        const response = await api.get("/settings/skilled-users");
+        if (response.data.success) {
+          setWorkers(response.data.workers);
         } else {
           setError("Failed to fetch service providers");
         }
@@ -33,7 +34,7 @@ const SkilledWorkers = () => {
   {workers.map((worker) => (
     <div key={worker._id} className="worker-card">
       <img
-        src={worker.profilePic || "/default-avatar.png"}
+        src={worker.profilePic ? getImageUrl(worker.profilePic) : "/default-avatar.png"}
         alt={`${worker.firstName} ${worker.lastName}`}
         className="profile-pic"
       />
