@@ -11,6 +11,7 @@ import {
 import { Ionicons, FontAwesome5 } from "@expo/vector-icons"; // Added FontAwesome5 for 'tools'
 import { LinearGradient } from "expo-linear-gradient"; // Import LinearGradient
 import api from "../../api";
+import { commonStyles } from "../../utils/commonStyles";
 
 // Helper component for the gradient highlight.
 // This is the practical way to match the color of your web highlight.
@@ -152,7 +153,7 @@ export default function Home({ navigation }) {
 
   // --- MAIN RETURN ---
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
+    <ScrollView style={commonStyles.screenContainer} contentContainerStyle={commonStyles.scrollContainer}>
       {/* Hero Section */}
       <LinearGradient
         colors={["#f8d8ea98", "#eca7cd83", "#fac0fa88"]}

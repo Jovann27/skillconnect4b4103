@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../../api";
 import socket from "../../utils/socket";
+import { getImageUrl } from "../../utils/imageUtils";
 import "../Css/WaitingForWorker.css";
 
 const AcceptedOrderPage = ({ requestData }) => {
@@ -34,7 +35,7 @@ const AcceptedOrderPage = ({ requestData }) => {
             name: `${data.serviceProvider.firstName} ${data.serviceProvider.lastName}`,
             skill: data.typeOfWork,
             phone: data.serviceProvider.phone,
-            image: data.serviceProvider.profilePic || "/default-profile.png",
+            image: getImageUrl(data.serviceProvider.profilePic) || "/default-profile.png",
             eta: data.eta,
           });
         }
@@ -58,7 +59,7 @@ const AcceptedOrderPage = ({ requestData }) => {
                 name: `${updatedRequest.serviceProvider.firstName || ''} ${updatedRequest.serviceProvider.lastName || ''}`.trim(),
                 skill: updatedRequest.typeOfWork,
                 phone: updatedRequest.serviceProvider.phone,
-                image: updatedRequest.serviceProvider.profilePic || "/default-profile.png",
+                image: getImageUrl(updatedRequest.serviceProvider.profilePic) || "/default-profile.png",
                 eta: updatedRequest.eta,
               });
             }
@@ -204,7 +205,7 @@ const AcceptedOrderPage = ({ requestData }) => {
           <div className="main-content">
 
             {/* Header Card */}
-            <div className="card header-card">
+            <div className="card header-card" style={{ width: '610px', margin: 'auto' }} >
               <div className="header-left">
                 <h2>Service Order</h2>
                 <p>Order #{currentRequest?._id?.slice(-6) || "N/A"}</p>
@@ -215,7 +216,7 @@ const AcceptedOrderPage = ({ requestData }) => {
             </div>
 
             {/* Order Information */}
-            <div className="card">
+            <div className="card" style={{ width: '610px' }}>
               <h3 className="card-title">Order Information</h3>
               <div className="details-grid">
                 <div className="detail-row">
@@ -276,7 +277,7 @@ const AcceptedOrderPage = ({ requestData }) => {
 
             {/* Assigned Provider */}
             {workerData && (
-              <div className="card assigned-card">
+              <div className="card assigned-card" style={{ width: '610px' }}>
                 <div className="assigned-body">
                   <img src={workerData.image} alt={workerData.name} className="assigned-image" />
                   <div className="assigned-details">
@@ -286,12 +287,32 @@ const AcceptedOrderPage = ({ requestData }) => {
                     {workerData.eta && <p>ETA: {new Date(workerData.eta).toLocaleTimeString()}</p>}
                   </div>
                 </div>
+                <div className="assigned-actions">
+                  <button className="action-button action-chat" onClick={handleChat}>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    Chat with Provider
+                  </button>
+                  <button className="action-button action-cancel" onClick={handleCancel}>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Cancel Order
+                  </button>
+                  <button className="action-button action-call" onClick={() => window.open(`tel:${workerData.phone}`)}>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                    </svg>
+                    Call Provider
+                  </button>
+                </div>
               </div>
             )}
 
             {/* Work Completion Section - Only show for service providers when status is Working */}
             {currentRequest?.status === 'Working' && (
-              <div className="card">
+              <div className="card" style={{ width: '610px' }}>
                 <h3 className="card-title">Complete Work</h3>
                 <div className="work-completion-form">
                   <div className="form-group">
@@ -327,7 +348,7 @@ const AcceptedOrderPage = ({ requestData }) => {
             )}
 
             {/* Customer Details Card */}
-            <div className="card">
+            <div className="card" style={{ width: '610px' }}>
               <h3 className="card-title">Customer Details</h3>
               <div className="customer-details">
                 <div className="detail-row">
@@ -351,29 +372,7 @@ const AcceptedOrderPage = ({ requestData }) => {
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="actions-card">
-              <button className="action-button action-chat" onClick={handleChat}>
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                </svg>
-                Chat with Provider
-              </button>
-              <button className="action-button action-cancel" onClick={handleCancel}>
-                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-                Cancel Order
-              </button>
-              {workerData && (
-                <button className="action-button action-call" onClick={() => window.open(`tel:${workerData.phone}`)}>
-                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
-                  </svg>
-                  Call Provider
-                </button>
-              )}
-            </div>
+
 
           </div>
 

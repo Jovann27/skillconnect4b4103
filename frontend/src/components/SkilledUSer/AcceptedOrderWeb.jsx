@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import api from "../../api";
 import socket from "../../utils/socket";
+import { getImageUrl } from "../../utils/imageUtils";
 import "../Css/WaitingForWorker.css";
 
 const AcceptedOrderWeb = ({ request, isOpen, onClose }) => {
@@ -31,7 +32,7 @@ const AcceptedOrderWeb = ({ request, isOpen, onClose }) => {
             name: `${provider.firstName} ${provider.lastName}`,
             skill: request.typeOfWork,
             phone: provider.phone,
-            image: provider.profilePic || "/default-profile.png",
+            image: getImageUrl(provider.profilePic) || "/default-profile.png",
             eta: request.eta,
           });
         }
@@ -56,7 +57,7 @@ const AcceptedOrderWeb = ({ request, isOpen, onClose }) => {
                 name: `${provider.firstName || ''} ${provider.lastName || ''}`.trim(),
                 skill: updatedRequest.typeOfWork,
                 phone: provider.phone,
-                image: provider.profilePic || "/default-profile.png",
+                image: getImageUrl(provider.profilePic) || "/default-profile.png",
                 eta: updatedRequest.eta,
               });
             }

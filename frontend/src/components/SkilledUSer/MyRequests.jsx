@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api";
 import socket from "../../utils/socket";
+import ReceiptModal from "./ReceiptModal";
 
 const MyRequests = ({
   searchTerm,
@@ -15,6 +16,8 @@ const MyRequests = ({
   const [myRequests, setMyRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
 
   const fetchMyRequests = async () => {
     try {
@@ -83,13 +86,23 @@ const MyRequests = ({
   });
 
   const handleRowClick = (request) => {
+    console.log('MyRequests handleRowClick - Raw status:', request.status);
     const normalized = normalizeStatus(request.status);
+    console.log('MyRequests handleRowClick - Normalized status:', normalized);
 
-    if (normalized === "Available") {
+    if (normalized === "Complete") {
+      console.log('MyRequests - Showing receipt modal for completed request');
+      // Show receipt modal for completed requests
+      setSelectedRequest(request);
+      setShowReceiptModal(true);
+    } else if (normalized === "Available") {
+      console.log('MyRequests - Navigating to waiting-for-worker');
       navigate('/user/waiting-for-worker', { state: { requestData: request } });
     } else if (normalized === "Working") {
+      console.log('MyRequests - Navigating to accepted-order');
       navigate('/user/accepted-order', { state: { requestData: request } });
     } else {
+      console.log('MyRequests - Calling handleRequestClick (fallback)');
       handleRequestClick(request);
     }
   };
@@ -126,7 +139,7 @@ const MyRequests = ({
               return (
                 <tr
                   key={request._id}
-                  className="request-row"
+                  className="request-row clickable-row"
                   onClick={() => handleRowClick(request)}
                 >
                   <td>
@@ -159,6 +172,18 @@ const MyRequests = ({
             })}
           </tbody>
         </table>
+      )}
+
+      {/* Receipt Modal */}
+      {showReceiptModal && selectedRequest && (
+        <ReceiptModal
+          request={selectedRequest}
+          isOpen={showReceiptModal}
+          onClose={() => {
+            setShowReceiptModal(false);
+            setSelectedRequest(null);
+          }}
+        />
       )}
     </>
   );

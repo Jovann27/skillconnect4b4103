@@ -2,18 +2,21 @@ import { useEffect, useState } from "react";
 import api from "../../api";
 import { useMainContext } from "../../mainContext";
 import socket from "../../utils/socket";
+import ReceiptModal from "./ReceiptModal";
 
 const WorkRecords = ({ searchTerm, filterStatus, filterServiceType, filterBudgetRange, handleRequestClick, getStatusClass }) => {
   const { user } = useMainContext();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState(null);
 
   const fetchWorkRecords = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get("/user/service-requests");
-      setRecords(data.serviceRequests || []);
+      const { data } = await api.get("/user/bookings");
+      setRecords(data.bookings || []);
     } catch (err) {
       console.error("Error fetching records:", err);
       setError(err.message);
@@ -98,7 +101,25 @@ const WorkRecords = ({ searchTerm, filterStatus, filterServiceType, filterBudget
           </thead>
           <tbody>
             {filteredRecords.map((record) => (
-              <tr key={record._id} onClick={() => handleRequestClick(record)} style={{ cursor: 'pointer' }}>
+              <tr
+                key={record._id}
+                onClick={() => {
+                  console.log('WorkRecords handleRowClick - Raw status:', record.status);
+                  const normalizedStatus = record.status === "Waiting" ? "Available" : record.status === "Completed" ? "Complete" : record.status;
+                  console.log('WorkRecords handleRowClick - Normalized status:', normalizedStatus);
+
+                  if (normalizedStatus === "Complete") {
+                    console.log('WorkRecords - Showing receipt modal for completed record');
+                    setSelectedRecord(record);
+                    setShowReceiptModal(true);
+                  } else {
+                    console.log('WorkRecords - Calling handleRequestClick (fallback)');
+                    handleRequestClick(record);
+                  }
+                }}
+                style={{ cursor: 'pointer' }}
+                className="clickable-row"
+              >
                 <td>
                       <span className={`status-tag ${getStatusClass(record.status)}`}>
                         {record.status === "Waiting" ? "Available" : record.status === "Completed" ? "Complete" : record.status === "Open" ? "Available" : record.status}
@@ -116,6 +137,19 @@ const WorkRecords = ({ searchTerm, filterStatus, filterServiceType, filterBudget
             ))}
           </tbody>
         </table>
+      )}
+
+      {/* Receipt Modal */}
+      {showReceiptModal && selectedRecord && (
+        <ReceiptModal
+          request={selectedRecord.serviceRequest}
+          booking={selectedRecord}
+          isOpen={showReceiptModal}
+          onClose={() => {
+            setShowReceiptModal(false);
+            setSelectedRecord(null);
+          }}
+        />
       )}
     </>
   );
