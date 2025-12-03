@@ -17,6 +17,9 @@ adminSchema.pre("save", async function(next) {
 });
 
 adminSchema.methods.comparePassword = async function(password) {
+  if (!this.password) {
+    throw new Error("Password not set for this admin");
+  }
   return await bcrypt.compare(password, this.password);
 };
 

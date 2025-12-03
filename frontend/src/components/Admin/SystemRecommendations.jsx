@@ -186,7 +186,7 @@ const SystemRecommendations = () => {
   const generateAIRecommendations = async (data) => {
     try {
       console.log('🤖 Fetching AI recommendations...');
-      const response = await api.post('/ai/recommendations', data);
+      const response = await api.post('/admin/recommendations', data);
 
       if (response.data.success) {
         const aiRecs = response.data.data;

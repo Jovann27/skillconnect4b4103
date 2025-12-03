@@ -1,89 +1,42 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
-import api from "../../api";
-import { useMainContext } from "../../mainContext";
-import "./UserManagement.css";
+import api from "../../api.js";
 
 const SERVICE_OPTIONS = [
-  {
-    name: "Plumbing",
-    description: "Pipe installation, leak repair, and bathroom plumbing maintenance.",
-    icon: "water-outline"
-  },
-  {
-    name: "Electrical",
-    description: "Wiring, lighting, and electrical appliance repair.",
-    icon: "flash-outline"
-  },
-  {
-    name: "Cleaning",
-    description: "House cleaning, deep cleaning, and carpet or sofa cleaning.",
-    icon: "broom-outline"
-  },
-  {
-    name: "Carpentry",
-    description: "Furniture repair, assembly, and custom woodwork.",
-    icon: "construct-outline"
-  },
-  {
-    name: "Painting",
-    description: "Interior and exterior wall painting, color consultation.",
-    icon: "color-palette-outline"
-  },
-  {
-    name: "Appliance Repair",
-    description: "Aircon, refrigerator, and washing machine maintenance.",
-    icon: "build-outline"
-  },
-  {
-    name: "Home Renovation",
-    description: "Tile, flooring, roofing, and home improvement.",
-    icon: "hammer-outline"
-  },
-  {
-    name: "Pest Control",
-    description: "Termite, rodent, and insect control for safer homes.",
-    icon: "bug-outline"
-  },
-  {
-    name: "Gardening & Landscaping",
-    description: "Lawn care, plant maintenance, and landscape design.",
-    icon: "leaf-outline"
-  },
-  {
-    name: "Air Conditioning & Ventilation",
-    description: "Aircon installation, cleaning, and HVAC servicing.",
-    icon: "snow-outline"
-  }
+  { name: "Plumbing", description: "Pipe installation, leak repair, and bathroom plumbing maintenance.", icon: "💧" },
+  { name: "Electrical", description: "Wiring, lighting, and electrical appliance repair.", icon: "⚡" },
+  { name: "Cleaning", description: "House cleaning, deep cleaning, and carpet or sofa cleaning.", icon: "🧹" },
+  { name: "Carpentry", description: "Furniture repair, assembly, and custom woodwork.", icon: "🔨" },
+  { name: "Painting", description: "Interior and exterior wall painting, color consultation.", icon: "🎨" },
+  { name: "Appliance Repair", description: "Aircon, refrigerator, and washing machine maintenance.", icon: "🔧" },
+  { name: "Home Renovation", description: "Tile, flooring, roofing, and home improvement.", icon: "🏗️" },
+  { name: "Pest Control", description: "Termite, rodent, and insect control for safer homes.", icon: "🐛" },
+  { name: "Gardening & Landscaping", description: "Lawn care, plant maintenance, and landscape design.", icon: "🌿" },
+  { name: "Air Conditioning & Ventilation", description: "Aircon installation, cleaning, and HVAC servicing.", icon: "❄️" }
 ];
 
 const UserManagement = () => {
-  const { admin, isAuthorized, tokenType } = useMainContext();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [tab, setTab] = useState("users");
-  const [actionLoading, setActionLoading] = useState(null); // Track which action is loading
+  const [actionLoading, setActionLoading] = useState(null);
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [serviceFormData, setServiceFormData] = useState([]);
-
   const [showUserModal, setShowUserModal] = useState(false);
-  const [modalSource, setModalSource] = useState(""); // "users" or "new-users"
+  const [modalSource, setModalSource] = useState("");
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
   const [showDocumentModal, setShowDocumentModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState(null);
-  const [documentType, setDocumentType] = useState(''); // 'validId' or 'certificate'
+  const [documentType, setDocumentType] = useState('');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [roleFilter, setRoleFilter] = useState('all'); // 'all', 'Service Provider', 'Community Member'
-
-  // Pagination states
+  const [roleFilter, setRoleFilter] = useState('all');
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const [currentPageNewUsers, setCurrentPageNewUsers] = useState(1);
-  const itemsPerPage = 10; // Show 10 users per page
+  const itemsPerPage = 10;
 
   // Zoom handlers
   const handleZoomIn = () => {
@@ -125,34 +78,9 @@ const UserManagement = () => {
     setIsDragging(false);
   };
 
-  // Check if user is authenticated as admin
-  const isAdmin = isAuthorized && tokenType === "admin" && admin;
-
   useEffect(() => {
-    // Wait for authentication to be fully loaded
-    if (isAuthorized === null || isAuthorized === undefined) {
-      // Authentication is still loading
-      return;
-    }
-
-    // Only make API calls when authentication is fully loaded and user is admin
-    if (isAuthorized === false) {
-      // User is not authenticated at all
-      setLoading(false);
-      setError("Please login to access this page.");
-    } else if (isAuthorized && tokenType === "admin" && admin) {
-      // User is authenticated as admin
-      fetchData();
-    } else if (isAuthorized && tokenType !== "admin") {
-      // User is authenticated but not as admin
-      setLoading(false);
-      setError("Access denied. Admin authentication required.");
-    } else {
-      // Authentication loaded but admin object not available yet
-      setLoading(false);
-      setError("Loading admin data...");
-    }
-  }, [isAuthorized, tokenType, admin]);
+    fetchData();
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -160,13 +88,8 @@ const UserManagement = () => {
       setError("");
 
       const usersRes = await api.get("/admin/users");
-
-      console.log("Users response:", usersRes.data);
-
-      // Validate data structure
       const usersData = Array.isArray(usersRes.data.users) ? usersRes.data.users : [];
 
-      // Filter new registered users (users registered within the last 30 days, excluding verified users)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       const newUsersData = usersData.filter(user => new Date(user.createdAt) >= thirtyDaysAgo && !user.verified);
@@ -181,25 +104,19 @@ const UserManagement = () => {
     }
   };
 
-
-
-
-
-
-
   const verifyUser = async (userId) => {
     try {
       const result = await api.put(`/admin/user/verify/${userId}`);
       if (result.data.success) {
-        toast.success("User verified successfully");
+        alert("User verified successfully");
         fetchData();
-      } else {
-        toast.error("Failed to verify user");
+        return true;
       }
     } catch (err) {
       console.error("Error verifying user:", err);
-      toast.error("Error verifying user");
+      alert(`Error verifying user: ${err.response?.data?.message || err.message}`);
     }
+    return false;
   };
 
   const banUser = async (userId) => {
@@ -208,23 +125,20 @@ const UserManagement = () => {
     try {
       const result = await api.delete(`/admin/user/${userId}`);
       if (result.data.success) {
-        toast.success("User banned successfully");
+        alert("User banned successfully");
         fetchData();
-      } else {
-        toast.error("Failed to ban user");
+        return true;
       }
     } catch (err) {
       console.error("Error banning user:", err);
-      toast.error("Error banning user");
+      alert(`Error banning user: ${err.response?.data?.message || err.message}`);
     }
+    return false;
   };
-
-
 
   const handleSaveService = async () => {
     if (!selectedUser) return;
 
-    // Filter out services with empty names and validate
     const validServices = serviceFormData
       .filter(service => service.name && service.name.trim() !== '')
       .map(service => ({
@@ -234,100 +148,847 @@ const UserManagement = () => {
       }));
 
     if (validServices.length === 0) {
-      toast.error("At least one service with a valid name is required");
+      alert("At least one service with a valid name is required");
       return;
     }
 
     setActionLoading('save-service');
     try {
-      // Backend expects { services: [...] } format
       const result = await api.put(`/admin/user/service-profile/${selectedUser._id}`, {
         services: validServices
       });
       if (result.data.success) {
-        toast.success("User service profile updated successfully");
+        alert("User service profile updated successfully");
         setShowServiceModal(false);
         fetchData();
-      } else {
-        toast.error("Failed to update service profile");
       }
     } catch (err) {
       console.error("Error updating service profile:", err);
-      const errorMessage = err.response?.data?.message || "Error updating service profile";
-      toast.error(errorMessage);
+      alert(`Error updating service profile: ${err.response?.data?.message || err.message}`);
     } finally {
       setActionLoading(null);
     }
   };
 
-  if (loading) return (
-    <div className="user-management-container">
-      <div className="loading-spinner"></div>
-    </div>
-  );
-  if (error) return (
-    <div className="user-management-container">
-      <div className="analytics-header">
-        <div>
-          <h1>Error</h1>
+  if (loading) {
+    return (
+      <div className="user-management-loading">
+        <div className="loading-spinner-container">
+          <div className="loading-spinner"></div>
+          <p className="loading-text">Loading user data...</p>
         </div>
       </div>
-      <div className="content-card">
-        <p className="empty-state">{error}</p>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="user-management-error">
+        <div className="error-container">
+          <div className="error-icon">⚠️</div>
+          <h2>Error</h2>
+          <p>{error}</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  const filteredUsers = users.filter(user => user.verified && (roleFilter === 'all' || user.role === roleFilter));
+  const totalPagesUsers = Math.ceil(filteredUsers.length / itemsPerPage);
+  const startIndexUsers = (currentPageUsers - 1) * itemsPerPage;
+  const currentUsers = filteredUsers.slice(startIndexUsers, startIndexUsers + itemsPerPage);
+
+  const totalPagesNewUsers = Math.ceil(newRegisteredUsers.length / itemsPerPage);
+  const startIndexNewUsers = (currentPageNewUsers - 1) * itemsPerPage;
+  const currentNewUsers = newRegisteredUsers.slice(startIndexNewUsers, startIndexNewUsers + itemsPerPage);
 
   return (
-    <div className="user-management-container">
-      <div className="analytics-header">
-        <div>
-          <h1>User Management</h1>
-          <p className="header-description">Manage All Users</p>
+    <div className="user-management-wrapper">
+      <style>{`
+        .user-management-wrapper {
+          min-height: 100vh;
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+
+        .user-management-loading,
+        .user-management-error {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+
+        .loading-spinner-container {
+          text-align: center;
+        }
+
+        .loading-spinner {
+          width: 64px;
+          height: 64px;
+          border: 4px solid #e2e8f0;
+          border-top-color: #2563eb;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .error-container {
+          text-align: center;
+          background: white;
+          padding: 3rem;
+          border-radius: 1rem;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .error-icon {
+          font-size: 4rem;
+          margin-bottom: 1rem;
+        }
+
+        .error-container h2 {
+          color: #1e293b;
+          font-size: 1.5rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .error-container p {
+          color: #64748b;
+        }
+
+        .um-header {
+          background: white;
+          border-bottom: 1px solid #e2e8f0;
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .um-header-content {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 1.5rem 2rem;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .um-header-title h1 {
+          font-size: 1.875rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin: 0 0 0.25rem 0;
+        }
+
+        .um-header-subtitle {
+          color: #64748b;
+          margin: 0;
+        }
+
+        .um-stats-card {
+          background: #eff6ff;
+          padding: 1rem 1.5rem;
+          border-radius: 0.75rem;
+        }
+
+        .um-stats-label {
+          font-size: 0.875rem;
+          color: #64748b;
+          display: block;
+          margin-bottom: 0.25rem;
+        }
+
+        .um-stats-value {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #2563eb;
+          display: block;
+        }
+
+        .um-container {
+          max-width: 1280px;
+          margin: 0 auto;
+          padding: 2rem;
+        }
+
+        .um-tabs {
+          display: flex;
+          gap: 0.5rem;
+          margin-bottom: 1.5rem;
+          background: white;
+          padding: 0.5rem;
+          border-radius: 1rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+        }
+
+        .um-tab-btn {
+          flex: 1;
+          padding: 0.875rem 1.5rem;
+          border-radius: 0.75rem;
+          font-weight: 500;
+          border: none;
+          background: transparent;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+
+        .um-tab-btn:hover {
+          background: #f8fafc;
+        }
+
+        .um-tab-btn.active {
+          background: #2563eb;
+          color: white;
+          box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2);
+        }
+
+        .um-tab-badge {
+          padding: 0.25rem 0.5rem;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+        }
+
+        .um-tab-btn.active .um-tab-badge {
+          background: #1e40af;
+        }
+
+        .um-tab-btn:not(.active) .um-tab-badge {
+          background: #e2e8f0;
+          color: #475569;
+        }
+
+        .um-card {
+          background: white;
+          border-radius: 1rem;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
+          overflow: hidden;
+        }
+
+        .um-card-header {
+          padding: 1.5rem;
+          border-bottom: 1px solid #e2e8f0;
+          background: #f8fafc;
+        }
+
+        .um-card-header-content {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .um-card-title {
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0;
+        }
+
+        .um-filter-section {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .um-filter-label {
+          font-size: 0.875rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .um-filter-select {
+          padding: 0.5rem 1rem;
+          background: white;
+          border: 1px solid #cbd5e1;
+          border-radius: 0.5rem;
+          font-size: 0.875rem;
+          color: #1e293b;
+          cursor: pointer;
+        }
+
+        .um-filter-select:focus {
+          outline: none;
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .um-card-body {
+          padding: 1.5rem;
+        }
+
+        .um-users-grid {
+          display: grid;
+          gap: 1rem;
+        }
+
+        .um-user-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 1.25rem;
+          background: #f8fafc;
+          border-radius: 1rem;
+          border: 1px solid #e2e8f0;
+          transition: all 0.2s;
+        }
+
+        .um-user-card:hover {
+          background: #f1f5f9;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .um-user-card.pending {
+          background: #fffbeb;
+          border-color: #fcd34d;
+        }
+
+        .um-user-card.pending:hover {
+          background: #fef3c7;
+        }
+
+        .um-user-info {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .um-avatar-wrapper {
+          position: relative;
+        }
+
+        .um-avatar {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid white;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .um-online-indicator {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 16px;
+          height: 16px;
+          background: #22c55e;
+          border: 2px solid white;
+          border-radius: 50%;
+        }
+
+        .um-user-details h3 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0 0 0.25rem 0;
+        }
+
+        .um-user-email {
+          color: #64748b;
+          font-size: 0.875rem;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .um-user-badges {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .um-badge {
+          padding: 0.25rem 0.75rem;
+          border-radius: 9999px;
+          font-size: 0.75rem;
+          font-weight: 500;
+        }
+
+        .um-badge.provider {
+          background: #f3e8ff;
+          color: #7c3aed;
+        }
+
+        .um-badge.resident {
+          background: #dbeafe;
+          color: #2563eb;
+        }
+
+        .um-badge.verified {
+          background: #dcfce7;
+          color: #16a34a;
+        }
+
+        .um-badge.pending {
+          background: #fef3c7;
+          color: #d97706;
+        }
+
+        .um-view-btn {
+          padding: 0.625rem 1.5rem;
+          background: #2563eb;
+          color: white;
+          border: none;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
+        }
+
+        .um-view-btn:hover {
+          background: #1d4ed8;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 6px rgba(37, 99, 235, 0.3);
+        }
+
+        .um-view-btn.review {
+          background: #d97706;
+        }
+
+        .um-view-btn.review:hover {
+          background: #b45309;
+        }
+
+        .um-empty-state {
+          text-align: center;
+          padding: 4rem 2rem;
+        }
+
+        .um-empty-icon {
+          font-size: 4rem;
+          margin-bottom: 1rem;
+        }
+
+        .um-empty-text {
+          color: #64748b;
+          font-size: 1.125rem;
+        }
+
+        .um-pagination {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 1.5rem;
+          padding-top: 1.5rem;
+          border-top: 1px solid #e2e8f0;
+        }
+
+        .um-pagination-btn {
+          padding: 0.5rem 1rem;
+          background: white;
+          border: 1px solid #cbd5e1;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .um-pagination-btn:hover:not(:disabled) {
+          background: #f8fafc;
+        }
+
+        .um-pagination-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .um-pagination-info {
+          color: #64748b;
+        }
+
+        .um-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(4px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 50;
+          padding: 1rem;
+        }
+
+        .um-modal {
+          background: white;
+          border-radius: 1.5rem;
+          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+          max-width: 64rem;
+          width: 100%;
+          max-height: 90vh;
+          overflow-y: auto;
+        }
+
+        .um-modal-header {
+          position: sticky;
+          top: 0;
+          background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+          color: white;
+          padding: 1.5rem;
+          border-radius: 1.5rem 1.5rem 0 0;
+          z-index: 10;
+        }
+
+        .um-modal-header-content {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+        }
+
+        .um-modal-profile {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+        }
+
+        .um-modal-avatar {
+          width: 80px;
+          height: 80px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 4px solid white;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .um-modal-name {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin: 0 0 0.25rem 0;
+        }
+
+        .um-modal-email {
+          color: #bfdbfe;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .um-modal-close {
+          background: rgba(255, 255, 255, 0.2);
+          border: none;
+          color: white;
+          width: 40px;
+          height: 40px;
+          border-radius: 0.5rem;
+          font-size: 1.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .um-modal-close:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        .um-modal-body {
+          padding: 1.5rem;
+        }
+
+        .um-detail-section {
+          background: #f8fafc;
+          border-radius: 1rem;
+          padding: 1.25rem;
+          border: 1px solid #e2e8f0;
+          margin-bottom: 1.5rem;
+        }
+
+        .um-detail-section:last-child {
+          margin-bottom: 0;
+        }
+
+        .um-detail-section h3 {
+          font-size: 1.125rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0 0 1rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .um-detail-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 1rem;
+        }
+
+        .um-detail-item label {
+          display: block;
+          font-size: 0.875rem;
+          color: #64748b;
+          font-weight: 500;
+          margin-bottom: 0.25rem;
+        }
+
+        .um-detail-item p {
+          color: #1e293b;
+          margin: 0;
+          word-break: break-word;
+        }
+
+        .um-detail-item.full-width {
+          grid-column: 1 / -1;
+        }
+
+        .um-skills-grid {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .um-skill-tag {
+          padding: 0.5rem 1rem;
+          background: #dbeafe;
+          color: #1e40af;
+          border-radius: 9999px;
+          font-size: 0.875rem;
+          font-weight: 500;
+        }
+
+        .um-services-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 1rem;
+        }
+
+        .um-service-item {
+          background: white;
+          padding: 1rem;
+          border-radius: 0.75rem;
+          border: 1px solid #e2e8f0;
+        }
+
+        .um-service-item h4 {
+          color: #1e293b;
+          font-size: 1rem;
+          font-weight: 600;
+          margin: 0 0 0.5rem 0;
+        }
+
+        .um-service-rate {
+          color: #2563eb;
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+        }
+
+        .um-service-description {
+          color: #64748b;
+          font-size: 0.875rem;
+          margin: 0;
+        }
+
+        .um-documents-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 1rem;
+        }
+
+        .um-document-item {
+          background: white;
+          padding: 1rem;
+          border-radius: 0.75rem;
+          border: 1px solid #e2e8f0;
+        }
+
+        .um-document-info {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-bottom: 0.75rem;
+          color: #64748b;
+          font-size: 0.875rem;
+        }
+
+        .um-document-preview img {
+          width: 100%;
+          height: 150px;
+          object-fit: cover;
+          border-radius: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .um-document-preview img:hover {
+          transform: scale(1.05);
+        }
+
+        .um-modal-actions {
+          padding: 1.5rem;
+          border-top: 1px solid #e2e8f0;
+          background: #f8fafc;
+        }
+
+        .um-actions-section {
+          margin-bottom: 1.5rem;
+        }
+
+        .um-actions-section:last-child {
+          margin-bottom: 0;
+        }
+
+        .um-actions-header h4 {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1e293b;
+          margin: 0 0 0.25rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .um-actions-subtitle {
+          color: #64748b;
+          font-size: 0.875rem;
+          margin: 0 0 1rem 0;
+        }
+
+        .um-action-buttons {
+          display: flex;
+          gap: 0.75rem;
+          flex-wrap: wrap;
+        }
+
+        .um-action-btn {
+          padding: 0.75rem 1.5rem;
+          border: none;
+          border-radius: 0.5rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .um-action-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        .um-action-btn.verify {
+          background: #22c55e;
+          color: white;
+        }
+
+        .um-action-btn.verify:hover:not(:disabled) {
+          background: #16a34a;
+        }
+
+        .um-action-btn.edit {
+          background: #3b82f6;
+          color: white;
+        }
+
+        .um-action-btn.edit:hover:not(:disabled) {
+          background: #2563eb;
+        }
+
+        .um-action-btn.ban {
+          background: #ef4444;
+          color: white;
+        }
+
+        .um-action-btn.ban:hover:not(:disabled) {
+          background: #dc2626;
+        }
+
+        .um-action-btn.close {
+          background: #64748b;
+          color: white;
+        }
+
+        .um-action-btn.close:hover:not(:disabled) {
+          background: #475569;
+        }
+
+        @media (max-width: 768px) {
+          .um-header-content {
+            flex-direction: column;
+            gap: 1rem;
+          }
+
+          .um-detail-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .um-action-buttons {
+            flex-direction: column;
+          }
+
+          .um-action-btn {
+            width: 100%;
+            justify-content: center;
+          }
+        }
+      `}</style>
+
+      {/* Header */}
+      <div className="um-header">
+        <div className="um-header-content">
+          <div className="um-header-title">
+            <h1>User Management</h1>
+            <p className="um-header-subtitle">Manage and oversee all platform users</p>
+          </div>
+          <div className="um-stats-card">
+            <span className="um-stats-label">Total Users</span>
+            <span className="um-stats-value">{users.length}</span>
+          </div>
         </div>
       </div>
 
-      <div className="tab-navigation">
-        <button onClick={() => setTab("users")} className={`tab-btn ${tab === "users" ? "active" : ""}`}>
-          <i className="fas fa-users"></i>
-          <span className="tab-text">Verified Users</span>
-          <span className="tab-count">{users.filter(user => user.verified).length}</span>
-        </button>
-        <button onClick={() => setTab("new-users")} className={`tab-btn ${tab === "new-users" ? "active" : ""}`}>
-          <i className="fas fa-user-clock"></i>
-          <span className="tab-text">New Registered Users</span>
-          <span className="tab-count">{newRegisteredUsers.length}</span>
-        </button>
+      <div className="um-container">
+        {/* Tab Navigation */}
+        <div className="um-tabs">
+          <button
+            onClick={() => setTab("users")}
+            className={`um-tab-btn ${tab === "users" ? "active" : ""}`}
+          >
+            ✓ Verified Users
+            <span className="um-tab-badge">
+              {users.filter(u => u.verified).length}
+            </span>
+          </button>
+          <button
+            onClick={() => setTab("new-users")}
+            className={`um-tab-btn ${tab === "new-users" ? "active" : ""}`}
+          >
+            ⏰ New Registrations
+            <span className="um-tab-badge">
+              {newRegisteredUsers.length}
+            </span>
+          </button>
+        </div>
 
-      </div>
-
-      {tab === "users" && (() => {
-        const filteredUsers = users.filter(user => user.verified && (roleFilter === 'all' || user.role === roleFilter));
-
-        // Pagination calculations
-        const totalPagesUsers = Math.ceil(filteredUsers.length / itemsPerPage);
-        const startIndex = (currentPageUsers - 1) * itemsPerPage;
-        const currentUsers = filteredUsers.slice(startIndex, startIndex + itemsPerPage);
-
-        return (
-          <div className="content-card">
-            <div className="card-header">
-              <div className="header-content">
-                <div className="header-title">
-                  <h2>
-                    <i className="fas fa-users"></i> All Verified Users
-                  </h2>
-                  <span className="count">{filteredUsers.length}</span>
-                </div>
-                <div className="filter-section">
-                  <label className="filter-label">Filter by Role:</label>
+        {/* Verified Users Tab */}
+        {tab === "users" && (
+          <div className="um-card">
+            <div className="um-card-header">
+              <div className="um-card-header-content">
+                <h2 className="um-card-title">All Verified Users</h2>
+                <div className="um-filter-section">
+                  <label className="um-filter-label">Filter by Role:</label>
                   <select
                     value={roleFilter}
                     onChange={(e) => {
                       setRoleFilter(e.target.value);
-                      setCurrentPageUsers(1); // Reset to first page when filter changes
+                      setCurrentPageUsers(1);
                     }}
-                    className="role-filter-select"
+                    className="um-filter-select"
                   >
                     <option value="all">All Roles</option>
                     <option value="Service Provider">Service Provider</option>
@@ -336,735 +997,307 @@ const UserManagement = () => {
                 </div>
               </div>
             </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Profile</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Joined</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="no-data">
-                        {roleFilter === 'all' ? 'No verified users found' : `No verified ${roleFilter === 'Service Provider' ? 'service providers' : 'community members'} found`}
-                      </td>
-                    </tr>
-                  ) : (
-                    currentUsers.map((user) => (
-                      <tr key={user._id}>
-                        <td>
+
+            <div className="um-card-body">
+              {currentUsers.length === 0 ? (
+                <div className="um-empty-state">
+                  <div className="um-empty-icon">👥</div>
+                  <p className="um-empty-text">No verified users found</p>
+                </div>
+              ) : (
+                <div className="um-users-grid">
+                  {currentUsers.map((user) => (
+                    <div key={user._id} className="um-user-card">
+                      <div className="um-user-info">
+                        <div className="um-avatar-wrapper">
                           <img
                             src={user.profilePic || "/default-avatar.png"}
-                            alt={`${user.firstName} ${user.lastName}`}
-                            className="admin-avatar"
+                            alt={user.firstName}
+                            className="um-avatar"
                           />
-                        </td>
-                        <td>
-                          <div className="status-container">
-                            <div className="name">{user.firstName} {user.lastName}</div>
-                            <div className="user-id">ID: {user._id.slice(-6)}</div>
+                          {user.isOnline && <div className="um-online-indicator"></div>}
+                        </div>
+                        <div className="um-user-details">
+                          <h3>{user.firstName} {user.lastName}</h3>
+                          <p className="um-user-email">{user.email}</p>
+                          <div className="um-user-badges">
+                            <span className={`um-badge ${user.role === 'Service Provider' ? 'provider' : 'resident'}`}>
+                              {user.role === 'Community Member' ? 'Resident' : user.role}
+                            </span>
+                            <span className="um-badge verified">✓ Verified</span>
                           </div>
-                        </td>
-                        <td>
-                          <div className="contact-info">
-                            <div className="email">{user.email}</div>
-                          </div>
-                        </td>
-                        <td>{user.role === 'Community Member' ? 'Resident' : user.role}</td>
-                        <td>
-                          <span className={`status-badge ${
-                            user.banned ? 'banned' :
-                            user.suspended ? 'suspended' :
-                            user.verified ? 'approved' :
-                            'pending'
-                          }`}>
-                            {user.banned ? 'Banned' :
-                             user.suspended ? 'Suspended' :
-                             user.verified ? 'Verified' :
-                             'Unverified'}
-                          </span>
-                        </td>
-                        <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                        <td>
-                          <div className="action-buttons">
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setModalSource("users");
-                                setShowUserModal(true);
-                              }}
-                              className="action-btn view-btn"
-                              title="View user details and manage account"
-                            >
-                              <i className="fas fa-eye"></i>
-                              <span>View</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-              </tbody>
-              </table>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setModalSource("users");
+                          setShowUserModal(true);
+                        }}
+                        className="um-view-btn"
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {totalPagesUsers > 1 && (
+                <div className="um-pagination">
+                  <button
+                    disabled={currentPageUsers === 1}
+                    onClick={() => setCurrentPageUsers(prev => prev - 1)}
+                    className="um-pagination-btn"
+                  >
+                    ← Previous
+                  </button>
+                  <span className="um-pagination-info">
+                    Page {currentPageUsers} of {totalPagesUsers}
+                  </span>
+                  <button
+                    disabled={currentPageUsers === totalPagesUsers}
+                    onClick={() => setCurrentPageUsers(prev => prev + 1)}
+                    className="um-pagination-btn"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* New Users Tab */}
+        {tab === "new-users" && (
+          <div className="um-card">
+            <div className="um-card-header">
+              <h2 className="um-card-title">Pending Verifications</h2>
             </div>
 
-            {/* Pagination Controls for Verified Users */}
-        {totalPagesUsers > 1 && (
-          <div className="pagination-container">
-            <button
-              className="pagination-btn"
-              disabled={currentPageUsers === 1}
-              onClick={() => setCurrentPageUsers(prev => Math.max(prev - 1, 1))}
-            >
-              <i className="fas fa-chevron-left"></i>
-              Previous
-            </button>
+            <div className="um-card-body">
+              {currentNewUsers.length === 0 ? (
+                <div className="um-empty-state">
+                  <div className="um-empty-icon">✨</div>
+                  <p className="um-empty-text">No pending registrations</p>
+                </div>
+              ) : (
+                <div className="um-users-grid">
+                  {currentNewUsers.map((user) => (
+                    <div key={user._id} className="um-user-card pending">
+                      <div className="um-user-info">
+                        <div className="um-avatar-wrapper">
+                          <img
+                            src={user.profilePic || "/default-avatar.png"}
+                            alt={user.firstName}
+                            className="um-avatar"
+                          />
+                        </div>
+                        <div className="um-user-details">
+                          <h3>{user.firstName} {user.lastName}</h3>
+                          <p className="um-user-email">{user.email}</p>
+                          <div className="um-user-badges">
+                            <span className={`um-badge ${user.role === 'Service Provider' ? 'provider' : 'resident'}`}>
+                              {user.role}
+                            </span>
+                            <span className="um-badge pending">
+                              ⏰ {Math.floor((new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24))} days ago
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setModalSource("new-users");
+                          setShowUserModal(true);
+                        }}
+                        className="um-view-btn review"
+                      >
+                        Review
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-            <div className="pagination-info">
-              Page {currentPageUsers} of {totalPagesUsers}
-              <span className="page-count">({filteredUsers.length} total users)</span>
+              {totalPagesNewUsers > 1 && (
+                <div className="um-pagination">
+                  <button
+                    disabled={currentPageNewUsers === 1}
+                    onClick={() => setCurrentPageNewUsers(prev => prev - 1)}
+                    className="um-pagination-btn"
+                  >
+                    ← Previous
+                  </button>
+                  <span className="um-pagination-info">
+                    Page {currentPageNewUsers} of {totalPagesNewUsers}
+                  </span>
+                  <button
+                    disabled={currentPageNewUsers === totalPagesNewUsers}
+                    onClick={() => setCurrentPageNewUsers(prev => prev + 1)}
+                    className="um-pagination-btn"
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
             </div>
-
-            <button
-              className="pagination-btn"
-              disabled={currentPageUsers === totalPagesUsers}
-              onClick={() => setCurrentPageUsers(prev => Math.min(prev + 1, totalPagesUsers))}
-            >
-              Next
-              <i className="fas fa-chevron-right"></i>
-            </button>
           </div>
         )}
       </div>
-      );
-    })()}
-
-      {tab === "new-users" && (() => {
-        // Pagination calculations for new users
-        const totalPagesNewUsers = Math.ceil(newRegisteredUsers.length / itemsPerPage);
-        const startIndex = (currentPageNewUsers - 1) * itemsPerPage;
-        const currentNewUsers = newRegisteredUsers.slice(startIndex, startIndex + itemsPerPage);
-
-        return (
-          <div className="content-card">
-            <div className="card-header">
-              <h2>
-                <i className="fas fa-user-clock"></i> New Registered Users
-              </h2>
-              <span className="count">{newRegisteredUsers.length}</span>
-            </div>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Profile</th>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th>Status</th>
-                    <th>Registered</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentNewUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="no-data">No new registered users in the last 30 days</td>
-                    </tr>
-                  ) : (
-                    currentNewUsers.map((user) => (
-                      <tr key={user._id}>
-                        <td>
-                          <img
-                            src={user.profilePic || "/default-avatar.png"}
-                            alt={`${user.firstName} ${user.lastName}`}
-                            className="admin-avatar"
-                          />
-                        </td>
-                        <td>
-                          <div className="status-container">
-                            <div className="name">{user.firstName} {user.lastName}</div>
-                            <div className="user-id">ID: {user._id.slice(-6)}</div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="contact-info">
-                            <div className="email">{user.email}</div>
-                          </div>
-                        </td>
-                        <td>{user.role === 'Community Member' ? 'Resident' : user.role}</td>
-                        <td>
-                          <span className={`status-badge ${
-                            user.banned ? 'banned' :
-                            user.suspended ? 'suspended' :
-                            user.verified ? 'approved' :
-                            'pending'
-                          }`}>
-                            {user.banned ? 'Banned' :
-                             user.suspended ? 'Suspended' :
-                             user.verified ? 'Verified' :
-                             'Unverified'}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="registration-info">
-                            <div className="registration-date">{new Date(user.createdAt).toLocaleDateString()}</div>
-                            <div className="days-ago">
-                              {Math.floor((new Date() - new Date(user.createdAt)) / (1000 * 60 * 60 * 24))} days ago
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="action-buttons">
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setModalSource("new-users");
-                                setShowUserModal(true);
-                              }}
-                              className="action-btn view-btn"
-                              title="View user details and manage account"
-                            >
-                              <i className="fas fa-eye"></i>
-                              <span>View</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Controls for New Users */}
-            {totalPagesNewUsers > 1 && (
-              <div className="pagination-container">
-                <button
-                  className="pagination-btn"
-                  disabled={currentPageNewUsers === 1}
-                  onClick={() => setCurrentPageNewUsers(prev => Math.max(prev - 1, 1))}
-                >
-                  <i className="fas fa-chevron-left"></i>
-                  Previous
-                </button>
-
-                <div className="pagination-info">
-                  Page {currentPageNewUsers} of {totalPagesNewUsers}
-                  <span className="page-count">({newRegisteredUsers.length} total users)</span>
-                </div>
-
-                <button
-                  className="pagination-btn"
-                  disabled={currentPageNewUsers === totalPagesNewUsers}
-                  onClick={() => setCurrentPageNewUsers(prev => Math.min(prev + 1, totalPagesNewUsers))}
-                >
-                  Next
-                  <i className="fas fa-chevron-right"></i>
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })()}
-
-
-
-
-
-
-
-      {/* Service Edit Modal */}
-      {showServiceModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowServiceModal(false)}>
-          <div className="modal-content service-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header service-modal-header">
-              <div className="modal-title-section">
-                <i className="fas fa-edit modal-icon"></i>
-                <div className="modal-title-content">
-                  <h2>Edit Service Profile</h2>
-                  <p className="modal-subtitle">{selectedUser.firstName} {selectedUser.lastName}</p>
-                </div>
-              </div>
-              <button className="close-modal" onClick={() => setShowServiceModal(false)}>&times;</button>
-            </div>
-
-            <div className="modal-body service-modal-body">
-              <div className="service-instructions">
-                <i className="fas fa-info-circle instruction-icon"></i>
-                <div className="instruction-content">
-                  <h4>Service Management</h4>
-                  <p>Configure the services this provider offers. Each service includes a name, rate, and detailed description.</p>
-                </div>
-              </div>
-
-              <div className="services-container">
-                {serviceFormData.map((service, index) => (
-                  <div key={index} className="service-card">
-                    <div className="service-card-header">
-                      <span className="service-badge">{index + 1}</span>
-                      <h4>Service Configuration</h4>
-                      {serviceFormData.length > 1 && (
-                        <button
-                          type="button"
-                          className="remove-service-btn"
-                          onClick={() => {
-                            const newServices = serviceFormData.filter((_, i) => i !== index);
-                            setServiceFormData(newServices);
-                          }}
-                          title="Remove this service"
-                        >
-                          <i className="fas fa-trash-alt"></i>
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="service-form-grid">
-                      <div className="form-group service-name-group">
-                        <label className="form-label">
-                          <i className="fas fa-tools"></i>
-                          Service Category
-                        </label>
-                        <div className="select-wrapper">
-                          <select
-                            value={service.name}
-                            onChange={(e) => {
-                              const newServices = [...serviceFormData];
-                              newServices[index].name = e.target.value;
-                              setServiceFormData(newServices);
-                            }}
-                            className="form-input service-select"
-                            required
-                          >
-                            <option value="">Choose a service category</option>
-                            {SERVICE_OPTIONS.map((option) => (
-                              <option key={option.name} value={option.name}>
-                                {option.name}
-                              </option>
-                            ))}
-                          </select>
-                          <i className="fas fa-chevron-down select-arrow"></i>
-                        </div>
-                      </div>
-
-                      <div className="form-group service-rate-group">
-                        <label className="form-label">
-                          <i className="fas fa-peso-sign"></i>
-                          Service Rate ₱
-                        </label>
-                        <div className="input-wrapper">
-                          <input
-                            type="number"
-                            value={service.rate}
-                            onChange={(e) => {
-                              const newServices = [...serviceFormData];
-                              newServices[index].rate = parseFloat(e.target.value) || 0;
-                              setServiceFormData(newServices);
-                            }}
-                            className="form-input rate-input"
-                            placeholder="0.00"
-                            min="0"
-                            step="50"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="form-group service-description-group">
-                      <label className="form-label">
-                        <i className="fas fa-file-alt"></i>
-                        Service Description
-                      </label>
-                      <div className="textarea-wrapper">
-                        <textarea
-                          value={service.description}
-                          onChange={(e) => {
-                            const newServices = [...serviceFormData];
-                            newServices[index].description = e.target.value;
-                            setServiceFormData(newServices);
-                          }}
-                          className="form-input description-textarea"
-                          rows="4"
-                          placeholder="Provide a detailed description of the service offered, including what it includes and any special considerations..."
-                        />
-                        <div className="textarea-footer">
-                          <span className="char-count">{service.description.length}/500</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="add-service-section">
-                <button
-                  type="button"
-                  className="add-service-btn"
-                  onClick={() => {
-                    setServiceFormData([...serviceFormData, { name: '', rate: 0, description: '' }]);
-                  }}
-                >
-                  <div className="add-service-content">
-                    <i className="fas fa-plus-circle"></i>
-                    <span>Add New Service</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            <div className="modal-actions service-modal-actions">
-              <div className="action-summary">
-                <div className="summary-item">
-                  <span className="summary-label">Total Services:</span>
-                  <span className="summary-value">{serviceFormData.length}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Configured:</span>
-                  <span className="summary-value">{serviceFormData.filter(s => s.name && s.name.trim() !== '').length}</span>
-                </div>
-              </div>
-
-              <div className="action-buttons">
-                <button
-                  className="btn-secondary cancel-btn"
-                  onClick={() => setShowServiceModal(false)}
-                  disabled={actionLoading === 'save-service'}
-                >
-                  <i className="fas fa-times"></i>
-                  Cancel
-                </button>
-                <button
-                  className="btn-primary save-btn"
-                  onClick={handleSaveService}
-                  disabled={actionLoading === 'save-service'}
-                >
-                  {actionLoading === 'save-service' ? (
-                    <>
-                      <i className="fas fa-spinner fa-spin"></i>
-                      <span>Saving Changes...</span>
-                    </>
-                  ) : (
-                    <>
-                      <i className="fas fa-save"></i>
-                      <span>Save Service Profile</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
 
       {/* User Details Modal */}
       {showUserModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowUserModal(false)}>
-          <div className="modal-content user-details-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2><i className="fas fa-user-circle"></i> {modalSource === "new-users" ? "New User Profile Details" : "User Profile Details"}</h2>
-              <button className="close-modal" onClick={() => setShowUserModal(false)}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <div className="user-profile">
-                <div className="profile-header">
+        <div className="um-modal-overlay" onClick={() => setShowUserModal(false)}>
+          <div className="um-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="um-modal-header">
+              <div className="um-modal-header-content">
+                <div className="um-modal-profile">
                   <img
                     src={selectedUser.profilePic || "/default-avatar.png"}
-                    alt={`${selectedUser.firstName} ${selectedUser.lastName}`}
-                    className="applicant-avatar"
+                    alt={selectedUser.firstName}
+                    className="um-modal-avatar"
                   />
-                  <div className="profile-info">
-                    <h3>{selectedUser.firstName} {selectedUser.lastName}</h3>
-                    <p className="user-email">{selectedUser.email}</p>
-                    <p className="user-id">ID: {selectedUser._id.slice(-6)}</p>
-                    <div className="user-status-badges">
-                      <span className={`status-badge ${
-                        selectedUser.banned ? 'banned' :
-                        selectedUser.suspended ? 'suspended' :
-                        selectedUser.verified ? 'approved' :
-                        'pending'
-                      }`}>
-                        {selectedUser.banned ? 'Banned' :
-                         selectedUser.suspended ? 'Suspended' :
-                         selectedUser.verified ? 'Verified' :
-                         'Unverified'}
-                      </span>
-                      <span className={`status-badge ${selectedUser.isOnline ? 'approved' : 'pending'}`}>
-                        {selectedUser.isOnline ? 'Online' : 'Offline'}
-                      </span>
+                  <div>
+                    <h2 className="um-modal-name">{selectedUser.firstName} {selectedUser.lastName}</h2>
+                    <p className="um-modal-email">{selectedUser.email}</p>
+                    <div className="um-user-badges">
+                      <span className="um-badge verified">{selectedUser.verified ? '✓ Verified' : '⏰ Pending'}</span>
+                      {selectedUser.isOnline && <span className="um-badge verified">🟢 Online</span>}
                     </div>
                   </div>
                 </div>
+                <button onClick={() => setShowUserModal(false)} className="um-modal-close">×</button>
+              </div>
+            </div>
 
-                <div className="detail-section">
-                  <h3><i className="fas fa-id-card"></i> Account Information</h3>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <label>Username</label>
-                      <p>{selectedUser.username}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Full Name</label>
-                      <p>{selectedUser.firstName} {selectedUser.lastName}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Email</label>
-                      <p>{selectedUser.email}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Phone</label>
-                      <p>{selectedUser.phone || 'Not provided'}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Other Contact</label>
-                      <p>{selectedUser.otherContact || 'Not provided'}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Role</label>
-                      <p>{selectedUser.role === 'Community Member' ? 'Community Resident' : selectedUser.role}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Member Since</label>
-                      <p>{new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}</p>
-                    </div>
+            <div className="um-modal-body">
+              <div className="um-detail-section">
+                <h3>👤 Account Information</h3>
+                <div className="um-detail-grid">
+                  <div className="um-detail-item">
+                    <label>Username</label>
+                    <p>{selectedUser.username}</p>
                   </div>
-                </div>
-
-                <div className="detail-section">
-                  <h3><i className="fas fa-user"></i> Personal Information</h3>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <label>Birthdate</label>
-                      <p>{selectedUser.birthdate ? new Date(selectedUser.birthdate).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      }) : 'Not provided'}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Occupation</label>
-                      <p>{selectedUser.occupation || 'Not provided'}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Employment Status</label>
-                      <p>{selectedUser.employed || 'Not provided'}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Availability</label>
-                      <p>{selectedUser.availability || 'Not Available'}</p>
-                    </div>
-                    <div className="detail-item">
-                      <label>Accepted Work</label>
-                      <p>{selectedUser.acceptedWork ? 'Yes' : 'No'}</p>
-                    </div>
-                    <div className="detail-item full-width">
+                  <div className="um-detail-item">
+                    <label>Phone</label>
+                    <p>{selectedUser.phone || 'Not provided'}</p>
+                  </div>
+                  <div className="um-detail-item">
+                    <label>Role</label>
+                    <p>{selectedUser.role === 'Community Member' ? 'Community Resident' : selectedUser.role}</p>
+                  </div>
+                  <div className="um-detail-item">
+                    <label>Member Since</label>
+                    <p>{new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}</p>
+                  </div>
+                  {selectedUser.address && (
+                    <div className="um-detail-item full-width">
                       <label>Address</label>
-                      <p>{selectedUser.address || 'No address information provided'}</p>
+                      <p>{selectedUser.address}</p>
                     </div>
+                  )}
+                </div>
+              </div>
+
+              {selectedUser.skills && selectedUser.skills.length > 0 && (
+                <div className="um-detail-section">
+                  <h3>🔧 Skills & Expertise ({selectedUser.skills.length})</h3>
+                  <div className="um-skills-grid">
+                    {selectedUser.skills.map((skill, index) => (
+                      <span key={index} className="um-skill-tag">{skill}</span>
+                    ))}
                   </div>
                 </div>
+              )}
 
-                {(selectedUser.skills && selectedUser.skills.length > 0) && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-tools"></i> Skills & Expertise ({selectedUser.skills.length})</h3>
-                    <div className="skills-grid">
-                      {selectedUser.skills.map((skill, index) => (
-                        <span key={index} className="skill-tag">{skill}</span>
-                      ))}
-                    </div>
+              {selectedUser.role === 'Service Provider' && selectedUser.services && selectedUser.services.length > 0 && (
+                <div className="um-detail-section">
+                  <h3>🛠️ Services Offered ({selectedUser.services.length})</h3>
+                  <div className="um-services-grid">
+                    {selectedUser.services.map((service, index) => (
+                      <div key={index} className="um-service-item">
+                        <h4>{service.name}</h4>
+                        <div className="um-service-rate">₱{service.rate.toLocaleString()}</div>
+                        <p className="um-service-description">{service.description || 'No description available'}</p>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {(selectedUser.certificates && selectedUser.certificates.length > 0) && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-certificate"></i> Certificates ({selectedUser.certificates.length})</h3>
-                    <div className="documents-preview">
-                      {selectedUser.certificates.map((cert, index) => (
-                        <div key={index} className="document-item">
-                          <div className="document-info">
-                            <i className="fas fa-file-alt"></i>
-                            <span>Certificate {index + 1}</span>
-                          </div>
-                          <div className="document-preview">
-                            {cert.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                              <img
-                                src={cert}
-                                alt={`Certificate ${index + 1}`}
-                                className="document-image"
-                                onClick={() => {
-                                  setSelectedDocument(cert);
-                                  setDocumentType('certificate');
-                                  handleZoomReset(); // Reset zoom when opening new document
-                                  setShowDocumentModal(true);
-                                }}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            ) : (
-                              <div className="document-placeholder">
-                                <i className="fas fa-file-pdf"></i>
-                                <span>PDF Document</span>
-                                <button
-                                  className="preview-btn"
-                                  onClick={() => {
-                                    setSelectedDocument(cert);
-                                    setDocumentType('certificate');
-                                    setShowDocumentModal(true);
-                                  }}
-                                >
-                                  <i className="fas fa-external-link-alt"></i> View
-                                </button>
-                              </div>
-                            )}
-                          </div>
+              {selectedUser.certificates && selectedUser.certificates.length > 0 && (
+                <div className="um-detail-section">
+                  <h3>📜 Certificates ({selectedUser.certificates.length})</h3>
+                  <div className="um-documents-grid">
+                    {selectedUser.certificates.map((cert, index) => (
+                      <div key={index} className="um-document-item">
+                        <div className="um-document-info">
+                          📄 Certificate {index + 1}
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {selectedUser.validId && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-id-badge"></i> Government ID</h3>
-                    <div className="document-preview">
-                      <div className="document-item">
-                        <div className="document-info">
-                          <i className="fas fa-id-card"></i>
-                          <span>Valid ID Document</span>
-                        </div>
-                        <div className="document-preview">
-                          {selectedUser.validId.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+                        <div className="um-document-preview">
+                          {cert.match(/\.(jpg|jpeg|png|gif)$/i) && (
                             <img
-                              src={selectedUser.validId}
-                              alt="Valid ID"
-                              className="document-image"
+                              src={cert}
+                              alt={`Certificate ${index + 1}`}
                               onClick={() => {
-                                setSelectedDocument(selectedUser.validId);
-                                setDocumentType('validId');
-                                handleZoomReset(); // Reset zoom when opening new document
+                                setSelectedDocument(cert);
+                                setDocumentType('certificate');
+                                handleZoomReset();
                                 setShowDocumentModal(true);
                               }}
-                              style={{ cursor: 'pointer' }}
                             />
-                          ) : (
-                            <div className="document-placeholder">
-                              <i className="fas fa-file-pdf"></i>
-                              <span>ID Document</span>
-                              <button
-                                className="preview-btn"
-                                onClick={() => {
-                                  setSelectedDocument(selectedUser.validId);
-                                  setDocumentType('validId');
-                                  setShowDocumentModal(true);
-                                }}
-                              >
-                                <i className="fas fa-external-link-alt"></i> View
-                              </button>
-                            </div>
                           )}
                         </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {selectedUser.notificationPreferences && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-bell"></i> Notification Preferences</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>E-Receipts</label>
-                        <p>{selectedUser.notificationPreferences.eReceipts ? 'Enabled' : 'Disabled'}</p>
+              {selectedUser.validId && (
+                <div className="um-detail-section">
+                  <h3>🪪 Government ID</h3>
+                  <div className="um-documents-grid">
+                    <div className="um-document-item">
+                      <div className="um-document-info">
+                        🆔 Valid ID Document
                       </div>
-                      <div className="detail-item">
-                        <label>Proof of Delivery</label>
-                        <p>{selectedUser.notificationPreferences.proofOfDelivery ? 'Enabled' : 'Disabled'}</p>
-                      </div>
-                      <div className="detail-item">
-                        <label>Email Notifications</label>
-                        <p>{selectedUser.notificationPreferences.emailNotifications ? 'Enabled' : 'Disabled'}</p>
-                      </div>
-                      <div className="detail-item">
-                        <label>Push Notifications</label>
-                        <p>{selectedUser.notificationPreferences.pushNotifications ? 'Enabled' : 'Disabled'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {(selectedUser.blockedUsers && selectedUser.blockedUsers.length > 0) && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-user-slash"></i> Blocked Users</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>Total Blocked</label>
-                        <p>{selectedUser.blockedUsers.length} user{selectedUser.blockedUsers.length !== 1 ? 's' : ''}</p>
+                      <div className="um-document-preview">
+                        {selectedUser.validId.match(/\.(jpg|jpeg|png|gif)$/i) && (
+                          <img
+                            src={selectedUser.validId}
+                            alt="Valid ID"
+                            onClick={() => {
+                              setSelectedDocument(selectedUser.validId);
+                              setDocumentType('validId');
+                              handleZoomReset();
+                              setShowDocumentModal(true);
+                            }}
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
-
-                {selectedUser.role === 'Service Provider' && selectedUser.services && selectedUser.services.length > 0 && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-concierge-bell"></i> Services Offered ({selectedUser.services.length})</h3>
-                    <div className="services-grid">
-                      {selectedUser.services.map((service, index) => (
-                        <div key={index} className="service-card-item">
-                          <h4>{service.name}</h4>
-                          <div className="service-rate">₱{service.rate.toLocaleString()}</div>
-                          <p className="service-description">{service.description || 'No description available'}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(selectedUser.bookings && selectedUser.bookings.length > 0) && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-calendar-check"></i> Booking History</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>Total Bookings</label>
-                        <p>{selectedUser.bookings.length}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {(selectedUser.notifications && selectedUser.notifications.length > 0) && (
-                  <div className="detail-section">
-                    <h3><i className="fas fa-bell"></i> Notifications</h3>
-                    <div className="detail-grid">
-                      <div className="detail-item">
-                        <label>Total Notifications</label>
-                        <p>{selectedUser.notifications.length}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
-            <div className="modal-actions user-modal-actions">
+
+            <div className="um-modal-actions">
               {modalSource === "new-users" && !selectedUser.verified && (
-                <div className="verification-section">
-                  <div className="decision-header">
-                    <h4><i className="fas fa-check-circle"></i> User Verification</h4>
-                    <p className="decision-subtitle">Verify this new user's account to grant full access</p>
+                <div className="um-actions-section">
+                  <div className="um-actions-header">
+                    <h4>✅ User Verification</h4>
+                    <p className="um-actions-subtitle">Verify this new user's account to grant full access</p>
                   </div>
-                  <div className="action-buttons-grid">
+                  <div className="um-action-buttons">
                     <button
-                      className="action-btn verify-user-btn"
+                      className="um-action-btn verify"
                       onClick={async () => {
                         setActionLoading('verify');
                         await verifyUser(selectedUser._id);
@@ -1072,49 +1305,34 @@ const UserManagement = () => {
                         setShowUserModal(false);
                       }}
                       disabled={actionLoading === 'verify'}
-                      title="Verify this user's account"
                     >
-                      {actionLoading === 'verify' ? (
-                        <>
-                          <i className="fas fa-spinner fa-spin"></i>
-                          <span>Verifying...</span>
-                        </>
-                      ) : (
-                        <>
-                          <i className="fas fa-check"></i>
-                          <span>Verify User</span>
-                        </>
-                      )}
+                      {actionLoading === 'verify' ? '⏳ Verifying...' : '✓ Verify User'}
                     </button>
                   </div>
                 </div>
               )}
 
-              <div className="decision-section">
-                <div className="decision-header">
-                  <h4><i className="fas fa-cogs"></i> Account Management</h4>
-                  <p className="decision-subtitle">Manage this user's account status and permissions</p>
+              <div className="um-actions-section">
+                <div className="um-actions-header">
+                  <h4>⚙️ Account Management</h4>
+                  <p className="um-actions-subtitle">Manage this user's account status and permissions</p>
                 </div>
-
-                <div className="action-buttons-grid">
+                <div className="um-action-buttons">
                   {selectedUser.role === 'Service Provider' && (
                     <button
-                      className="action-btn edit-services-btn"
+                      className="um-action-btn edit"
                       onClick={() => {
                         setServiceFormData(selectedUser.services && selectedUser.services.length > 0 ? selectedUser.services : [{ name: '', rate: 0, description: '' }]);
                         setShowServiceModal(true);
                         setShowUserModal(false);
                       }}
-                      title="Edit this service provider's services"
                     >
-                      <i className="fas fa-edit"></i>
-                      <span>Edit Services</span>
+                      ✏️ Edit Services
                     </button>
                   )}
-
                   {!selectedUser.banned && (
                     <button
-                      className="action-btn ban-user-btn"
+                      className="um-action-btn ban"
                       onClick={async () => {
                         setActionLoading('ban');
                         await banUser(selectedUser._id);
@@ -1122,137 +1340,19 @@ const UserManagement = () => {
                         setShowUserModal(false);
                       }}
                       disabled={actionLoading === 'ban'}
-                      title="Permanently ban this user from the platform"
                     >
-                      {actionLoading === 'ban' ? (
-                        <>
-                          <i className="fas fa-spinner fa-spin"></i>
-                          <span>Banning...</span>
-                        </>
-                      ) : (
-                        <>
-                          <i className="fas fa-user-slash"></i>
-                          <span>Ban Account</span>
-                        </>
-                      )}
+                      {actionLoading === 'ban' ? '⏳ Banning...' : '🚫 Ban Account'}
                     </button>
                   )}
-
                   <button
-                    className="action-btn close-modal-btn"
+                    className="um-action-btn close"
                     onClick={() => setShowUserModal(false)}
                     disabled={actionLoading !== null}
-                    title="Close this modal"
                   >
-                    <i className="fas fa-times"></i>
-                    <span>Close</span>
+                    ✕ Close
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Document Preview Modal */}
-      {showDocumentModal && selectedDocument && (
-        <div className="modal-overlay" onClick={() => setShowDocumentModal(false)}>
-          <div className="modal-content document-preview-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>
-                <i className={`fas ${documentType === 'validId' ? 'fa-id-badge' : 'fa-certificate'}`}></i>
-                {documentType === 'validId' ? 'Valid ID Preview' : 'Certificate Preview'}
-              </h2>
-              <button className="close-modal" onClick={() => setShowDocumentModal(false)}>&times;</button>
-            </div>
-            <div className="modal-body document-modal-body">
-              {/* Zoom Controls */}
-              {selectedDocument.match(/\.(jpg|jpeg|png|gif)$/i) && (
-                <div className="zoom-controls">
-                  <button
-                    className="zoom-btn zoom-out-btn"
-                    onClick={handleZoomOut}
-                    disabled={zoomLevel <= 0.5}
-                    title="Zoom Out"
-                  >
-                    <i className="fas fa-search-minus"></i>
-                  </button>
-                  <span className="zoom-level">{Math.round(zoomLevel * 100)}%</span>
-                  <button
-                    className="zoom-btn zoom-in-btn"
-                    onClick={handleZoomIn}
-                    disabled={zoomLevel >= 3}
-                    title="Zoom In"
-                  >
-                    <i className="fas fa-search-plus"></i>
-                  </button>
-                  <button
-                    className="zoom-btn zoom-reset-btn"
-                    onClick={handleZoomReset}
-                    title="Reset Zoom"
-                  >
-                    <i className="fas fa-expand"></i>
-                  </button>
-                </div>
-              )}
-
-              <div className="document-full-preview">
-                {selectedDocument.match(/\.(jpg|jpeg|png|gif)$/i) ? (
-                  <div
-                    className="image-container"
-                    onWheel={handleWheel}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    style={{
-                      cursor: zoomLevel > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <img
-                      src={selectedDocument}
-                      alt={documentType === 'validId' ? 'Valid ID Document' : 'Certificate Document'}
-                      className="document-full-image"
-                      style={{
-                        transform: `scale(${zoomLevel}) translate(${panPosition.x / zoomLevel}px, ${panPosition.y / zoomLevel}px)`,
-                        transformOrigin: 'center center',
-                        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-                      }}
-                      draggable={false}
-                    />
-                  </div>
-                ) : (
-                  <div className="document-full-placeholder">
-                    <i className="fas fa-file-pdf"></i>
-                    <h3>PDF Document</h3>
-                    <p>This document is in PDF format and cannot be previewed directly.</p>
-                    <button
-                      className="preview-btn download-btn"
-                      onClick={() => window.open(selectedDocument, '_blank')}
-                    >
-                      <i className="fas fa-external-link-alt"></i>
-                      <span>Open in New Tab</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="modal-actions document-modal-actions">
-              <button
-                className="secondary-btn close-modal-btn"
-                onClick={() => setShowDocumentModal(false)}
-              >
-                <i className="fas fa-times"></i>
-                <span>Close</span>
-              </button>
-              <button
-                className="primary-btn download-btn"
-                onClick={() => window.open(selectedDocument, '_blank')}
-              >
-                <i className="fas fa-download"></i>
-                <span>Download/Open</span>
-              </button>
             </div>
           </div>
         </div>
@@ -1261,4 +1361,4 @@ const UserManagement = () => {
   );
 };
 
-export default UserManagement;
+export default UserManagement
