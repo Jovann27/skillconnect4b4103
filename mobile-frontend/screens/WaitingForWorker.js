@@ -113,7 +113,7 @@ const WorkerSection = ({ status, worker, onChat, onCall }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (status === "Available" || status === "Matched") {
+    if (status === "Available" || status === "Matched" || status === "Offered") {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 500,
@@ -122,7 +122,7 @@ const WorkerSection = ({ status, worker, onChat, onCall }) => {
     }
   }, [status]);
 
-  if (status === "Matched") {
+  if (status === "Matched" || status === "Offered") {
     return (
       <Animated.View style={[styles.workerCard, { opacity: fadeAnim }]}>
         <View style={styles.workerTopRow}>
@@ -146,13 +146,15 @@ const WorkerSection = ({ status, worker, onChat, onCall }) => {
         </View>
         <View style={styles.workerFooter}>
           <Ionicons name="time-outline" size={18} color="#666" />
-          <Text style={styles.workerFooterText}>Service provider is reviewing your request...</Text>
+          <Text style={styles.workerFooterText}>
+            {status === "Offered" ? "Service provider is reviewing your request..." : "Worker is reviewing your request..."}
+          </Text>
         </View>
       </Animated.View>
     );
   }
 
-  if (status !== "Available") {
+  if (status !== "Found") {
     return (
       <View style={styles.waitingContainer}>
         <AnimatedWaiting />
@@ -198,6 +200,68 @@ const WorkerSection = ({ status, worker, onChat, onCall }) => {
   );
 };
 
+const ProviderItem = ({ provider, stats, reviews, onOffer, offeringTo }) => {
+  const renderStars = (rating) => {
+    return "★".repeat(Math.round(rating)) + "☆".repeat(5 - Math.round(rating));
+  };
+
+  return (
+    <View style={styles.providerItem}>
+      <View style={styles.providerSummary}>
+        <Image
+          source={provider.profilePic ? { uri: provider.profilePic } : require("../assets/default-profile.png")}
+          style={styles.providerImage}
+        />
+        <View style={styles.providerInfo}>
+          <Text style={styles.providerName}>{provider.firstName} {provider.lastName}</Text>
+          <View style={styles.providerRating}>
+            <Text style={styles.ratingStars}>{renderStars(stats?.averageRating || 0)}</Text>
+            <Text style={styles.ratingCount}>({stats?.totalReviews || 0})</Text>
+          </View>
+          <View style={styles.providerStats}>
+            <Text style={styles.providerPrice}>₱{provider.serviceRate || "N/A"}</Text>
+            <Text style={[styles.providerStatus, provider.isOnline ? styles.online : styles.offline]}>
+              ● {provider.isOnline ? "Online" : "Offline"}
+            </Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          onPress={() => onOffer(provider._id)}
+          disabled={offeringTo === provider._id}
+          style={styles.providerButton}
+        >
+          <Text style={styles.providerButtonText}>
+            {offeringTo === provider._id ? "Offering..." : "Offer"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.providerDetails}>
+        <View style={styles.detailSection}>
+          <Text style={styles.sectionLabel}>Skills</Text>
+          <Text style={styles.sectionText}>{provider.skills?.join(", ") || "No skills listed"}</Text>
+        </View>
+        <View style={styles.detailSection}>
+          <Text style={styles.sectionLabel}>About</Text>
+          <Text style={styles.sectionText}>{provider.serviceDescription || "No description available"}</Text>
+        </View>
+        {reviews?.length > 0 && (
+          <View style={styles.detailSection}>
+            <Text style={styles.sectionLabel}>Recent Reviews</Text>
+            <View style={styles.reviewsList}>
+              {reviews.map((review) => (
+                <View key={review._id} style={styles.reviewItem}>
+                  <Text style={styles.reviewAuthor}>{review.clientName}</Text>
+                  <Text style={styles.reviewText}>{review.comment}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+};
+
 const registerForPushNotificationsAsync = async () => {
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
@@ -225,12 +289,18 @@ const registerForPushNotificationsAsync = async () => {
 
 export default function WaitingForWorker({ route, navigation }) {
   const { orderData } = route.params || {};
-  const [orderStatus, setOrderStatus] = useState("PENDING");
+  const [status, setStatus] = useState("Searching");
   const [workerData, setWorkerData] = useState(null);
+  const [currentRequest, setCurrentRequest] = useState(null);
+  const [matchedProviders, setMatchedProviders] = useState([]);
+  const [providerReviews, setProviderReviews] = useState({});
+  const [providerStats, setProviderStats] = useState({});
+  const [offeringTo, setOfferingTo] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showAlert, setShowAlert] = useState(false);
   const [showAcceptedAlert, setShowAcceptedAlert] = useState(false);
   const [showMatchedAlert, setShowMatchedAlert] = useState(false);
-  const [currentRequest, setCurrentRequest] = useState(null);
 
   useEffect(() => {
     if (!isRunningInExpoGo()) {
@@ -238,92 +308,175 @@ export default function WaitingForWorker({ route, navigation }) {
     }
   }, []);
 
+  // Fetch matched providers
+  const fetchMatchedProviders = async (request) => {
+    if (!request || !request.typeOfWork) return;
+    try {
+      const params = {
+        typeOfWork: request.typeOfWork
+      };
+
+      // Include budget if available for better matching
+      if (request.budget && request.budget > 0) {
+        params.budget = request.budget;
+      }
+
+      const response = await apiClient.get('/user/service-providers', { params });
+      const matchedProviders = response.data?.workers || [];
+      setMatchedProviders(matchedProviders);
+    } catch (error) {
+      console.error("Failed to fetch matched providers:", error);
+      setMatchedProviders([]);
+    }
+  };
+
+  // Fetch reviews and stats for providers
+  const fetchProviderData = async (providers) => {
+    if (!providers?.length) return;
+    const reviews = {};
+    const stats = {};
+    const batchSize = 5;
+    for (let i = 0; i < providers.length; i += batchSize) {
+      const batch = providers.slice(i, i + batchSize);
+      await Promise.all(batch.map(async (provider) => {
+        if (!provider?._id) return;
+        try {
+          const statsResponse = await apiClient.get(`/review/stats/${provider._id}`);
+          stats[provider._id] = statsResponse.data?.stats || { totalReviews: 0, averageRating: 0 };
+          const reviewsResponse = await apiClient.get(`/review/user/${provider._id}`);
+          const reviewData = reviewsResponse.data?.reviews || [];
+          reviews[provider._id] = Array.isArray(reviewData) ? reviewData.slice(0, 3) : [];
+        } catch (err) {
+          console.error('Error fetching provider data:', err);
+          stats[provider._id] = { totalReviews: 0, averageRating: 0 };
+          reviews[provider._id] = [];
+        }
+      }));
+    }
+    setProviderStats(stats);
+    setProviderReviews(reviews);
+  };
+
+  // Offer request to specific provider
+  const offerRequestToProvider = async (providerId) => {
+    if (!currentRequest?._id || !providerId) return Alert.alert("Unable to process request.");
+    const selectedProvider = matchedProviders.find(p => p._id === providerId);
+    if (!selectedProvider) return Alert.alert("Provider not found.");
+
+    setOfferingTo(providerId);
+    try {
+      await apiClient.post('/user/offer-to-provider', {
+        providerId,
+        requestId: currentRequest._id
+      });
+      const providerName = `${selectedProvider.firstName || ''} ${selectedProvider.lastName || ''}`.trim();
+      Alert.alert("Success", `Request offered to ${providerName || 'provider'}! Waiting for response...`);
+      const refreshResponse = await apiClient.get(`/user/service-request/${currentRequest._id}`);
+      if (refreshResponse.data?.request) setCurrentRequest(refreshResponse.data.request);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || err.message || "Failed to offer request";
+      Alert.alert("Error", `${errorMessage}. Please try again.`);
+    } finally {
+      setOfferingTo(null);
+    }
+  };
+
   useEffect(() => {
-    if (orderStatus === "Available") {
+    if (status === "Found") {
       setShowAcceptedAlert(true);
     }
-  }, [orderStatus]);
+  }, [status]);
 
   useEffect(() => {
-    // Join service request room
-    if (orderData?.id) {
-      socket.emit("join-service-request", orderData.id);
+    if (!orderData) {
+      setError("No request data available");
+      setIsLoading(false);
+      return;
     }
 
-    // Listen for service request updates
-    const handleServiceRequestUpdate = async (data) => {
-      if (data.requestId === orderData?.id) {
+    const initialize = async () => {
+      setIsLoading(true);
+      setError(null);
+      setCurrentRequest(orderData);
+      await fetchMatchedProviders(orderData);
+      if (orderData.status === "Working") {
+        setStatus("Found");
+        if (orderData.serviceProvider) {
+          setWorkerData({
+            name: `${orderData.serviceProvider.firstName} ${orderData.serviceProvider.lastName}`,
+            skill: orderData.typeOfWork,
+            phone: orderData.serviceProvider.phone,
+            image: orderData.serviceProvider.profilePic || "/default-profile.png",
+            eta: orderData.eta,
+          });
+        }
+      } else if (orderData.status === "Offered") {
+        setStatus("Offered");
+        if (orderData.targetProvider) {
+          setWorkerData({
+            name: `${orderData.targetProvider.firstName} ${orderData.targetProvider.lastName}`,
+            skill: orderData.typeOfWork,
+            phone: orderData.targetProvider.phone,
+            image: orderData.targetProvider.profilePic || "/default-profile.png",
+          });
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initialize();
+
+    if (socket && orderData._id) {
+      socket.emit("join-service-request", orderData._id);
+      const handleUpdate = async (updateData) => {
+        if (updateData?.requestId !== orderData._id) return;
         try {
-          const response = await apiClient.get(`/user/service-request/${orderData.id}`);
-          const currentRequest = response.data.request;
-          console.log("Fetched request data:", currentRequest);
-          setCurrentRequest(currentRequest);
-
-          if (data.action === "accepted") {
-            setOrderStatus("Available");
-            setWorkerData({
-              name: currentRequest.serviceProvider ? `${currentRequest.serviceProvider.firstName} ${currentRequest.serviceProvider.lastName}` : "Worker",
-              skill: currentRequest.typeOfWork || "Service",
-              phone: currentRequest.serviceProvider?.phone || "09123456789",
-              image: currentRequest.serviceProvider?.profilePic || "",
-              eta: currentRequest.eta,
-            });
-            setShowAlert(true);
-
-            if (!isRunningInExpoGo()) {
-              await Notifications.scheduleNotificationAsync({
-                content: {
-                  title: "Order Accepted!",
-                  body: "Your worker is on the way!",
-                  sound: "default",
-                  priority: Notifications.AndroidNotificationPriority.HIGH,
-                },
-                trigger: null,
-              });
+          const response = await apiClient.get(`/user/service-request/${orderData._id}`);
+          const updatedRequest = response.data?.request;
+          if (updatedRequest) {
+            setCurrentRequest(updatedRequest);
+            if (["Working", "Completed"].includes(updatedRequest.status)) {
+              setStatus("Found");
+              if (updatedRequest.serviceProvider) {
+                setWorkerData({
+                  name: `${updatedRequest.serviceProvider.firstName || ''} ${updatedRequest.serviceProvider.lastName || ''}`.trim(),
+                  skill: updatedRequest.typeOfWork,
+                  phone: updatedRequest.serviceProvider.phone,
+                  image: updatedRequest.serviceProvider.profilePic || "/default-profile.png",
+                  eta: updatedRequest.eta,
+                });
+              }
+            } else if (updatedRequest.status === "Offered") {
+              setStatus("Offered");
+              if (updatedRequest.targetProvider) {
+                setWorkerData({
+                  name: `${updatedRequest.targetProvider.firstName || ''} ${updatedRequest.targetProvider.lastName || ''}`.trim(),
+                  skill: updatedRequest.typeOfWork,
+                  phone: updatedRequest.targetProvider.phone,
+                  image: updatedRequest.targetProvider.profilePic || "/default-profile.png",
+                });
+              }
+            } else if (updatedRequest.status === "Waiting") {
+              setStatus("Searching");
             }
-          } else if (data.action === "cancelled") {
-            Alert.alert("Request Cancelled", "Your service request has been cancelled.");
-            navigation.navigate("PlaceOrder");
           }
-        } catch (error) {
-          console.log("Error fetching updated request:", error);
+        } catch (err) {
+          console.error("Failed to update request via socket:", err);
         }
-      }
-    };
-
-    socket.on("service-request-updated", handleServiceRequestUpdate);
-
-    return () => {
-      socket.off("service-request-updated", handleServiceRequestUpdate);
-    };
+      };
+      socket.on("service-request-updated", handleUpdate);
+      return () => {
+        socket.off("service-request-updated", handleUpdate);
+        socket.emit("leave-service-request", orderData._id);
+      };
+    }
   }, [orderData]);
 
-  // Initial load
   useEffect(() => {
-    const loadInitialRequest = async () => {
-      if (orderData?.id) {
-        try {
-          const response = await apiClient.get(`/user/service-request/${orderData.id}`);
-          const currentRequest = response.data.request;
-          setCurrentRequest(currentRequest);
-
-          if (currentRequest.status === "Working") {
-            setOrderStatus("Available");
-            setWorkerData({
-              name: currentRequest.serviceProvider ? `${currentRequest.serviceProvider.firstName} ${currentRequest.serviceProvider.lastName}` : "Worker",
-              skill: currentRequest.typeOfWork || "Service",
-              phone: currentRequest.serviceProvider?.phone || "09123456789",
-              image: currentRequest.serviceProvider?.profilePic || "",
-              eta: currentRequest.eta,
-            });
-          }
-        } catch (error) {
-          console.log("Error loading initial request:", error);
-        }
-      }
-    };
-    loadInitialRequest();
-  }, [orderData]);
+    if (matchedProviders.length > 0) {
+      fetchProviderData(matchedProviders);
+    }
+  }, [matchedProviders]);
 
   const handleCancel = async () => {
     Alert.alert("Cancel Order", "Are you sure you want to cancel?", [
@@ -363,6 +516,32 @@ export default function WaitingForWorker({ route, navigation }) {
     value: `₱${provider.rate || "N/A"}`,
   })) || [];
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <View style={styles.loadingContent}>
+          <View style={styles.spinner}></View>
+          <Text style={styles.loadingTitle}>Loading your request</Text>
+          <Text style={styles.loadingText}>Please wait a moment...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="alert-circle" size={48} color="#dc3545" />
+        <Text style={styles.errorTitle}>Error</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.refreshButton} onPress={() => window.location.reload()}>
+          <Ionicons name="refresh" size={16} color="white" />
+          <Text style={styles.refreshText}>Refresh Page</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <FloatingAlert visible={showAlert} onClose={() => setShowAlert(false)} />
@@ -371,7 +550,7 @@ export default function WaitingForWorker({ route, navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <WorkerSection
-          status={orderStatus}
+          status={status}
           worker={workerData}
           onChat={() => navigation.navigate("Chat", { role: "client", other: workerData })}
           onCall={() => Linking.openURL(`tel:${workerData?.phone}`)}
@@ -379,8 +558,35 @@ export default function WaitingForWorker({ route, navigation }) {
         <DetailsCard title="Customer Details" data={customerDetails} />
         <DetailsCard title="Order Details" data={orderDetails} />
 
+        {/* Providers List */}
+        <View style={styles.providersCard}>
+          <Text style={styles.providersTitle}>
+            {status === "Found" ? `${matchedProviders.length} Other Available Providers` : `${matchedProviders.length} Matched Providers`}
+          </Text>
+          {matchedProviders.length > 0 ? (
+            <View style={styles.providersList}>
+              {matchedProviders.map((provider) => (
+                <ProviderItem
+                  key={provider._id}
+                  provider={provider}
+                  stats={providerStats[provider._id]}
+                  reviews={providerReviews[provider._id]}
+                  onOffer={offerRequestToProvider}
+                  offeringTo={offeringTo}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="location-outline" size={48} color="#999" />
+              <Text style={styles.emptyTitle}>Finding providers</Text>
+              <Text style={styles.emptyText}>We're matching your request with skilled professionals</Text>
+            </View>
+          )}
+        </View>
+
         {/* Give Review Button */}
-        {orderStatus === "Available" && (
+        {status === "Found" && (
           <View style={{ marginBottom: 20 }}>
             <TouchableOpacity
               style={styles.reviewButton}
@@ -491,4 +697,43 @@ reviewText: {
 },
   cancelButton: { flexDirection: "row", justifyContent: "center", alignItems: "center", backgroundColor: "#db5191ff", borderRadius: 12, paddingVertical: 18 },
   cancelText: { color: "#ffffffff", fontWeight: "700", fontSize: 15, marginLeft: 6 },
+  providersCard: { backgroundColor: "#fff", borderRadius: 15, padding: 18, marginBottom: 15, elevation: 2 },
+  providersTitle: { fontSize: 16, fontWeight: "700", marginBottom: 15, color: "#333" },
+  providersList: { gap: 10 },
+  providerItem: { borderWidth: 1, borderColor: "#e0e0e0", borderRadius: 8, overflow: "hidden" },
+  providerSummary: { flexDirection: "row", alignItems: "center", padding: 12, backgroundColor: "white" },
+  providerImage: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
+  providerInfo: { flex: 1 },
+  providerName: { fontSize: 16, fontWeight: "600", color: "#1a1a1a", marginBottom: 4 },
+  providerRating: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  ratingStars: { color: "#ffc107", fontSize: 14 },
+  ratingCount: { fontSize: 14, color: "#666", marginLeft: 4 },
+  providerStats: { flexDirection: "row", alignItems: "center", gap: 8 },
+  providerPrice: { fontSize: 14, fontWeight: "600", color: "#667eea" },
+  providerStatus: { fontSize: 12 },
+  online: { color: "#28a745" },
+  offline: { color: "#999" },
+  providerButton: { paddingHorizontal: 16, paddingVertical: 8, backgroundColor: "#667eea", borderRadius: 6 },
+  providerButtonText: { color: "white", fontWeight: "500", fontSize: 14 },
+  providerDetails: { padding: 12, backgroundColor: "#f9f9f9", gap: 10 },
+  detailSection: { gap: 4 },
+  sectionLabel: { fontSize: 12, fontWeight: "600", color: "#666", textTransform: "uppercase", letterSpacing: 0.5 },
+  sectionText: { fontSize: 14, color: "#1a1a1a", lineHeight: 20 },
+  reviewsList: { gap: 8 },
+  reviewItem: { backgroundColor: "white", padding: 8, borderRadius: 6, borderLeftWidth: 3, borderLeftColor: "#667eea" },
+  reviewAuthor: { fontSize: 13, fontWeight: "600", color: "#1a1a1a", marginBottom: 2 },
+  reviewText: { fontSize: 13, color: "#666", lineHeight: 18 },
+  emptyState: { alignItems: "center", paddingVertical: 40 },
+  emptyTitle: { fontSize: 16, fontWeight: "600", color: "#1a1a1a", marginTop: 12, marginBottom: 4 },
+  emptyText: { fontSize: 14, color: "#666", textAlign: "center" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA" },
+  loadingContent: { alignItems: "center", backgroundColor: "white", padding: 40, borderRadius: 15, elevation: 2 },
+  spinner: { width: 50, height: 50, borderWidth: 4, borderColor: "#f0f0f0", borderTopColor: "#667eea", borderRadius: 25, marginBottom: 20 },
+  loadingTitle: { fontSize: 18, fontWeight: "700", color: "#1a1a1a", marginBottom: 8 },
+  loadingText: { fontSize: 14, color: "#666" },
+  errorContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FAFAFA", padding: 20 },
+  errorTitle: { fontSize: 24, fontWeight: "700", color: "#dc3545", marginTop: 16, marginBottom: 8 },
+  errorText: { fontSize: 16, color: "#666", textAlign: "center", marginBottom: 24 },
+  refreshButton: { flexDirection: "row", alignItems: "center", backgroundColor: "#667eea", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 8, gap: 8 },
+  refreshText: { color: "white", fontWeight: "600", fontSize: 14 },
 });

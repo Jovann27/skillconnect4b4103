@@ -924,18 +924,42 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
 
     // Apply service type filter if provided
     if (typeOfWork) {
-      // Normalize skills for matching
-      const searchSkills = typeOfWork.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+      // Normalize the typeOfWork for matching
+      const normalizedTypeOfWork = typeOfWork.toLowerCase().trim();
 
-      // Build skills match condition
-      const skillMatchConditions = searchSkills.map(word => ({
+      // Build comprehensive skill matching conditions
+      const skillMatchConditions = [];
+
+      // 1. Match the entire typeOfWork against skills
+      skillMatchConditions.push({
         skills: {
           $elemMatch: {
-            $regex: word,
+            $regex: normalizedTypeOfWork,
             $options: 'i'
           }
         }
-      }));
+      });
+
+      // 2. Match individual significant words from typeOfWork
+      const searchWords = normalizedTypeOfWork.split(/\s+/).filter(word => word.length > 2);
+      searchWords.forEach(word => {
+        skillMatchConditions.push({
+          skills: {
+            $elemMatch: {
+              $regex: word,
+              $options: 'i'
+            }
+          }
+        });
+      });
+
+      // 3. Also check if the provider's service field matches
+      skillMatchConditions.push({
+        service: {
+          $regex: normalizedTypeOfWork,
+          $options: 'i'
+        }
+      });
 
       query.$or = skillMatchConditions;
     }
@@ -960,6 +984,7 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
       }
     }
 
+    // Filter results to ensure providers have necessary qualifications
     let workersQuery = User.find(query)
       .select("firstName lastName skills availability profilePic service serviceRate serviceDescription createdAt certificates services isOnline")
       .sort({ createdAt: -1 });
@@ -972,7 +997,20 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
       }
     }
 
-    const workers = await workersQuery;
+    // Execute query first, then filter for complete profiles
+    let workers = await workersQuery;
+
+    // Filter to only include providers with:
+    // 1. Skills listed (at least one skill)
+    // 2. Service description
+    // 3. Service rate set
+    workers = workers.filter(provider => {
+      const hasSkills = provider.skills && Array.isArray(provider.skills) && provider.skills.length > 0;
+      const hasServiceDescription = provider.serviceDescription && provider.serviceDescription.trim().length > 0;
+      const hasServiceRate = provider.serviceRate && provider.serviceRate > 0;
+
+      return hasSkills && hasServiceDescription && hasServiceRate;
+    });
 
     res.json({ success: true, count: workers.length, workers });
   } catch (err) {
@@ -981,23 +1019,26 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
   }
 });
 
-export const notifyProvider = catchAsyncError(async (req, res, next) => {
+export const offerToProvider = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
-  const { providerId, requestId, message } = req.body;
+  const { providerId, requestId } = req.body;
 
-  if (!providerId || !requestId || !message) {
-    return next(new ErrorHandler("Provider ID, request ID, and message are required", 400));
+  if (!providerId || !requestId) {
+    return next(new ErrorHandler("Provider ID and request ID are required", 400));
   }
 
   try {
-    // Verify the request belongs to the user
+    // Verify the request belongs to the user and is in Waiting status
     const request = await ServiceRequest.findById(requestId).populate('requester', 'firstName lastName');
     if (!request) {
       return next(new ErrorHandler("Request not found", 404));
     }
     if (String(request.requester) !== String(req.user._id)) {
       return next(new ErrorHandler("Not authorized", 403));
+    }
+    if (request.status !== "Waiting") {
+      return next(new ErrorHandler("Request is not available for offering", 400));
     }
 
     // Get provider details
@@ -1006,12 +1047,19 @@ export const notifyProvider = catchAsyncError(async (req, res, next) => {
       return next(new ErrorHandler("Provider not found", 404));
     }
 
+    // Update request status to Offered and set target provider
+    request.status = "Offered";
+    request.targetProvider = providerId;
+    await request.save();
+
+    const message = `You have been offered a request for "${request.typeOfWork}" by ${request.requester.firstName} ${request.requester.lastName}`;
+
     // Send in-app notification to the provider
     await sendNotification(
       providerId,
-      "Targeted Service Request",
+      "Service Request Offer",
       message,
-      { requestId, type: "targeted-service-request" }
+      { requestId, type: "service-request-offer" }
     );
 
     // Send email notification if provider has email
@@ -1030,14 +1078,111 @@ export const notifyProvider = catchAsyncError(async (req, res, next) => {
       }
     }
 
+    // Create initial chat message to notify provider through chat
+    const chatMessage = await Chat.create({
+      appointment: null, // No booking yet
+      sender: req.user._id,
+      message: `I've offered you a service request for "${request.typeOfWork}". Please check your notifications to accept or decline.`,
+      status: 'sent'
+    });
+
+    // Emit chat notification to provider if online
+    const providerSocketId = onlineUsers.get(providerId.toString());
+    if (providerSocketId) {
+      io.to(providerSocketId).emit("offer-notification", {
+        requestId,
+        message: chatMessage.message,
+        requesterName: `${request.requester.firstName} ${request.requester.lastName}`,
+        serviceType: request.typeOfWork
+      });
+    }
+
+    // Emit socket event for real-time updates
+    io.to(`service-request-${request._id}`).emit("service-request-updated", { requestId: request._id, action: "offered" });
+
     res.status(200).json({
       success: true,
-      message: "Notification sent to provider"
+      message: "Offer sent to provider",
+      request
     });
   } catch (err) {
-    console.error("Error sending notification:", err);
-    res.status(500).json({ success: false, message: "Failed to send notification" });
+    console.error("Error sending offer:", err);
+    res.status(500).json({ success: false, message: "Failed to send offer" });
   }
+});
+
+export const acceptOffer = catchAsyncError(async (req, res, next) => {
+  if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
+
+  const { requestId } = req.params;
+  const request = await ServiceRequest.findById(requestId).populate('requester targetProvider');
+  if (!request) return next(new ErrorHandler("Service Request not found", 404));
+  if (request.status !== "Offered") return next(new ErrorHandler("Request is not in offered status", 400));
+
+  // Ensure only the target provider can accept
+  if (String(request.targetProvider._id) !== String(req.user._id)) {
+    return next(new ErrorHandler("Not authorized to accept this offer", 403));
+  }
+
+  // Create booking
+  const booking = await Booking.create({
+    requester: request.requester._id,
+    provider: req.user._id,
+    serviceRequest: request._id,
+    status: "Working",
+  });
+
+  // Mark request as working & set provider
+  request.status = "Working";
+  request.serviceProvider = req.user._id;
+  request.eta = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes from now
+  await request.save();
+
+  // Notify requester
+  await sendNotification(
+    request.requester._id,
+    "Offer Accepted",
+    `Your "${request.typeOfWork}" request has been accepted by ${request.targetProvider.firstName} ${request.targetProvider.lastName}`,
+    { requestId: request._id, bookingId: booking._id, type: "offer-accepted" }
+  );
+
+  // Emit socket events for real-time updates
+  io.to(`service-request-${request._id}`).emit("service-request-updated", { requestId: request._id, action: "accepted" });
+  io.emit("booking-updated", { bookingId: booking._id, action: "created" });
+
+  res.status(201).json({ success: true, booking, request });
+});
+
+export const rejectOffer = catchAsyncError(async (req, res, next) => {
+  if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
+
+  const { requestId } = req.params;
+  const request = await ServiceRequest.findById(requestId).populate('requester targetProvider');
+  if (!request) return next(new ErrorHandler("Service Request not found", 404));
+  if (request.status !== "Offered") return next(new ErrorHandler("Request is not in offered status", 400));
+
+  // Ensure only the target provider can reject
+  if (String(request.targetProvider._id) !== String(req.user._id)) {
+    return next(new ErrorHandler("Not authorized to reject this offer", 403));
+  }
+
+  // Reset request to Waiting status and clear target provider
+  request.status = "Waiting";
+  request.targetProvider = null;
+  await request.save();
+
+  // Notify requester
+  await sendNotification(
+    request.requester._id,
+    "Offer Declined",
+    `Your offer for "${request.typeOfWork}" was declined by ${request.targetProvider.firstName} ${request.targetProvider.lastName}`,
+    { requestId: request._id, type: "offer-rejected" }
+  );
+
+  // Emit socket event for real-time updates
+  io.to(`service-request-${request._id}`).emit("service-request-updated", { requestId: request._id, action: "rejected" });
+
+  res.status(200).json({ success: true, request });
 });
 
 export const completeBooking = catchAsyncError(async (req, res, next) => {

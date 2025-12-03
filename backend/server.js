@@ -72,12 +72,13 @@ if (process.env.NODE_ENV !== 'production') {
       try {
         decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
       } catch (jwtError) {
+        console.error("JWT verification error:", jwtError);
         if (jwtError.name === 'TokenExpiredError') {
           return next(new Error("Token expired"));
         } else if (jwtError.name === 'JsonWebTokenError') {
           return next(new Error("Invalid token"));
         } else {
-          return next(new Error("Token verification failed"));
+          return next(new Error(jwtError.message || "Token verification failed"));
         }
       }
 

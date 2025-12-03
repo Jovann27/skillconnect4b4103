@@ -127,6 +127,74 @@
   border-top: 1px solid #e0e0e0;
 }
 
+/* Offered Provider Card */
+.offered-card {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.offered-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.offered-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offered-info h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.25rem;
+}
+
+.offered-info p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+}
+
+.offered-body {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.offered-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.offered-details h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+}
+
+.offered-details p {
+  margin: 0.25rem 0;
+  opacity: 0.9;
+  font-size: 0.9rem;
+}
+
+.offered-details .phone {
+  font-weight: 600;
+}
+
+.offered-details .reviewing-text {
+  font-style: italic;
+  opacity: 0.8;
+}
+
 /* Assigned Provider Card */
 .assigned-card {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

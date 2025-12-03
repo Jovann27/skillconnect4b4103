@@ -11,7 +11,7 @@ const serviceRequestSchema = new mongoose.Schema({
   budget: { type: Number, default: 0 },
   notes: { type: String, default: ""},
   location: { type: { lat: Number, lng: Number }, default: null },
-  status: { type: String, enum: ["Waiting", "Working", "Complete", "Cancelled", "No Longer Available"], default: "Waiting" },
+  status: { type: String, enum: ["Waiting", "Offered", "Working", "Complete", "Cancelled", "No Longer Available"], default: "Waiting" },
   cancellationReason: { type: String, default: "" },
   expiresAt: { type: Date, default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) }, // 24 hours from creation
   serviceProvider: { type: mongoose.Schema.Types.ObjectId, ref: "User" },

@@ -7,6 +7,18 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import socket from '../../utils/socket';
 import './MyService.css';
 
+const maskPhone = (phone) => {
+  if (!phone) return "N/A";
+  return phone.replace(/\d(?=\d{3})/g, "*");
+};
+
+const maskEmail = (email) => {
+  if (!email || !email.includes("@")) return "N/A";
+  const [user, domain] = email.split("@");
+  const maskedUser = user[0] + "*".repeat(Math.max(user.length - 2, 1)) + user.slice(-1);
+  return `${maskedUser}@${domain}`;
+};
+
 const MyService = () => {
   const { user, isAuthorized } = useMainContext();
   const [loading, setLoading] = useState(true);
@@ -84,35 +96,35 @@ const MyService = () => {
   useEffect(() => {
     if (!isAuthorized || !user || user.role !== "Service Provider") return;
 
-    const fetchMatchingRequests = async () => {
+    const loadData = async () => {
       setLoadingRequests(true);
       try {
-        const response = await api.get('/user/matching-requests');
-        if (response.data.success && response.data.requests.length > 0) {
-          // Filter out requests from the current user
-          const filteredRequests = response.data.requests.filter(request => request.requester?._id !== user._id);
-          setCurrentRequests(filteredRequests);
-          setRequestsError('');
-        } else {
-          setCurrentRequests([]);
-          setRequestsError('No matching requests found.');
+        const requestsResponse = await api.get('/user/service-requests');
+
+        let requests = [];
+        if (requestsResponse.data.success) {
+          requests = requestsResponse.data.requests.filter(request => request.requester?._id !== user._id);
         }
+
+        setCurrentRequests(requests);
+        setRequestsError(requests.length === 0 ? 'No matching requests found.' : '');
       } catch (error) {
-        console.log('User ID:', user._id); // Log user ID for debugging
+        console.error('Error loading data:', error);
+        setCurrentRequests([]);
         if (error.response && error.response.status === 403) {
           setRequestsError('Access denied. You must be a Service Provider.');
         } else {
           setRequestsError('No matching requests found.');
         }
-        setCurrentRequests([]);
       } finally {
         setLoadingRequests(false);
       }
     };
-    fetchMatchingRequests();
+
+    loadData();
     socket.on("service-request-updated", (data) => {
       console.log("Service request updated:", data);
-      fetchMatchingRequests();
+      loadData();
     });
     return () => {
       socket.off("service-request-updated");
@@ -128,15 +140,18 @@ const MyService = () => {
           setLocationLoading(false);
         },
         (error) => {
-          // Only log non-critical errors (code 2 is "position unavailable" which is common)
-          // Code 1 = PERMISSION_DENIED, Code 2 = POSITION_UNAVAILABLE, Code 3 = TIMEOUT
-          if (error.code !== 2) {
-            console.warn('Geolocation error:', error.message || `Error code: ${error.code}`);
+          console.error('Error getting location:', error);
+
+          let errorMessage = "Failed to get your location. Please try again.";
+          if (error.message.includes('unavailable')) {
+            errorMessage = "Location services are unavailable. Please check your device settings and try again.";
+          } else if (error.message.includes('timeout')) {
+            errorMessage = "Location request timed out. Please try again.";
+          } else if (error.message.includes('permission')) {
+            errorMessage = "Location permission was denied. Please grant location access.";
           }
-          // Only show toast for permission denied errors
-          if (error.code === 1) {
-            toast.error('Location permission denied. Using default map view.');
-          }
+
+          toast.error(errorMessage);
           setLocationLoading(false);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
@@ -425,26 +440,27 @@ const MyService = () => {
         
         // Refresh requests if going online
         if (newStatus && user && user.role === "Service Provider") {
-          const fetchMatchingRequests = async () => {
+          const loadData = async () => {
             setLoadingRequests(true);
             try {
-              const res = await api.get('/user/matching-requests');
-              if (res.data.success && res.data.requests.length > 0) {
-                const filteredRequests = res.data.requests.filter(request => request.requester?._id !== user._id);
-                setCurrentRequests(filteredRequests);
-                setRequestsError('');
-              } else {
-                setCurrentRequests([]);
-                setRequestsError('No matching requests found.');
+              const requestsResponse = await api.get('/user/service-requests');
+
+              let requests = [];
+              if (requestsResponse.data.success) {
+                requests = requestsResponse.data.requests.filter(request => request.requester?._id !== user._id);
               }
-            } catch (err) {
-              setRequestsError('No matching requests found.');
+
+              setCurrentRequests(requests);
+              setRequestsError(requests.length === 0 ? 'No matching requests found.' : '');
+            } catch (error) {
+              console.error('Error loading data:', error);
               setCurrentRequests([]);
+              setRequestsError('No matching requests found.');
             } finally {
               setLoadingRequests(false);
             }
           };
-          fetchMatchingRequests();
+          loadData();
         } else if (!newStatus) {
           // Clear requests when going offline
           setCurrentRequests([]);
@@ -460,9 +476,19 @@ const MyService = () => {
 
 
 
+  const confirmAccept = (requestId) => {
+    const request = currentRequests.find(req => req._id === requestId);
+    if (!request) return;
+
+    const confirmed = window.confirm(`Are you sure you want to accept ${request.requester?.firstName} ${request.requester?.lastName}'s request for ${request.typeOfWork}?`);
+    if (confirmed) {
+      handleAccept(requestId);
+    }
+  };
+
   const handleAccept = async (requestId) => {
     if (acceptingRequest === requestId) return; // Prevent double-clicks
-    
+
     setAcceptingRequest(requestId);
     try {
       const response = await api.post(`/user/service-request/${requestId}/accept`);
@@ -486,43 +512,15 @@ const MyService = () => {
   };
 
   const handleDecline = async (requestId) => {
-    if (decliningRequest === requestId) return; // Prevent double-clicks
-    
-    setDecliningRequest(requestId);
-    let declinedSuccessfully = false;
-    
-    try {
-      // Try to call decline endpoint if it exists, otherwise just remove locally
-      try {
-        const response = await api.post(`/user/service-request/${requestId}/decline`);
-        if (response.data.success) {
-          declinedSuccessfully = true;
-        }
-      } catch (apiError) {
-        // If endpoint doesn't exist, just remove locally (silent decline)
-        console.log('Decline endpoint not available, removing locally');
-        declinedSuccessfully = true; // Still consider it successful for UI purposes
-      }
-      
-      // Remove from UI regardless
-      setCurrentRequests(prev => prev.filter(req => req._id !== requestId));
-      // Remove marker from map
-      if (clientMarkers.current[requestId]) {
-        clientMarkers.current[requestId].remove();
-        delete clientMarkers.current[requestId];
-      }
-      // Update client locations
-      setClientLocations(prev => prev.filter(loc => loc.requestId !== requestId));
-      
-      if (declinedSuccessfully) {
-        toast.success('Request declined');
-      }
-    } catch (error) {
-      console.error('Failed to decline request:', error);
-      toast.error('Failed to decline request');
-    } finally {
-      setDecliningRequest(null);
+    setCurrentRequests(prev => prev.filter(req => req._id !== requestId));
+    // Remove marker from map
+    if (clientMarkers.current[requestId]) {
+      clientMarkers.current[requestId].remove();
+      delete clientMarkers.current[requestId];
     }
+    // Update client locations
+    setClientLocations(prev => prev.filter(loc => loc.requestId !== requestId));
+    toast.success('Request declined');
   };
 
   const handleSaveService = async () => {
@@ -663,15 +661,16 @@ const MyService = () => {
                     </div>
                     <div className="request-details">
                       <p><strong>Name:</strong> {request.requester?.firstName} {request.requester?.lastName}</p>
-                      <p><strong>Phone:</strong> {request.requester?.phone}</p>
+                      <p><strong>Email:</strong> {maskEmail(request.requester?.email)}</p>
+                      <p><strong>Phone:</strong> {maskPhone(request.requester?.phone)}</p>
                       <p><strong>Service Needed:</strong> {request.typeOfWork}</p>
                       <p><strong>Budget:</strong> ₱{request.budget}</p>
                       <p><strong>Address:</strong> {request.address}</p>
                     </div>
                     <div className="request-actions">
-                      <button 
-                        className="btn-primary" 
-                        onClick={() => handleAccept(request._id)}
+                      <button
+                        className="btn-primary"
+                        onClick={() => confirmAccept(request._id)}
                         disabled={acceptingRequest === request._id || decliningRequest === request._id}
                       >
                         {acceptingRequest === request._id ? 'Accepting...' : 'Accept'}
@@ -723,7 +722,7 @@ const MyService = () => {
         </div>
       </div>
 
-      {showEditModal && (
+      {/* {showEditModal && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -765,7 +764,7 @@ const MyService = () => {
             </div>
           </div>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

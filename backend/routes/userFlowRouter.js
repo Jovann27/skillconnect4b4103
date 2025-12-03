@@ -22,7 +22,9 @@ import {
   getUserServices,
   updateServiceRequest,
   getServiceProviders,
-  notifyProvider,
+  offerToProvider,
+  acceptOffer,
+  rejectOffer,
   reverseGeocode
 } from '../controllers/userFlowController.js';
 import { getServices } from '../controllers/adminFlowController.js';
@@ -210,8 +212,12 @@ router.get('/predefined-services', isUserAuthenticated, isUserVerified, getServi
 // Service Providers route
 router.get('/service-providers', isUserAuthenticated, isUserVerified, getServiceProviders);
 
-// Notify provider route
-router.post('/notify-provider', isUserAuthenticated, isUserVerified, notifyProvider);
+// Offer routes
+router.post('/offer-to-provider', isUserAuthenticated, isUserVerified, offerToProvider);
+router.post('/offer/:requestId/accept', isUserAuthenticated, isUserVerified, acceptOffer);
+router.post('/offer/:requestId/reject', isUserAuthenticated, isUserVerified, rejectOffer);
+
+// Offer routes (notify-provider replaced with offer-to-provider above)
 
 // Reverse geocoding route
 router.get('/reverse-geocode', isUserAuthenticated, isUserVerified, reverseGeocode);

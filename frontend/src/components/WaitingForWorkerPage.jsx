@@ -21,15 +21,20 @@ const WaitingForWorkerPage = ({ requestData }) => {
   const fetchMatchedProviders = async (request) => {
     if (!request || !request.typeOfWork) return;
     try {
-      const response = await api.get('/user/service-providers', {
-        params: {
-          typeOfWork: request.typeOfWork
-        }
-      });
+      const params = {
+        typeOfWork: request.typeOfWork
+      };
+
+      // Include budget if available for better matching
+      if (request.budget && request.budget > 0) {
+        params.budget = request.budget;
+      }
+
+      const response = await api.get('/user/service-providers', { params });
       const matchedProviders = response.data?.workers || [];
       setMatchedProviders(matchedProviders);
-    } catch {
-      console.error("Failed to fetch matched providers");
+    } catch (error) {
+      console.error("Failed to fetch matched providers:", error);
       setMatchedProviders([]);
     }
   };
@@ -69,14 +74,12 @@ const WaitingForWorkerPage = ({ requestData }) => {
 
     setOfferingTo(providerId);
     try {
-      await api.put(`/user/service-request/${currentRequest._id}/update`, { targetProvider: providerId });
-      await api.post('/user/notify-provider', {
+      await api.post('/user/offer-to-provider', {
         providerId,
-        requestId: currentRequest._id,
-        message: `You have a targeted request for "${currentRequest.typeOfWork || 'service'}"`
+        requestId: currentRequest._id
       });
       const providerName = `${selectedProvider.firstName || ''} ${selectedProvider.lastName || ''}`.trim();
-      alert(`Request offered to ${providerName || 'provider'}!`);
+      alert(`Request offered to ${providerName || 'provider'}! Waiting for response...`);
       const refreshResponse = await api.get(`/user/service-request/${currentRequest._id}`);
       if (refreshResponse.data?.request) setCurrentRequest(refreshResponse.data.request);
     } catch (err) {
@@ -110,6 +113,16 @@ const WaitingForWorkerPage = ({ requestData }) => {
                 eta: data.eta,
             });
         }
+      } else if (data.status === "Offered") {
+        setStatus("Offered");
+        if (data.targetProvider) {
+            setWorkerData({
+                name: `${data.targetProvider.firstName} ${data.targetProvider.lastName}`,
+                skill: data.typeOfWork,
+                phone: data.targetProvider.phone,
+                image: data.targetProvider.profilePic || "/default-profile.png",
+            });
+        }
       }
       setIsLoading(false);
     };
@@ -136,7 +149,17 @@ const WaitingForWorkerPage = ({ requestData }) => {
                   eta: updatedRequest.eta,
                 });
               }
-            } else if (updatedRequest.status === "Pending") {
+            } else if (updatedRequest.status === "Offered") {
+              setStatus("Offered");
+              if (updatedRequest.targetProvider) {
+                setWorkerData({
+                  name: `${updatedRequest.targetProvider.firstName || ''} ${updatedRequest.targetProvider.lastName || ''}`.trim(),
+                  skill: updatedRequest.typeOfWork,
+                  phone: updatedRequest.targetProvider.phone,
+                  image: updatedRequest.targetProvider.profilePic || "/default-profile.png",
+                });
+              }
+            } else if (updatedRequest.status === "Waiting") {
               setStatus("Searching");
             }
           }
@@ -268,6 +291,32 @@ const WaitingForWorkerPage = ({ requestData }) => {
 
           {/* CENTER COLUMN - Assigned Provider & Providers List */}
           <div className="center-content">
+
+            {/* Offered Provider */}
+            {status === "Offered" && workerData && (
+              <div className="card offered-card">
+                <div className="offered-header">
+                  <div className="offered-icon">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <div className="offered-info">
+                    <h3>Offer Sent</h3>
+                    <p>Waiting for provider to respond</p>
+                  </div>
+                </div>
+                <div className="offered-body">
+                  <img src={workerData.image} alt={workerData.name} className="offered-image" />
+                  <div className="offered-details">
+                    <h4>{workerData.name}</h4>
+                    <p>{workerData.skill}</p>
+                    <p className="phone">{workerData.phone}</p>
+                    <p className="reviewing-text">Service provider is reviewing your request...</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Assigned Provider */}
             {status === "Found" && workerData && (

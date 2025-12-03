@@ -55,9 +55,10 @@ const initializeSocket = (token) => {
 
     _socket.on("connect_error", (error) => {
         console.warn("Socket connection error:", error.message);
-        if (error.message === "Authentication error" || error.message === "Token verification failed" || error.message === "Invalid token" || error.message === "Token expired") {
+        if (error.message === "Authentication error" || error.message === "Token verification failed" || error.message === "Invalid token" || error.message === "Token expired" || error.message === "No token provided" || error.message === "Not a user token" || error.message === "User not found" || error.message === "Account is banned") {
             _socket.disconnect();
             _socket = null;
+            localStorage.removeItem("token");
         }
     });
 
