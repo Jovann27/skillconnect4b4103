@@ -15,13 +15,22 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { bookingAPI } from "../api";
+import ReceiptModal from "../components/ReceiptModal";
+import { useMainContext } from "../contexts/MainContext";
 
 export default function ClientAccepted({ route, navigation }) {
-  const { client, orderStatus = "PENDING", bookingId } = route.params || {}; // default status
+  const { client, orderStatus = "PENDING", bookingId, request } = route.params || {}; // default status
+  const { user } = useMainContext();
   const [worker, setWorker] = useState(null);
   const [comment, setComment] = useState("");
   const [media, setMedia] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+
+  // Determine user role and completion status
+  const isProvider = request?.serviceProvider?._id === user._id;
+  const isRequester = request?.requester?._id === user._id;
+  const isCompleted = request?.status === "Completed";
 
   useEffect(() => {
     const loadWorker = async () => {
@@ -97,7 +106,8 @@ export default function ClientAccepted({ route, navigation }) {
       const response = await bookingAPI.completeBooking(bookingId, formData);
       if (response.data.success) {
         Alert.alert("Success", "Proof of work submitted successfully!");
-        navigation.goBack();
+        // Show receipt modal after successful completion
+        setShowReceiptModal(true);
       } else {
         Alert.alert("Error", "Failed to submit proof of work.");
       }
@@ -109,132 +119,190 @@ export default function ClientAccepted({ route, navigation }) {
     }
   };
 
+  // If request is completed, show receipt modal directly
+  if (isCompleted) {
+    return (
+      <ReceiptModal
+        request={request}
+        isOpen={true}
+        onClose={() => navigation.goBack()}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f2f2f8" }}>
+      {/* Receipt Modal */}
+      {showReceiptModal && (
+        <ReceiptModal
+          request={request}
+          isOpen={showReceiptModal}
+          onClose={() => {
+            setShowReceiptModal(false);
+            navigation.goBack();
+          }}
+        />
+      )}
+
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 140 }} // space for footer
       >
-        {/* Worker Info Card */}
-        <View style={styles.section}>
-          <View style={styles.card}>
-            <View style={styles.profileRow}>
-              <Image
-                source={worker?.photo ? { uri: worker.photo } : require("../assets/default-profile.png")}
-                style={styles.avatar}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{worker?.name || "Darlene Faith"}</Text>
-                <Text style={styles.info}>
-                  <Text style={{ fontWeight: "600" }}>Service: </Text>
-                  {worker?.service || "Plumber"}
+        {/* Conditional Content Based on User Role */}
+        {isProvider ? (
+          /* Provider View: Proof of Work Form */
+          <>
+            {/* Worker Info Card */}
+            <View style={styles.section}>
+              <View style={styles.card}>
+                <View style={styles.profileRow}>
+                  <Image
+                    source={worker?.photo ? { uri: worker.photo } : require("../assets/default-profile.png")}
+                    style={styles.avatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name}>{worker?.name || "Darlene Faith"}</Text>
+                    <Text style={styles.info}>
+                      <Text style={{ fontWeight: "600" }}>Service: </Text>
+                      {worker?.service || "Plumber"}
+                    </Text>
+                    <Text style={styles.info}>
+                      <Text style={{ fontWeight: "600" }}>Rate: </Text>₱{worker?.rate || "300"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Client Info Card */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Client Details</Text>
+              <View style={styles.card}>
+                <View style={styles.profileRow}>
+                  <Image
+                    source={client?.photo ? { uri: client.photo } : require("../assets/default-profile.png")}
+                    style={styles.avatar}
+                  />
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Text style={styles.name}>{client?.name || "Juan Dela Cruz"}</Text>
+                    <Text style={styles.info}>{client?.email || "juan@gmail.com"}</Text>
+                    <Text style={styles.info}>{client?.phone || "09123456789"}</Text>
+                  </View>
+
+                  {/* Chat & Call Buttons */}
+                  <View style={styles.buttonContainer}>
+                    <TouchableOpacity style={[styles.iconButton, styles.callButton]} onPress={handleCall}>
+                      <Ionicons name="call-outline" size={20} color="#2E7D32" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.iconButton, styles.chatButton]} onPress={handleChat}>
+                      <Ionicons name="chatbox-ellipses-outline" size={20} color="#C2185B" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                {/* Service Details */}
+                <Detail icon="briefcase-outline" label="Service Needed" value={client?.service || "Yapperist"} />
+                <Detail icon="cash-outline" label="Budget" value={`₱${client?.budget || "300"}`} />
+                <Detail icon="calendar-outline" label="Date Required" value={client?.date || "10-18-2025"} />
+                <Detail icon="time-outline" label="Preferred Time" value={client?.time || "9:00AM - 12:00PM"} />
+                <Detail icon="location-outline" label="Location" value={client?.location || "Barangay 1, City"} />
+
+                <View style={styles.divider} />
+
+                <Detail icon="trending-up-outline" label="Estimated Cost" value="₱350" />
+                <Detail icon="cash-outline" label="Match Rate" value={`₱${worker?.matchRate || "300"}`} />
+
+                <View style={styles.noteBox}>
+                  <Text style={styles.noteLabel}>Note</Text>
+                  <Text style={styles.noteText}>
+                    {client?.note || "Please arrive 10 minutes early and bring your tools."}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Proof of Work Upload */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Upload Proof of Work</Text>
+              <View style={styles.card}>
+                <Text style={styles.requiredText}>
+                  Please upload proof of work before completing the job.
                 </Text>
-                <Text style={styles.info}>
-                  <Text style={{ fontWeight: "600" }}>Rate: </Text>₱{worker?.rate || "300"}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
 
-        {/* Client Info Card */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Client Details</Text>
-          <View style={styles.card}>
-            <View style={styles.profileRow}>
-              <Image
-                source={client?.photo ? { uri: client.photo } : require("../assets/default-profile.png")}
-                style={styles.avatar}
-              />
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={styles.name}>{client?.name || "Juan Dela Cruz"}</Text>
-                <Text style={styles.info}>{client?.email || "juan@gmail.com"}</Text>
-                <Text style={styles.info}>{client?.phone || "09123456789"}</Text>
-              </View>
-
-              {/* Chat & Call Buttons */}
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity style={[styles.iconButton, styles.callButton]} onPress={handleCall}>
-                  <Ionicons name="call-outline" size={20} color="#2E7D32" />
+                <TouchableOpacity style={styles.uploadButton} onPress={pickMedia}>
+                  <Ionicons name="cloud-upload-outline" size={24} color="#c20884" />
+                  <Text style={styles.uploadText}>Attach Photos/Videos</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.iconButton, styles.chatButton]} onPress={handleChat}>
-                  <Ionicons name="chatbox-ellipses-outline" size={20} color="#C2185B" />
-                </TouchableOpacity>
+
+                {media.length > 0 && (
+                  <ScrollView horizontal style={{ marginTop: 10 }}>
+                    {media.map((item, idx) => (
+                      <Image key={idx} source={{ uri: item.uri }} style={styles.mediaPreview} />
+                    ))}
+                  </ScrollView>
+                )}
+
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="Add comment (optional)"
+                  multiline
+                  value={comment}
+                  onChangeText={setComment}
+                />
               </View>
             </View>
-
-            <View style={styles.divider} />
-
-            {/* Service Details */}
-            <Detail icon="briefcase-outline" label="Service Needed" value={client?.service || "Yapperist"} />
-            <Detail icon="cash-outline" label="Budget" value={`₱${client?.budget || "300"}`} />
-            <Detail icon="calendar-outline" label="Date Required" value={client?.date || "10-18-2025"} />
-            <Detail icon="time-outline" label="Preferred Time" value={client?.time || "9:00AM - 12:00PM"} />
-            <Detail icon="location-outline" label="Location" value={client?.location || "Barangay 1, City"} />
-
-            <View style={styles.divider} />
-
-            <Detail icon="trending-up-outline" label="Estimated Cost" value="₱350" />
-            <Detail icon="cash-outline" label="Match Rate" value={`₱${worker?.matchRate || "300"}`} />
-
-            <View style={styles.noteBox}>
-              <Text style={styles.noteLabel}>Note</Text>
-              <Text style={styles.noteText}>
-                {client?.note || "Please arrive 10 minutes early and bring your tools."}
-              </Text>
+          </>
+        ) : isRequester ? (
+          /* Requester View: Service Completed */
+          <>
+            {/* Service Completed Section */}
+            <View style={styles.section}>
+              <View style={styles.card}>
+                <View style={styles.completedContent}>
+                  <Ionicons name="checkmark-circle" size={60} color="#28a745" />
+                  <Text style={styles.completedTitle}>Service Completed</Text>
+                  <Text style={styles.completedMessage}>
+                    Your service request has been completed. How was your experience?
+                  </Text>
+                  <TouchableOpacity style={styles.reviewButton}>
+                    <Ionicons name="star" size={20} color="#fff" />
+                    <Text style={styles.reviewButtonText}>Give Review</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </>
+        ) : (
+          /* Fallback View */
+          <View style={styles.section}>
+            <View style={styles.card}>
+              <Text style={styles.loadingText}>Loading service information...</Text>
             </View>
           </View>
-        </View>
-
-        {/* Proof of Work Upload */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Upload Proof of Work</Text>
-          <View style={styles.card}>
-            <Text style={styles.requiredText}>
-              Please upload proof of work before completing the job.
-            </Text>
-
-            <TouchableOpacity style={styles.uploadButton} onPress={pickMedia}>
-              <Ionicons name="cloud-upload-outline" size={24} color="#c20884" />
-              <Text style={styles.uploadText}>Attach Photos/Videos</Text>
-            </TouchableOpacity>
-
-            {media.length > 0 && (
-              <ScrollView horizontal style={{ marginTop: 10 }}>
-                {media.map((item, idx) => (
-                  <Image key={idx} source={{ uri: item.uri }} style={styles.mediaPreview} />
-                ))}
-              </ScrollView>
-            )}
-
-            <TextInput
-              style={styles.commentInput}
-              placeholder="Add comment (optional)"
-              multiline
-              value={comment}
-              onChangeText={setComment}
-            />
-          </View>
-        </View>
+        )}
       </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
-        {orderStatus === "PENDING" || orderStatus === "ACCEPTED" ? (
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelText}>Cancel Order</Text>
-          </TouchableOpacity>
-        ) : orderStatus === "IN_PROGRESS" ? (
-          <TouchableOpacity
-            style={[styles.submitButton, loading && styles.disabledButton]}
-            onPress={handleSubmitProof}
-            disabled={loading}
-          >
-            <Text style={styles.submitText}>
-              {loading ? "Submitting..." : "Submit Proof"}
-            </Text>
-          </TouchableOpacity>
+        {isProvider ? (
+          orderStatus === "PENDING" || orderStatus === "ACCEPTED" ? (
+            <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+              <Text style={styles.cancelText}>Cancel Order</Text>
+            </TouchableOpacity>
+          ) : orderStatus === "IN_PROGRESS" ? (
+            <TouchableOpacity
+              style={[styles.submitButton, loading && styles.disabledButton]}
+              onPress={handleSubmitProof}
+              disabled={loading}
+            >
+              <Text style={styles.submitText}>
+                {loading ? "Submitting..." : "Submit Proof"}
+              </Text>
+            </TouchableOpacity>
+          ) : null
         ) : null}
       </View>
     </SafeAreaView>
@@ -309,4 +377,46 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   cancelText: { fontSize: 16, fontWeight: "600", color: "#fff" },
+  // Completed content styles
+  completedContent: {
+    alignItems: "center",
+    paddingVertical: 40,
+  },
+  completedTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#28a745",
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  completedMessage: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    lineHeight: 24,
+    marginBottom: 30,
+  },
+  reviewButton: {
+    backgroundColor: "#ffc107",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    gap: 8,
+  },
+  reviewButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#666",
+    textAlign: "center",
+    paddingVertical: 40,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
 });
