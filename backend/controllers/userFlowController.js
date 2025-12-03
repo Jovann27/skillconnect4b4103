@@ -226,6 +226,9 @@ export const leaveReview = catchAsyncError(async (req, res, next) => {
 export const getServiceRequests = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
+  // Check if we should show all requests
+  const showAll = req.query.showAll === 'true';
+
   // Get provider's details for matching
   const provider = await User.findById(req.user._id);
   if (!provider || provider.role !== "Service Provider") {
@@ -233,17 +236,13 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
   }
 
   // Check if provider is online (using isOnline instead of availability)
-  if (!provider.isOnline) {
+  if (!provider.isOnline && !showAll) {
     return res.status(200).json({
       success: true,
       requests: [],
       message: "You are currently offline and cannot receive new requests."
     });
   }
-
-  const providerSkills = provider.skills || [];
-  const providerRate = provider.serviceRate || 0;
-  const rateTolerance = 200; // Allow ±200 peso tolerance for budget matching
 
   // Get all active waiting requests (filter out expired ones)
   const activeRequestsFilter = getActiveRequestsFilter();
@@ -263,67 +262,112 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-  // Filter requests based on provider's skills and rate (more lenient matching)
-  let filteredRequests = allRequests.filter(request => {
-    // Service/Skill Match: Check if provider's skills match the requested service
-    const skillMatch = providerSkills.length > 0
-      ? providerSkills.some(skill =>
-          request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
-          skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
-        )
-      : true; // If provider has no skills listed, show all requests
+  let finalRequests = allRequests;
 
-    // Rate Match: Check if request budget is within provider's rate tolerance
-    const rateMatch = (() => {
-      if (!request.budget || !providerRate) return true; // If no budget specified, consider it a match
-      const minRate = Math.max(0, providerRate - rateTolerance);
-      const maxRate = providerRate + rateTolerance;
-      return request.budget >= minRate && request.budget <= maxRate;
-    })();
+  if (!showAll) {
+    const providerSkills = provider.skills || [];
+    const providerRate = provider.serviceRate || 0;
+    const rateTolerance = 200; // Allow ±200 peso tolerance for budget matching
 
-    return skillMatch && rateMatch;
-  });
+    // Get provider's current location from query params
+    const providerLat = req.query.lat ? parseFloat(req.query.lat) : null;
+    const providerLng = req.query.lng ? parseFloat(req.query.lng) : null;
+    const maxDistanceKm = 3; // Maximum distance in kilometers for location matching
 
-  // Also include requests specifically targeted to this provider (bypass normal matching)
-  const targetedRequests = await ServiceRequest.find({
-    status: "Waiting",
-    targetProvider: req.user._id
-  })
-  .populate({
-    path: 'requester',
-    select: 'firstName lastName username email phone',
-    model: 'User'
-  })
-  .populate({
-    path: 'serviceProvider',
-    select: 'firstName lastName username email phone serviceRate',
-    model: 'User'
-  })
-  .sort({ createdAt: -1 });
+    // Helper function to calculate distance between two coordinates
+    const calculateDistance = (lat1, lng1, lat2, lng2) => {
+      const R = 6371; // Earth's radius in kilometers
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a =
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
 
-  // Combine filtered requests with targeted requests (avoid duplicates)
-  const targetedIds = targetedRequests.map(r => r._id.toString());
-  const finalRequests = [
-    ...targetedRequests,
-    ...filteredRequests.filter(r => !targetedIds.includes(r._id.toString()))
-  ];
+    // Filter requests based on provider's skills, rate, and location (more lenient matching)
+    let filteredRequests = allRequests.filter(request => {
+      // Service/Skill Match: Check if provider's skills match the requested service
+      const skillMatch = providerSkills.length > 0
+        ? providerSkills.some(skill =>
+            request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+            skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+          )
+        : true; // If provider has no skills listed, show all requests
+
+      // Rate Match: Check if request budget is within provider's rate tolerance
+      const rateMatch = (() => {
+        if (!request.budget || !providerRate) return true; // If no budget specified, consider it a match
+        const minRate = Math.max(0, providerRate - rateTolerance);
+        const maxRate = providerRate + rateTolerance;
+        return request.budget >= minRate && request.budget <= maxRate;
+      })();
+
+      // Location Match: Check if request location is within maximum distance
+      const locationMatch = (() => {
+        if (!providerLat || !providerLng || !request.location || !request.location.lat || !request.location.lng) {
+          return true; // If no location data available, consider it a match
+        }
+        const distance = calculateDistance(providerLat, providerLng, request.location.lat, request.location.lng);
+        return distance <= maxDistanceKm;
+      })();
+
+      return skillMatch && rateMatch && locationMatch;
+    });
+
+    // Also include requests specifically targeted to this provider (bypass normal matching)
+    const targetedRequests = await ServiceRequest.find({
+      status: "Waiting",
+      targetProvider: req.user._id
+    })
+    .populate({
+      path: 'requester',
+      select: 'firstName lastName username email phone',
+      model: 'User'
+    })
+    .populate({
+      path: 'serviceProvider',
+      select: 'firstName lastName username email phone serviceRate',
+      model: 'User'
+    })
+    .sort({ createdAt: -1 });
+
+    // Combine filtered requests with targeted requests (avoid duplicates)
+    const targetedIds = targetedRequests.map(r => r._id.toString());
+    finalRequests = [
+      ...targetedRequests,
+      ...filteredRequests.filter(r => !targetedIds.includes(r._id.toString()))
+    ];
+  }
 
   res.status(200).json({
     success: true,
     requests: finalRequests,
-    debug: {
+    debug: showAll ? {
+      totalRequests: finalRequests.length,
+      showAll: true,
+      message: "Showing all available requests in database"
+    } : {
       totalRequests: finalRequests.length,
       allWaitingRequests: allRequests.length,
-      filteredRequests: filteredRequests.length,
-      targetedRequests: targetedRequests.length,
+      filteredRequests: finalRequests.length,
+      targetedRequests: 0,
       userId: req.user._id,
       userRole: req.user.role,
-      userSkills: providerSkills,
-      providerRate,
+      userSkills: provider.skills || [],
+      providerRate: provider.serviceRate || 0,
+      availability: provider.isOnline ? "Available" : "Offline",
       isOnline: provider.isOnline,
+      providerLocation: {
+        lat: req.query.lat || null,
+        lng: req.query.lng || null
+      },
+      maxDistanceKm: 3,
       budgetRange: {
-        minRate: Math.max(0, providerRate - rateTolerance),
-        maxRate: providerRate + rateTolerance
+        minRate: Math.max(0, (provider.serviceRate || 0) - 200),
+        maxRate: (provider.serviceRate || 0) + 200
       },
       sampleRequester: finalRequests[0]?.requester || null
     }
@@ -496,6 +540,18 @@ export const updateServiceProfile = catchAsyncError(async (req, res, next) => {
   user.serviceRate = rate || user.serviceRate;
   user.serviceDescription = description || user.serviceDescription;
 
+  // Update skills array to include the selected service for matching
+  if (service) {
+    // Initialize skills array if it doesn't exist
+    if (!user.skills) {
+      user.skills = [];
+    }
+    // Add the service to skills if not already present
+    if (!user.skills.includes(service)) {
+      user.skills.push(service);
+    }
+  }
+
   await user.save();
 
   res.status(200).json({ success: true, message: "Service profile updated", data: { service, rate, description } });
@@ -530,6 +586,11 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
   // Get the selected service from query parameters
   const selectedService = req.query.service || "";
 
+  // Get provider's current location from query parameters
+  const providerLat = req.query.lat ? parseFloat(req.query.lat) : null;
+  const providerLng = req.query.lng ? parseFloat(req.query.lng) : null;
+  const maxDistanceKm = 5; // Maximum distance in kilometers for location matching
+
   // Get provider's service information
   const providerService = provider.service || "";
   const providerSkills = provider.skills || [];
@@ -556,7 +617,20 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-  // Filter requests based on provider's skills and rate (more lenient matching)
+  // Helper function to calculate distance between two coordinates
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Filter requests based on provider's skills, rate, and location
   let matchingRequests = allRequests.filter(request => {
     // Service/Skill Match: Check if provider's skills match the requested service
     const skillMatch = providerSkills.length > 0
@@ -574,7 +648,16 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
       return request.budget >= minRate && request.budget <= maxRate;
     })();
 
-    return skillMatch && rateMatch;
+    // Location Match: Check if request location is within maximum distance
+    const locationMatch = (() => {
+      if (!providerLat || !providerLng || !request.location || !request.location.lat || !request.location.lng) {
+        return true; // If no location data available, consider it a match
+      }
+      const distance = calculateDistance(providerLat, providerLng, request.location.lat, request.location.lng);
+      return distance <= maxDistanceKm;
+    })();
+
+    return skillMatch && rateMatch && locationMatch;
   });
 
   // Also include requests specifically targeted to this provider (only if they match the selected service or no service is selected)
@@ -615,7 +698,17 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
       providerService,
       providerSkills,
       providerRate,
-      providerAvailability,
+      availability: provider.isOnline ? "Available" : "Offline",
+      isOnline: provider.isOnline,
+      providerLocation: {
+        lat: providerLat,
+        lng: providerLng
+      },
+      maxDistanceKm,
+      budgetRange: {
+        minRate: Math.max(0, providerRate - rateTolerance),
+        maxRate: providerRate + rateTolerance
+      },
       message: selectedService ? `Returning requests filtered by service: ${selectedService}` : "Returning all matching requests"
     }
   });
@@ -1004,12 +1097,14 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
     // 1. Skills listed (at least one skill)
     // 2. Service description
     // 3. Service rate set
+    // 4. Exclude current user
     workers = workers.filter(provider => {
       const hasSkills = provider.skills && Array.isArray(provider.skills) && provider.skills.length > 0;
       const hasServiceDescription = provider.serviceDescription && provider.serviceDescription.trim().length > 0;
       const hasServiceRate = provider.serviceRate && provider.serviceRate > 0;
+      const isNotCurrentUser = String(provider._id) !== String(req.user._id);
 
-      return hasSkills && hasServiceDescription && hasServiceRate;
+      return hasSkills && hasServiceDescription && hasServiceRate && isNotCurrentUser;
     });
 
     res.json({ success: true, count: workers.length, workers });
@@ -1034,7 +1129,7 @@ export const offerToProvider = catchAsyncError(async (req, res, next) => {
     if (!request) {
       return next(new ErrorHandler("Request not found", 404));
     }
-    if (String(request.requester) !== String(req.user._id)) {
+    if (String(request.requester) !== String(req.user._id) && req.user.role !== "admin") {
       return next(new ErrorHandler("Not authorized", 403));
     }
     if (request.status !== "Waiting") {

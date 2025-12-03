@@ -30,7 +30,7 @@ let onlineUsers = null;
 if (process.env.NODE_ENV !== 'production') {
   const { Server } = await import("socket.io");
   const http = await import("http");
-  const jwt = await import("jsonwebtoken");
+  const jwt = (await import("jsonwebtoken")).default;
   const User = (await import("./models/userSchema.js")).default;
   const Chat = (await import("./models/chat.js")).default;
   const Booking = (await import("./models/booking.js")).default;

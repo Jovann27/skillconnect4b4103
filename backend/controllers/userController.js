@@ -194,11 +194,17 @@ export const login = catchAsyncError(async (req, res, next) => {
   const { email, password } = req.body;
   if (!email || !password) return next(new ErrorHandler("Please fill up all fields", 400));
 
-  const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
-  if (!user) return next(new ErrorHandler("Invalid email or password!", 400));
+  // Check if input is email or username
+  const isEmail = email.includes('@');
+  const query = isEmail
+    ? { email: email.toLowerCase() }
+    : { username: email };
+
+  const user = await User.findOne(query).select("+password");
+  if (!user) return next(new ErrorHandler("Invalid email/username or password!", 400));
 
   const isPasswordMatched = await user.comparePassword(password);
-  if (!isPasswordMatched) return next(new ErrorHandler("Invalid email or password!", 400));
+  if (!isPasswordMatched) return next(new ErrorHandler("Invalid email/username or password!", 400));
 
   if (user.banned) return next(new ErrorHandler("Account is banned", 403));
 

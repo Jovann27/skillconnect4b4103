@@ -93,21 +93,76 @@ const MyService = () => {
     fetchServiceData();
   }, [user, isAuthorized]);
 
+  // Helper function to calculate distance between two coordinates in kilometers
+  const calculateDistance = (lat1, lng1, lat2, lng2) => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a =
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
   useEffect(() => {
     if (!isAuthorized || !user || user.role !== "Service Provider") return;
 
     const loadData = async () => {
       setLoadingRequests(true);
       try {
-        const requestsResponse = await api.get('/user/service-requests');
+        // Send current location for proximity matching
+        const params = { showAll: true };
+        if (userLocation) {
+          params.lat = userLocation.lat;
+          params.lng = userLocation.lng;
+        }
+
+        const requestsResponse = await api.get('/user/service-requests', { params });
 
         let requests = [];
         if (requestsResponse.data.success) {
           requests = requestsResponse.data.requests.filter(request => request.requester?._id !== user._id);
         }
 
-        setCurrentRequests(requests);
-        setRequestsError(requests.length === 0 ? 'No matching requests found.' : '');
+        // Apply client-side filtering based on matching criteria
+        const filteredRequests = requests.filter(request => {
+          // Budget and rate match (within ±200 peso tolerance)
+          const budgetMatch = (() => {
+            if (!request.budget || !formData.rate) return false;
+            const tolerance = 200;
+            const rateDiff = Math.abs(request.budget - parseFloat(formData.rate));
+            return rateDiff <= tolerance;
+          })();
+
+          // Services match (provider's skills include the requested service)
+          const serviceMatch = (() => {
+            if (!user.skills || user.skills.length === 0 || !request.typeOfWork) return false;
+            return user.skills.some(skill =>
+              request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+              skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+            );
+          })();
+
+          // Location match (within 5km radius)
+          const locationMatch = (() => {
+            if (!userLocation || !request.location || !request.location.lat || !request.location.lng) return false;
+            const distance = calculateDistance(
+              userLocation.lat,
+              userLocation.lng,
+              request.location.lat,
+              request.location.lng
+            );
+            return distance <= 5; // 5km radius
+          })();
+
+          // Show request if it matches ANY of the criteria
+          return budgetMatch || serviceMatch || locationMatch;
+        });
+
+        setCurrentRequests(filteredRequests);
+        setRequestsError(filteredRequests.length === 0 ? 'No matching requests found.' : '');
       } catch (error) {
         console.error('Error loading data:', error);
         setCurrentRequests([]);
@@ -129,7 +184,7 @@ const MyService = () => {
     return () => {
       socket.off("service-request-updated");
     };
-  }, [user, isAuthorized]);
+  }, [user, isAuthorized, userLocation]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -443,15 +498,57 @@ const MyService = () => {
           const loadData = async () => {
             setLoadingRequests(true);
             try {
-              const requestsResponse = await api.get('/user/service-requests');
+              // Send current location for proximity matching
+              const params = { showAll: true };
+              if (userLocation) {
+                params.lat = userLocation.lat;
+                params.lng = userLocation.lng;
+              }
+
+              const requestsResponse = await api.get('/user/service-requests', { params });
 
               let requests = [];
               if (requestsResponse.data.success) {
                 requests = requestsResponse.data.requests.filter(request => request.requester?._id !== user._id);
               }
 
-              setCurrentRequests(requests);
-              setRequestsError(requests.length === 0 ? 'No matching requests found.' : '');
+              // Apply client-side filtering based on matching criteria
+              const filteredRequests = requests.filter(request => {
+                // Budget and rate match (within ±200 peso tolerance)
+                const budgetMatch = (() => {
+                  if (!request.budget || !formData.rate) return false;
+                  const tolerance = 200;
+                  const rateDiff = Math.abs(request.budget - parseFloat(formData.rate));
+                  return rateDiff <= tolerance;
+                })();
+
+                // Services match (provider's skills include the requested service)
+                const serviceMatch = (() => {
+                  if (!user.skills || user.skills.length === 0 || !request.typeOfWork) return false;
+                  return user.skills.some(skill =>
+                    request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+                    skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+                  );
+                })();
+
+                // Location match (within 5km radius)
+                const locationMatch = (() => {
+                  if (!userLocation || !request.location || !request.location.lat || !request.location.lng) return false;
+                  const distance = calculateDistance(
+                    userLocation.lat,
+                    userLocation.lng,
+                    request.location.lat,
+                    request.location.lng
+                  );
+                  return distance <= 5; // 5km radius
+                })();
+
+                // Show request if it matches ANY of the criteria
+                return budgetMatch || serviceMatch || locationMatch;
+              });
+
+              setCurrentRequests(filteredRequests);
+              setRequestsError(filteredRequests.length === 0 ? 'No matching requests found.' : '');
             } catch (error) {
               console.error('Error loading data:', error);
               setCurrentRequests([]);
@@ -652,7 +749,7 @@ const MyService = () => {
               </div>
             ) : currentRequests.length > 0 ? (
               <div className="requests-list">
-                <h4>Matching Requests ({currentRequests.length})</h4>
+                <h4>All Available Requests ({currentRequests.length})</h4>
                 {currentRequests.map((request) => (
                   <div key={request._id} className="request-card">
                     <div className="request-header">
@@ -689,7 +786,7 @@ const MyService = () => {
               </div>
             ) : (
               <div className="no-requests">
-                <p>{requestsError || 'No matching requests found. Requests will appear here when a client\'s budget matches your service rate.'}</p>
+                <p>{requestsError || 'No matching requests found. Requests will appear here when a client\'s budget matches your service rate and they are within your service area.'}</p>
               </div>
             )}
             <div className="orders-note">

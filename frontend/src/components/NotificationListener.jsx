@@ -1,8 +1,11 @@
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import socket from "../utils/socket";
 import { toast } from "react-toastify";
 
 export default function NotificationListener({ user }) {
+    const navigate = useNavigate();
+
     useEffect(() => {
         if(!user?._id) return;
 
@@ -14,21 +17,39 @@ export default function NotificationListener({ user }) {
         }
 
         socket.on("new-notification", (data) => {
-            toast.info(`${data.title}: ${data.message}`, {
+            // Check if this is a service request notification for service providers
+            const isServiceRequestNotification = data.type === "service_request" || data.title?.toLowerCase().includes("service request");
+
+            const toastOptions = {
                 position: "top-right",
                 autoClose: 5000,
                 hideProgressBar: false,
                 closeOnClick: true,
                 pauseOnHover: true,
                 draggable: true,
-            });
+            };
+
+            // Add navigation for service request notifications to service providers
+            if (isServiceRequestNotification && user?.role === "Service Provider") {
+                toastOptions.onClick = () => navigate("/user/clients");
+            }
+
+            toast.info(`${data.title}: ${data.message}`, toastOptions);
 
             // Show browser notification if permission granted
             if (Notification.permission === 'granted') {
-                new Notification(data.title, {
+                const browserNotification = new Notification(data.title, {
                     body: data.message,
                     icon: '/skillconnect.png', // Assuming there's an icon in public folder
                 });
+
+                // Add click handler for browser notification too
+                if (isServiceRequestNotification && user?.role === "Service Provider") {
+                    browserNotification.onclick = () => {
+                        window.focus();
+                        navigate("/user/clients");
+                    };
+                }
             }
         });
 
@@ -102,7 +123,7 @@ export default function NotificationListener({ user }) {
             socket.off("service-request-updated");
             socket.off("request-accepted");
         };
-    }, [user]);
+    }, [user, navigate]);
 
     return null;
 }

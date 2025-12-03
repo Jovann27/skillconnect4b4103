@@ -38,7 +38,7 @@ export default function Login({ navigation }) {
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Email address and password are required.");
+      Alert.alert("Error", "Email/username and password are required.");
       return;
     }
 
@@ -81,13 +81,13 @@ export default function Login({ navigation }) {
         <Text style={styles.title}>Welcome Back!</Text>
         <Text style={styles.subTitle}>Sign in to your account</Text>
 
-        {/* Email */}
+        {/* Email or Username */}
         <TextInput
           style={styles.input}
-          placeholder="Enter your email address"
+          placeholder="Enter your email or username"
           value={email}
           onChangeText={setEmail}
-          keyboardType="email-address"
+          keyboardType="default"
           autoCapitalize="none"
         />
 

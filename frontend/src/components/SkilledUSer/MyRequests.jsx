@@ -87,6 +87,8 @@ const MyRequests = ({
 
     if (normalized === "Available") {
       navigate('/user/waiting-for-worker', { state: { requestData: request } });
+    } else if (normalized === "Working") {
+      navigate('/user/accepted-order', { state: { requestData: request } });
     } else {
       handleRequestClick(request);
     }

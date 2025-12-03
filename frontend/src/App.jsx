@@ -51,10 +51,10 @@ import UserWorkRecord from "./components/SkilledUSer/UserRecords";
 import UserRequest from "./components/SkilledUSer/UsersRequest";
 import ManageProfile from "./components/SkilledUSer/ManageProfile";
 import WaitingForWorkerPage from "./components/WaitingForWorkerPage";
-import AcceptedOrderPage from "./components/AcceptedOrderPage";
 import AcceptedRequest from "./components/SkilledUSer/AcceptedRequest";
 import ClientAccepted from "./components/SkilledUSer/ClientAccepted";
-import AcceptedOrderWeb from "./components/SkilledUSer/AcceptedOrderWeb";
+import AcceptedOrderPage from "./components/SkilledUSer/AcceptedOrderPage";
+import Clients from "./components/SkilledUSer/Clients";
 import Settings from "./components/SkilledUSer/Settings";
 import VerificationPending from "./components/VerificationPending";
 import AccountBanned from "./components/AccountBanned";
@@ -276,6 +276,14 @@ const AppContent = () => {
             element={
               <RoleGuard allowedRoles={["Service Provider"]}>
                 <ClientAccepted />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="clients"
+            element={
+              <RoleGuard allowedRoles={["Service Provider"]}>
+                <Clients />
               </RoleGuard>
             }
           />

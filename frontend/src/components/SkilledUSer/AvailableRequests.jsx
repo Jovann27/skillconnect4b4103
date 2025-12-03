@@ -40,7 +40,7 @@ const AvailableRequests = ({ searchTerm, filterStatus, filterServiceType, filter
       return false;
     }
 
-    const isAvailableRequest = request.status === "Available" || request.status === "Waiting" || request.status === "Open";
+    const isAvailableRequest = request.status === "Waiting";
     if (!isAvailableRequest) return false;
 
     // Exclude current user's own requests

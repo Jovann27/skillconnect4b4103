@@ -26,9 +26,9 @@ const Login = () => {
     let error = "";
     if (name === "email") {
       if (!value) {
-        error = "Email is required";
-      } else if (!/\S+@\S+\.\S+/.test(value)) {
-        error = "Please enter a valid email address";
+        error = "Email or username is required";
+      } else if (!/\S+@\S+\.\S+/.test(value) && !/^[a-zA-Z0-9_]{3,20}$/.test(value)) {
+        error = "Please enter a valid email address or username (3-20 characters, letters/numbers/underscore only)";
       }
     } else if (name === "password") {
       if (!value) {
@@ -215,20 +215,20 @@ const Login = () => {
             <form className="login-form" onSubmit={handleLogin}>
               <div className="form-group">
                 <label htmlFor="email" className="form-label">
-                  Email Address
+                  Email or Username
                 </label>
                 <div className="input-wrapper">
                   <input
-                    type="email"
+                    type="text"
                     id="email"
                     name="email"
-                    placeholder="your.email@example.com"
+                    placeholder="your.email@example.com or username"
                     value={formData.email}
                     onChange={handleInputChange}
                     onBlur={handleBlur}
                     className={`form-input ${getFieldStatus('email')}`}
                     disabled={isLoading}
-                    autoComplete="email"
+                    autoComplete="username"
                     aria-invalid={!!errors.email}
                     aria-describedby={errors.email ? "email-error" : "email-help"}
                   />
@@ -250,7 +250,7 @@ const Login = () => {
                   </p>
                 ) : (
                   <p id="email-help" className="field-help-text">
-                    Enter the email address you used to register
+                    Enter your email address or username
                   </p>
                 )}
               </div>

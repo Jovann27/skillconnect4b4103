@@ -42,9 +42,9 @@ export const createReview = catchAsyncError(async (req, res, next) => {
   }
 
   // Determine who is being reviewed (the other party in the booking)
-  const revieweeId = booking.client.toString() === reviewerId.toString()
-    ? booking.worker
-    : booking.client;
+  const revieweeId = booking.requester.toString() === reviewerId.toString()
+    ? booking.provider
+    : booking.requester;
 
   const review = await Review.create({
     booking: bookingId,
