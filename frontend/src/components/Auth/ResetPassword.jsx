@@ -3,8 +3,6 @@ import { Lock, ArrowLeft, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-r
 import "../Css/ResetPassword.css";
 
 const ResetPassword = () => {
-  const [searchParams, setSearchParams] = useState({ email: "", token: "" });
-  
   const [formData, setFormData] = useState({
     email: "",
     token: "",

@@ -2,17 +2,16 @@ import { catchAsyncError } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/error.js";
 import Admin from "../models/adminSchema.js";
 import { sendAdminToken } from "../utils/jwtToken.js";
-import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
+// import { v2 as cloudinary } from "cloudinary";
 
-const uploadToCloudinary = async (filePath, folder = "skillconnect/admins") => {
-  const res = await cloudinary.uploader.upload(filePath, { folder });
-  // Clean up temp file after upload
-  if (filePath) {
-    fs.unlinkSync(filePath);
-  }
-  return res.secure_url;
-};
+// const uploadToCloudinary = async (filePath, folder = "skillconnect/admins") => {
+//   const res = await cloudinary.uploader.upload(filePath, { folder });
+//   // Clean up temp file after upload
+//   if (filePath) {
+//     fs.unlinkSync(filePath);
+//   }
+//   return res.secure_url;
+// };
 
 export const adminLogin = catchAsyncError(async (req, res, next) => {
   const { email, password } = req.body;
@@ -50,9 +49,9 @@ export const adminRegister = catchAsyncError(async (req, res, next) => {
   if (existingAdmin) return next(new ErrorHandler("Admin already exists", 400));
 
   let profilePicUrl = "";
-  if (req.files?.profilePic) {
-    profilePicUrl = await uploadToCloudinary(req.files.profilePic.tempFilePath, "skillconnect/admins");
-  }
+  // if (req.files?.profilePic) {
+  //   profilePicUrl = await uploadToCloudinary(req.files.profilePic.tempFilePath, "skillconnect/admins");
+  // }
 
   const admin = await Admin.create({
     name: trimmedName,

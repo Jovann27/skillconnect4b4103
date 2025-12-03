@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import api from "./api";
 import toast from "react-hot-toast";
 import { updateSocketToken, clearSocket } from "./utils/socket";
@@ -13,11 +13,12 @@ export const MainProvider = ({ children }) => {
   const [admin, setAdmin] = useState(null);
   const [isUserVerified, setIsUserVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [navigationLoading, setNavigationLoading] = useState(false);
   const [openChatAppointmentId, setOpenChatAppointmentId] = useState(null);
 
   const initialized = useRef(false);
 
-  const fetchProfile = async (navigate = null) => {
+  const fetchProfile = useCallback(async (navigate = null) => {
     if (isLoading) return;
     setIsLoading(true);
 
@@ -158,7 +159,7 @@ export const MainProvider = ({ children }) => {
       setIsLoading(false);
       setAuthLoaded(true);
     }
-  };
+  }, [isLoading, setIsLoading, setUser, setIsAuthorized, setTokenType, setAdmin, setIsUserVerified]);
 
   const logout = async () => {
     try {
@@ -215,7 +216,7 @@ export const MainProvider = ({ children }) => {
       // No stored data, try to fetch from API
       fetchProfile();
     }
-  }, []);
+  }, [fetchProfile]);
 
   const openChat = (appointmentId) => {
     setOpenChatAppointmentId(appointmentId);
@@ -235,6 +236,8 @@ export const MainProvider = ({ children }) => {
         setAdmin,
         isUserVerified,
         setIsUserVerified,
+        navigationLoading,
+        setNavigationLoading,
         fetchProfile,
         logout,
         openChatAppointmentId,
@@ -247,4 +250,5 @@ export const MainProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useMainContext = () => useContext(MainContext);

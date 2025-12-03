@@ -647,7 +647,7 @@ const SkillCategories = () => {
                
                 <div className="pie-chart-container">
                   <svg className="pie-chart-svg" viewBox="0 0 250 250">
-                    {pieSegments.map((segment, index) => (
+                    {pieSegments.map((segment) => (
                       <path
                         key={segment.id}
                         d={createPiePath(125, 125, 100, segment.startAngle, segment.endAngle)}

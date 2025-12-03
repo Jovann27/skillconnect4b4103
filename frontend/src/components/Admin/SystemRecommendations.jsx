@@ -52,6 +52,7 @@ const SystemRecommendations = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
 
@@ -66,9 +67,6 @@ const SystemRecommendations = () => {
     };
 
     const demographics = data.demographics;
-    const skills = data.skills;
-    const popularServices = data.popularServices;
-    const employment = demographics.employment;
 
     // Content-based project recommendations based on age distribution
     const youthCount = demographics.ageGroups?.['18-35']?.total || 0;
@@ -102,6 +100,7 @@ const SystemRecommendations = () => {
     }
 
     // Skill-gap based recommendations (DIVERSIFICATION)
+    const skills = data.skills;
     const skillDiversity = Object.keys(skills).length;
     if (skillDiversity < 5) {
       recommendations.skillsTraining.push({
@@ -417,55 +416,7 @@ const SystemRecommendations = () => {
     };
   };
 
-  // Enhanced data validation function
-  const validateAnalyticsData = (data) => {
-    const requiredFields = {
-      totals: ['totalUsers', 'serviceProviders', 'totalPopulation'],
-      demographics: ['ageGroups', 'employment'],
-      skills: [],
-      skilledPerTrade: ['byRole', 'bySkill'],
-      mostBookedServices: [],
-      totalsOverTime: ['labels', 'values']
-    };
 
-    const warnings = [];
-    const errors = [];
-
-    // Check totals data
-    if (!data.totals || typeof data.totals !== 'object') {
-      errors.push('Totals data is missing or invalid');
-    } else {
-      requiredFields.totals.forEach(field => {
-        if (typeof data.totals[field] !== 'number' || data.totals[field] < 0) {
-          warnings.push(`Totals.${field} is invalid: ${data.totals[field]}`);
-        }
-      });
-    }
-
-    // Check demographics data
-    if (!data.demographics || typeof data.demographics !== 'object') {
-      errors.push('Demographics data is missing or invalid');
-    } else {
-      if (!data.demographics.ageGroups || typeof data.demographics.ageGroups !== 'object') {
-        warnings.push('Demographics ageGroups data is incomplete');
-      }
-      if (!data.demographics.employment || typeof data.demographics.employment !== 'object') {
-        warnings.push('Demographics employment data is incomplete');
-      }
-    }
-
-    // Check skills data
-    if (!data.skills || typeof data.skills !== 'object') {
-      warnings.push('Skills data is missing or invalid');
-    }
-
-    // Check skilled per trade data
-    if (!data.skilledPerTrade || typeof data.skilledPerTrade !== 'object') {
-      warnings.push('Skilled per trade data is missing or invalid');
-    }
-
-    return { isValid: errors.length === 0, errors, warnings };
-  };
 
   const fetchAnalyticsData = async () => {
     setLoading(true);
@@ -540,7 +491,7 @@ const SystemRecommendations = () => {
 
       const popularServices = typeof mostBookedData === 'object' && mostBookedData !== null
         ? Object.entries(mostBookedData)
-            .filter(([service, count]) => typeof count === 'number')
+            .filter(([, count]) => typeof count === 'number')
             .map(([service, count]) => ({ service, count }))
             .sort((a, b) => b.count - a.count)
             .slice(0, 10)
@@ -594,7 +545,6 @@ const SystemRecommendations = () => {
     let contentBasedRecs = null;
     let collaborativeRecs = null;
     let aiBasedRecs = null;
-    let fallbackUsed = false;
 
     try {
       // Step 1: Always generate rule-based recommendations (most reliable)
@@ -720,7 +670,6 @@ const SystemRecommendations = () => {
 
       if (!hasValidFusion) {
         console.warn('Fusion produced no valid recommendations, using rule-based fallback');
-        fallbackUsed = true;
         const fallbackRecommendations = addIconsToRecommendations(safeRuleBased);
 
         setRecommendations(fallbackRecommendations);
@@ -760,13 +709,11 @@ const SystemRecommendations = () => {
       console.log('📊 Fusion metrics:', fusionResult.metadata);
 
       // Success notification
-      const sourcesUsed = Object.entries(sourceTracking).filter(([_, count]) => count > 0).length;
+      const sourcesUsed = Object.entries(sourceTracking).filter(([, count]) => count > 0).length;
       toast.success(`Recommendations generated using ${sourcesUsed} algorithm sources`);
 
     } catch (generationError) {
       console.error('❌ Enhanced recommendation generation failed:', generationError);
-
-      fallbackUsed = true;
 
       // Enhanced fallback: Try to use any available recommendations
       const emergencyFallback = ruleBasedRecs || {
@@ -802,15 +749,12 @@ const SystemRecommendations = () => {
     const unemployed = data.demographics?.employment?.nonWorker || 0;
     const employed = data.demographics?.employment?.worker || 0;
     const employmentRate = employed + unemployed > 0 ? (employed / (employed + unemployed)) * 100 : 0;
-    const population = data.totals?.totalPopulation || 0;
     const activeUsers = data.activeUsers || 0;
     const totalBookings = data.totalBookings || 0;
     const topServiceData = data.popularServices?.[0];
     const popularService = topServiceData?.service || 'General Services';
     const popularServiceBookings = topServiceData?.count || 0;
     const skillsCount = Object.keys(data.skills || {}).length;
-    const marketDemand = data.mostBookedServices || {};
-    const totalMarketSize = Object.values(marketDemand).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0);
     const growthRate = data.totalsOverTime?.values?.length > 1 ?
       ((data.totalsOverTime.values[data.totalsOverTime.values.length - 1] -
         data.totalsOverTime.values[data.totalsOverTime.values.length - 2]) /
@@ -822,7 +766,6 @@ const SystemRecommendations = () => {
 
     // Service provider capacity analysis
     const avgBookingsPerProvider = serviceProviders > 0 ? Math.floor(totalBookings / serviceProviders) : 0;
-    const marketSaturation = serviceProviders > 0 && totalUsers > 0 ? (serviceProviders / totalUsers) * 100 : 0;
 
     // Rule-based recommendations with confidence scores
     const recommendationsData = {
@@ -1115,6 +1058,7 @@ const SystemRecommendations = () => {
                 const totalBookings = analyticsData.totalBookings.toLocaleString();
                 const skillsCount = Object.keys(analyticsData.skills || {}).length;
                 const popularService = analyticsData.popularServices[0]?.service || 'N/A';
+                const popularServiceBookings = analyticsData.popularServices[0]?.count || 0;
 
                 const userGrowth = analyticsData.totalsOverTime.values.length > 1 ?
                   Math.round(((analyticsData.totalsOverTime.values[analyticsData.totalsOverTime.values.length - 1] -
@@ -1140,7 +1084,7 @@ const SystemRecommendations = () => {
                 allMetrics.push(`
                   <div class="metric-item">
                     <h4>Employment Rate: ${employmentRate}%</h4>
-                    <p>${employmentRate}% of people are employed. There are ${(analyticsData.demographics.employment?.worker || 0).toLocaleString()} workers and ${(analyticsData.demographics.employment?.nonWorker || 0).toLocaleString()} non-workers. ${employmentRate < 50 ? 'Employment is low - need more job training' : employmentRate < 70 ? 'Jobs available - can improve with training' : 'Good employment level - keep growing'}. ${Object.entries(analyticsData.demographics.ageGroups || {}).sort(([,a],[,b]) => b-a)[0]?.[0] || 'working-age'} groups have most employment.</p>
+                    <p>${employmentRate}% of people are employed. There are ${(analyticsData.demographics.employment?.worker || 0).toLocaleString()} workers and ${(analyticsData.demographics.employment?.nonWorker || 0).toLocaleString()} non-workers. ${employmentRate < 50 ? 'Employment is low - need more job training' : employmentRate < 70 ? 'Jobs available - can improve with training' : 'Good employment level - keep growing'}. ${Object.entries(analyticsData.demographics.ageGroups || {}).sort(([, a], [, b]) => b - a)[0]?.[0] || 'working-age'} groups have most employment.</p>
                   </div>
                 `);
                 allMetrics.push(`

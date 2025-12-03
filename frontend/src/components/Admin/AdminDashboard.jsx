@@ -26,9 +26,6 @@ const AdminDashboard = () => {
   const isAdminRegister = location.pathname === "/admin/admin-register";
 
   const {
-    setAdmin,
-    setIsAuthorized,
-    setTokenType,
     logout,
     admin
   } = useMainContext();
@@ -84,11 +81,11 @@ const AdminDashboard = () => {
 
           <nav className="admin-shell__nav" aria-label="Admin navigation">
             <ul>
-              {navItems.map(({ to, label, icon: Icon, active }) => (
-                <li key={to}>
-                  <Link to={to} className={`admin-link ${active ? "active" : ""}`}>
-                    <Icon />
-                    {label}
+              {navItems.map((navItem) => (
+                <li key={navItem.to}>
+                  <Link to={navItem.to} className={`admin-link ${navItem.active ? "active" : ""}`}>
+                    <navItem.icon />
+                    {navItem.label}
                   </Link>
                 </li>
               ))}

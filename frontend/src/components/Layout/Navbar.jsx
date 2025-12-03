@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { useMainContext } from "../../mainContext";
@@ -19,17 +19,37 @@ const Navbar = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = useCallback((event) => {
     if (event.key === 'Escape') {
       setShow(false);
       setDashboardDropdown(false);
     }
-  };
-  const handleClickOutside = (event) => {
+  }, []);
+
+  const handleClickOutside = useCallback((event) => {
     if (!event.target.closest('.dropdown')) {
       setDashboardDropdown(false);
     }
-  };
+  }, []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    // Only fetch if user is authorized and has a valid token
+    if (!isAuthorized || !localStorage.getItem("token")) {
+      setUnreadCount(0);
+      return;
+    }
+
+    try {
+      const { data } = await api.get("/user/notifications/unread-count");
+      setUnreadCount(data.unreadCount || 0);
+    } catch (err) {
+      console.error("Error fetching unread count:", err);
+      // If authentication fails, reset count and let the api interceptor handle logout
+      if (err.response?.status === 401) {
+        setUnreadCount(0);
+      }
+    }
+  }, [isAuthorized]);
 
   useEffect(() => {
     if (show || dashboardDropdown) {
@@ -44,7 +64,7 @@ const Navbar = () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [show, dashboardDropdown]);
+  }, [show, dashboardDropdown, handleKeyDown, handleClickOutside]);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -52,7 +72,7 @@ const Navbar = () => {
     } else {
       setUnreadCount(0);
     }
-  }, [isAuthorized]);
+  }, [isAuthorized, fetchUnreadCount]);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -99,25 +119,6 @@ const Navbar = () => {
       }
     } finally {
       setLoadingNotifications(false);
-    }
-  };
-
-  const fetchUnreadCount = async () => {
-    // Only fetch if user is authorized and has a valid token
-    if (!isAuthorized || !localStorage.getItem("token")) {
-      setUnreadCount(0);
-      return;
-    }
-
-    try {
-      const { data } = await api.get("/user/notifications/unread-count");
-      setUnreadCount(data.unreadCount || 0);
-    } catch (err) {
-      console.error("Error fetching unread count:", err);
-      // If authentication fails, reset count and let the api interceptor handle logout
-      if (err.response?.status === 401) {
-        setUnreadCount(0);
-      }
     }
   };
 

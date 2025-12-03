@@ -11,7 +11,7 @@ const ServiceProviders = () => {
       try {
         const res = await api.get("/admin/service-providers");
         setWorkers(res.data.workers || res.data || []);
-      } catch (err) {
+      } catch {
         setError("Failed to fetch service providers");
       } finally {
         setLoading(false);

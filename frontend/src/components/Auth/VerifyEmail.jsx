@@ -70,7 +70,7 @@ const VerifyEmail = () => {
       setTimeout(() => {
         window.location.href = `/reset-password?email=${encodeURIComponent(email)}&token=mock-token-${otpValue}`;
       }, 2000);
-    } catch (error) {
+    } catch {
       setValidationErrors({
         otp: "Failed to verify code. Please try again."
       });

@@ -28,8 +28,8 @@ const WaitingForWorkerPage = ({ requestData }) => {
       });
       const matchedProviders = response.data?.workers || [];
       setMatchedProviders(matchedProviders);
-    } catch (err) {
-      console.error("Failed to fetch matched providers:", err);
+    } catch {
+      console.error("Failed to fetch matched providers");
       setMatchedProviders([]);
     }
   };
@@ -51,6 +51,7 @@ const WaitingForWorkerPage = ({ requestData }) => {
           const reviewData = reviewsResponse.data?.reviews || [];
           reviews[provider._id] = Array.isArray(reviewData) ? reviewData.slice(0, 3) : [];
         } catch (err) {
+          console.error('Error fetching provider data:', err);
           stats[provider._id] = { totalReviews: 0, averageRating: 0 };
           reviews[provider._id] = [];
         }

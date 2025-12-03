@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useMainContext } from '../../mainContext';
 import api from '../../api';
 import './Clients.css';
 
 const Clients = () => {
-  const { user } = useMainContext();
   const [serviceRequests, setServiceRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null);

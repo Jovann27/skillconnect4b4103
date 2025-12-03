@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState } from 'react';
 
 const PopupContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePopup = () => {
   const context = useContext(PopupContext);
   if (!context) {
@@ -10,7 +11,7 @@ export const usePopup = () => {
   return context;
 };
 
-export const PopupProvider = ({ children }) => {
+const PopupProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
 
   const showNotification = (message, type = 'info', duration = 3000, title = '') => {
@@ -59,3 +60,5 @@ export const PopupProvider = ({ children }) => {
     </PopupContext.Provider>
   );
 };
+
+export default PopupProvider;

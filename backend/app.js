@@ -6,7 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import rateLimit from "express-rate-limit";
 
-import "./config/cloudinaryConfig.js";
+// import "./config/cloudinaryConfig.js";
 
 import userRouter from "./routes/userRouter.js";
 import userFlowRouter from "./routes/userFlowRouter.js";

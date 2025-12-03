@@ -2,7 +2,7 @@ import HelpRequest from "../models/helpSchema.js";
 import { catchAsyncError } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/error.js";
 
-export const getHelpTopics = catchAsyncError(async (req, res, next) => {
+export const getHelpTopics = catchAsyncError(async (req, res) => {
     const topics = await HelpRequest.find().sort({ createdAt: -1 });
     res.status(200).json({
         success: true,

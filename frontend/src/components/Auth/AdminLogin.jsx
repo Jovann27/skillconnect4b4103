@@ -15,7 +15,7 @@ const AdminLogin = () => {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { setIsAuthorized, setAdmin, setTokenType, setIsUserVerified } = useMainContext();
   const navigate = useNavigate();

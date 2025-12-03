@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { useMainContext } from "../../mainContext";
@@ -103,9 +103,9 @@ const Register = () => {
 
   const validateStep = (step) => {
     const errors = {};
-    
+
     switch(step) {
-      case 1: // Basic Info
+      case 1: { // Basic Info
         if (!formData.username || formData.username.length < 3) {
           errors.username = "Username must be at least 3 characters long";
         }
@@ -120,7 +120,8 @@ const Register = () => {
           errors.confirmPassword = "Passwords do not match";
         }
         break;
-      case 2: // Personal Info
+      }
+      case 2: { // Personal Info
         if (!formData.firstName.trim()) errors.firstName = "First name is required";
         if (!formData.lastName.trim()) errors.lastName = "Last name is required";
         const phoneRegex = /^(\+63|0)[0-9]{10}$/;
@@ -136,6 +137,7 @@ const Register = () => {
           errors.role = "Please select a valid role";
         }
         break;
+      }
       case 3: // Documents & Skills
         if (!formData.validId) {
           errors.validId = "Valid ID is required";
@@ -150,7 +152,7 @@ const Register = () => {
         }
         break;
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };

@@ -28,7 +28,8 @@ export const totalsReport = catchAsyncError(async (req, res, next) => {
         totalPopulation
       }
     });
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     return next(new ErrorHandler("Failed to fetch totals report", 500));
   }
 });
@@ -102,7 +103,8 @@ export const demographicsReport = catchAsyncError(async (req, res, next) => {
         employment
       }
     });
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     return next(new ErrorHandler("Failed to fetch demographics report", 500));
   }
 });
@@ -133,7 +135,8 @@ export const skillsReport = catchAsyncError(async (req, res, next) => {
       success: true,
       data: skillsCount
     });
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     return next(new ErrorHandler("Failed to fetch skills report", 500));
   }
 });
@@ -173,7 +176,8 @@ export const skilledPerTrade = catchAsyncError(async (req, res, next) => {
         bySkill
       }
     });
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     return next(new ErrorHandler("Failed to fetch skilled per trade report", 500));
   }
 });
@@ -213,7 +217,8 @@ export const mostBookedServices = catchAsyncError(async (req, res, next) => {
       success: true,
       data: serviceCounts
     });
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     return next(new ErrorHandler("Failed to fetch most booked services report", 500));
   }
 });
@@ -261,7 +266,8 @@ export const totalsOverTime = catchAsyncError(async (req, res, next) => {
         values
       }
     });
-  } catch (error) {
+  } catch (err) {
+    console.error(err);
     return next(new ErrorHandler("Failed to fetch totals over time report", 500));
   }
 });
@@ -322,7 +328,7 @@ export const reportUser = catchAsyncError(async (req, res, next) => {
 });
 
 // Get reports (for admin use)
-export const getReports = catchAsyncError(async (req, res, next) => {
+export const getReports = catchAsyncError(async (req, res) => {
   const { status, page = 1, limit = 10 } = req.query;
 
   const query = {};

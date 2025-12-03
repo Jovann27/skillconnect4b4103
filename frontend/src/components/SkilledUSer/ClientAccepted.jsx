@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useMainContext } from '../../mainContext';
 import api from '../../api';
@@ -17,24 +17,7 @@ const ClientAccepted = ({ requestId }) => {
   const effectiveRequestId = requestId || location.state?.requestId;
   const requestFromState = location.state?.request;
 
-  // Fetch request data on component mount
-  useEffect(() => {
-    if (requestFromState) {
-      // Use request data passed from navigation state
-      setRequest(requestFromState);
-      if (requestFromState.requester?._id) {
-        fetchRequesterStats(requestFromState.requester._id);
-      }
-      setLoading(false);
-    } else if (effectiveRequestId) {
-      fetchRequestData();
-    } else {
-      // If no requestId provided, fetch all accepted requests and use the first one
-      fetchAcceptedRequests();
-    }
-  }, [effectiveRequestId, requestFromState]);
-
-  const fetchRequestData = async () => {
+  const fetchRequestData = useCallback(async () => {
     try {
       setLoading(true);
       // For now, we'll fetch all accepted requests and find the matching one
@@ -59,9 +42,9 @@ const ClientAccepted = ({ requestId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [effectiveRequestId, fetchRequesterStats]);
 
-  const fetchAcceptedRequests = async () => {
+  const fetchAcceptedRequests = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/settings/my-accepted-requests');
@@ -83,9 +66,9 @@ const ClientAccepted = ({ requestId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchRequesterStats]);
 
-  const fetchRequesterStats = async (requesterId) => {
+  const fetchRequesterStats = useCallback(async (requesterId) => {
     try {
       const response = await api.get(`/user/${requesterId}/stats`);
       if (response.data.success) {
@@ -95,7 +78,24 @@ const ClientAccepted = ({ requestId }) => {
       console.error('Error fetching requester stats:', error);
       // Don't block the UI if stats fail to load
     }
-  };
+  }, []);
+
+  // Fetch request data on component mount
+  useEffect(() => {
+    if (requestFromState) {
+      // Use request data passed from navigation state
+      setRequest(requestFromState);
+      if (requestFromState.requester?._id) {
+        fetchRequesterStats(requestFromState.requester._id);
+      }
+      setLoading(false);
+    } else if (effectiveRequestId) {
+      fetchRequestData();
+    } else {
+      // If no requestId provided, fetch all accepted requests and use the first one
+      fetchAcceptedRequests();
+    }
+  }, [effectiveRequestId, requestFromState, fetchRequesterStats, fetchRequestData, fetchAcceptedRequests]);
 
   const handleCancel = async () => {
     if (window.confirm('Are you sure you want to cancel this service request?')) {
@@ -159,7 +159,7 @@ const ClientAccepted = ({ requestId }) => {
 
       // Create FormData for file upload
       const formData = new FormData();
-      media.forEach((item, index) => {
+      media.forEach((item) => {
         formData.append('proofImages', item.file);
       });
       formData.append('completionNotes', comment);
@@ -201,8 +201,7 @@ const ClientAccepted = ({ requestId }) => {
     );
   }
 
-  // Determine if current user is the service provider or the requester
-  const isServiceProvider = user?._id === request?.provider?._id;
+
 
   return (
     <div className="client-accepted-container">

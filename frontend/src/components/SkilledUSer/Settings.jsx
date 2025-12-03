@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api.js';
 import { useMainContext } from '../../mainContext';
@@ -31,13 +31,7 @@ const Settings = () => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    fetchUserProfile();
-    fetchPasswordLength();
-    fetchNotificationPreferences();
-  }, []);
-
-    const fetchUserProfile = async () => {
+  const fetchUserProfile = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get('/user/me');
@@ -58,32 +52,38 @@ const Settings = () => {
     } finally {
       setLoading(false);
     }
-  }; 
+  }, [setUser]);
 
-    const fetchPasswordLength = async () => {
-        try {
-        const res = await api.get("/user/me/password");
-        if (res.data.success) setPasswordLength(res.data.length);
-        } catch (err) {
-        console.error("Failed to fetch password length:", err);
-        }
-    };
+  const fetchPasswordLength = useCallback(async () => {
+    try {
+      const res = await api.get("/user/me/password");
+      if (res.data.success) setPasswordLength(res.data.length);
+    } catch (err) {
+      console.error("Failed to fetch password length:", err);
+    }
+  }, []);
 
-    const fetchNotificationPreferences = async () => {
-        try {
-        const res = await api.get("/user/notification-preferences");
-        if (res.data.success) {
-            const prefs = res.data.preferences;
-            setNotificationPreferences({
-                emailNotifications: prefs.emailNotifications,
-                smsNotifications: prefs.smsNotifications,
-                pushNotifications: prefs.pushNotifications,
-            });
-        }
-        } catch (err) {
-        console.error("Failed to fetch notification preferences:", err);
-        }
-    };
+  const fetchNotificationPreferences = useCallback(async () => {
+    try {
+      const res = await api.get("/user/notification-preferences");
+      if (res.data.success) {
+        const prefs = res.data.preferences;
+        setNotificationPreferences({
+          emailNotifications: prefs.emailNotifications,
+          smsNotifications: prefs.smsNotifications,
+          pushNotifications: prefs.pushNotifications,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch notification preferences:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserProfile();
+    fetchPasswordLength();
+    fetchNotificationPreferences();
+  }, [fetchUserProfile, fetchPasswordLength, fetchNotificationPreferences]);
 
 
   const maskPhone = (value = '') => value ? value.replace(/.(?=.{4})/g, '*') : '';

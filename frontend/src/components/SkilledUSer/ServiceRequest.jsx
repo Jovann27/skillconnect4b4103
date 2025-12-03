@@ -176,7 +176,7 @@ const ServiceRequestForm = () => {
         markerRef.current = null;
       }
     };
-  }, []); // Only run once on mount
+  }, [markerPosition, map]); // Include markerPosition and map dependencies
 
   // Separate effect to update marker when markerPosition changes
   useEffect(() => {

@@ -3,14 +3,44 @@ import ErrorHandler from "../middlewares/error.js";
 import User from "../models/userSchema.js";
 import ServiceRequest from "../models/serviceRequest.js";
 import Review from "../models/review.js";
-import verificationAppointmentSchema from "../models/verificationSchema.js";
 import { sendNotification } from "../utils/socketNotify.js";
 import { sendTargetedRequestNotification } from "../utils/emailService.js";
 import Booking from "../models/booking.js";
 import Chat from "../models/chat.js";
 import { io, onlineUsers } from "../server.js";
-import cloudinary from "cloudinary";
-import { checkAndUpdateExpiredRequests, getActiveRequestsFilter } from "../utils/expirationHandler.js";
+// import cloudinary from "cloudinary";
+import { getActiveRequestsFilter } from "../utils/expirationHandler.js";
+import fs from "fs";
+import axios from "axios";
+
+// Helper function to upload files to MongoDB (base64 encoded for now)
+const uploadToMongoDB = async (filePath, folder) => {
+  try {
+    // Read file as buffer and convert to base64
+    const fileBuffer = fs.readFileSync(filePath);
+    const base64Data = fileBuffer.toString('base64');
+
+    // Create a simple file object with metadata
+    const fileData = {
+      data: base64Data,
+      contentType: filePath.split('.').pop(), // Simple mime type detection
+      folder: folder,
+      uploadedAt: new Date()
+    };
+
+    // Clean up temp file
+    fs.unlinkSync(filePath);
+
+    return fileData;
+  } catch (error) {
+    console.error("Error uploading to MongoDB:", error);
+    // Clean up temp file even on error
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    throw error;
+  }
+};
 
 
 
@@ -537,13 +567,53 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
   const minBudget = providerRate - tolerance;
   const maxBudget = providerRate + tolerance;
 
-  // First get requests that match Service Needed and Budget (filter out expired ones)
+  // Get all active waiting requests
   const activeRequestsFilter = getActiveRequestsFilter();
-  const skillAndBudgetMatchedRequests = await ServiceRequest.find({
+  const allRequests = await ServiceRequest.find({
     ...activeRequestsFilter,
+    status: "Waiting"
+  })
+    .populate({
+      path: 'requester',
+      select: 'firstName lastName username email phone',
+      model: 'User'
+    })
+    .sort({ createdAt: -1 });
+
+  // Filter requests based on Service Needed, Budget, and Time compatibility
+  let filteredRequests = allRequests;
+
+  if (providerSkills.length > 0) {
+    filteredRequests = allRequests.filter(request => {
+      // Check Service Needed compatibility
+      const serviceCompatible = providerSkills.some(skill =>
+        request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+        skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+      );
+
+      // Check Budget compatibility
+      const budgetCompatible = request.budget >= minBudget && request.budget <= maxBudget;
+
+      // Check Time compatibility - providers with "Available" status can handle any time,
+      // providers with "Currently Working" can only handle flexible times
+      let timeCompatible = false;
+      if (providerAvailability === "Available") {
+        timeCompatible = true; // Available providers can handle any time
+      } else if (providerAvailability === "Currently Working") {
+        // Currently working providers can only handle flexible times
+        timeCompatible = ["ASAP", "Today", "Flexible"].some(flexibleTime =>
+          request.time.toLowerCase().includes(flexibleTime.toLowerCase())
+        );
+      }
+
+      return serviceCompatible && budgetCompatible && timeCompatible;
+    });
+  }
+
+  // Also include requests specifically targeted to this provider (bypass normal matching)
+  const targetedRequests = await ServiceRequest.find({
     status: "Waiting",
-    budget: { $gte: minBudget, $lte: maxBudget },
-    typeOfWork: { $in: providerSkills.map(skill => new RegExp(skill, 'i')) } // Match against provider's skills
+    targetProvider: req.user._id
   })
   .populate({
     path: 'requester',
@@ -552,37 +622,41 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
   })
   .sort({ createdAt: -1 });
 
-  // Now filter by Time compatibility
-  const timeCompatibleRequests = skillAndBudgetMatchedRequests.filter(request => {
-    // Check Time compatibility - providers with "Available" status can handle any time,
-    // providers with "Currently Working" can only handle flexible times
-    if (providerAvailability === "Available") {
-      return true; // Available providers can handle any time
-    } else if (providerAvailability === "Currently Working") {
-      // Currently working providers can only handle flexible times
-      return ["ASAP", "Today", "Flexible"].some(flexibleTime =>
-        request.time.toLowerCase().includes(flexibleTime.toLowerCase())
-      );
-    }
-    return false;
-  });
+  // Combine filtered requests with targeted requests (avoid duplicates)
+  const targetedIds = targetedRequests.map(r => r._id.toString());
+  const combinedRequests = [
+    ...targetedRequests,
+    ...filteredRequests.filter(r => !targetedIds.includes(r._id.toString()))
+  ];
 
-  // Limit results to 10
-  const requests = timeCompatibleRequests.slice(0, 10);
+  // For testing purposes, if no requests match all criteria, return requests that at least match skills
+  let finalRequests = combinedRequests;
+  if (combinedRequests.length === 0 && allRequests.length > 0 && providerSkills.length > 0) {
+    // Fallback to skill-only matching for better UX during testing
+    const skillOnlyRequests = allRequests.filter(request => {
+      return providerSkills.some(skill =>
+        request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+        skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+      );
+    });
+    finalRequests = skillOnlyRequests;
+  }
 
   res.status(200).json({
     success: true,
-    requests,
+    requests: finalRequests,
     debug: {
       providerRate,
       providerSkills,
       providerAvailability,
       minBudget,
       maxBudget,
-      totalRequests: requests.length,
-      skillAndBudgetMatched: skillAndBudgetMatchedRequests.length,
-      timeCompatible: timeCompatibleRequests.length,
-      isOnline: provider.isOnline
+      totalRequests: finalRequests.length,
+      allWaitingRequests: allRequests.length,
+      filteredRequests: filteredRequests.length,
+      targetedRequests: targetedRequests.length,
+      userId: req.user._id,
+      sampleRequester: finalRequests[0]?.requester || null
     }
   });
 });
@@ -959,8 +1033,11 @@ export const notifyProvider = catchAsyncError(async (req, res, next) => {
   try {
     // Verify the request belongs to the user
     const request = await ServiceRequest.findById(requestId).populate('requester', 'firstName lastName');
-    if (!request || String(request.requester) !== String(req.user._id)) {
-      return next(new ErrorHandler("Request not found or not authorized", 404));
+    if (!request) {
+      return next(new ErrorHandler("Request not found", 404));
+    }
+    if (String(request.requester) !== String(req.user._id)) {
+      return next(new ErrorHandler("Not authorized", 403));
     }
 
     // Get provider details
@@ -1025,8 +1102,8 @@ export const completeBooking = catchAsyncError(async (req, res, next) => {
   if (req.files && req.files.proofImages) {
     const files = Array.isArray(req.files.proofImages) ? req.files.proofImages : [req.files.proofImages];
     for (const file of files) {
-      const url = await uploadToCloudinary(file.tempFilePath, "skillconnect/proof-images");
-      proofImageUrls.push(url);
+      const fileData = await uploadToMongoDB(file.tempFilePath, "skillconnect/proof-images");
+      proofImageUrls.push(fileData);
     }
   }
 
@@ -1057,11 +1134,17 @@ export const completeBooking = catchAsyncError(async (req, res, next) => {
   res.json({ success: true, booking });
 });
 
-// Helper function to upload to Cloudinary
-const uploadToCloudinary = async (filePath, folder) => {
-  const result = await cloudinary.v2.uploader.upload(filePath, { folder });
-  return result.secure_url;
-};
+// // Helper function to upload to Cloudinary
+// const uploadToCloudinary = async (filePath, folder) => {
+//   const result = await cloudinary.v2.uploader.upload(filePath, { folder });
+//   return result.secure_url;
+// };
+
+// // Helper function to upload to Cloudinary
+// const uploadToCloudinary = async (filePath, folder) => {
+//   const result = await cloudinary.v2.uploader.upload(filePath, { folder });
+//   return result.secure_url;
+// };
 
 export const reverseGeocode = catchAsyncError(async (req, res, next) => {
   const { lat, lon } = req.query;
@@ -1071,7 +1154,7 @@ export const reverseGeocode = catchAsyncError(async (req, res, next) => {
   }
 
   try {
-    const response = await fetch(
+    const response = await axios.get(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
       {
         headers: {
@@ -1081,11 +1164,7 @@ export const reverseGeocode = catchAsyncError(async (req, res, next) => {
       }
     );
 
-    if (!response.ok) {
-      throw new Error(`Geocoding service returned ${response.status}`);
-    }
-
-    const data = await response.json();
+    const data = response.data;
     res.json({ success: true, address: data.display_name || null });
   } catch (error) {
     console.error("Reverse geocoding error:", error);

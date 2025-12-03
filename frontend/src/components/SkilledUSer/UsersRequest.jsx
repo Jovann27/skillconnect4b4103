@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -11,7 +11,7 @@ import "./UsersRequest.css";
 const ServiceRequests = () => {
   const { isAuthorized, user } = useMainContext();
   const navigate = useNavigate();
-  const { showNotification, showInput } = usePopup();
+  const { showNotification } = usePopup();
   const [requests, setRequests] = useState([]);
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
   const mapRef = useRef(null);
@@ -22,7 +22,7 @@ const ServiceRequests = () => {
   const [locationError, setLocationError] = useState(null);
   const [currentAddress, setCurrentAddress] = useState("");
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     if (!isAuthorized) return;
     try {
       console.log("Fetching service requests...");
@@ -48,9 +48,8 @@ const ServiceRequests = () => {
     } catch (err) {
       console.error("API Error:", err);
       console.error("Error response:", err.response?.data);
-      setError(err.response?.data?.message || err.message);
     }
-  };
+  }, [isAuthorized]);
 
   // Role-based access is handled by RoleGuard in App.jsx
   // Service Providers can access this page via RoleGuard configuration
@@ -59,7 +58,7 @@ const ServiceRequests = () => {
     if (isAuthorized && user) {
       fetchRequests();
     }
-  }, [isAuthorized, user]);
+  }, [isAuthorized, user, fetchRequests]);
 
   useEffect(() => {
     if (mapRef.current && !map) {
@@ -125,7 +124,7 @@ const ServiceRequests = () => {
         setMap(null);
       }
     };
-  }, [map]);
+  }, [map]); // Include map dependency
 
 
   const ignoreRequest = (id) => {
@@ -212,11 +211,15 @@ const ServiceRequests = () => {
         latitude: selectedLocation.lat,
         longitude: selectedLocation.lng,
       });
-      setShowSuccessPopup(true);
-      setShowMapModal(false);
-      setPendingRequestData(null);
-      setSelectedLocation(null);
-      setCurrentAddress("");
+      if (response.data.success) {
+        setShowSuccessPopup(true);
+        setShowMapModal(false);
+        setPendingRequestData(null);
+        setSelectedLocation(null);
+        setCurrentAddress("");
+      } else {
+        showNotification("Failed to submit service request.", "error", 4000, "Error");
+      }
     } catch (error) {
       showNotification(
         error.response?.data?.message || "Failed to submit service request.",

@@ -3,7 +3,7 @@ import { catchAsyncError } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/error.js";
 
 // Get user's notifications
-export const getUserNotifications = catchAsyncError(async (req, res, next) => {
+export const getUserNotifications = catchAsyncError(async (req, res) => {
   const userId = req.user._id;
 
   const notifications = await Notification.find({ user: userId })
@@ -38,7 +38,7 @@ export const markNotificationAsRead = catchAsyncError(async (req, res, next) => 
 });
 
 // Mark all notifications as read
-export const markAllNotificationsAsRead = catchAsyncError(async (req, res, next) => {
+export const markAllNotificationsAsRead = catchAsyncError(async (req, res) => {
   const userId = req.user._id;
 
   await Notification.updateMany(
@@ -53,7 +53,7 @@ export const markAllNotificationsAsRead = catchAsyncError(async (req, res, next)
 });
 
 // Get unread count
-export const getUnreadCount = catchAsyncError(async (req, res, next) => {
+export const getUnreadCount = catchAsyncError(async (req, res) => {
   const userId = req.user._id;
 
   const count = await Notification.countDocuments({ user: userId, read: false });

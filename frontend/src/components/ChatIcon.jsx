@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMainContext } from '../mainContext';
 import api from '../api';
@@ -36,21 +36,19 @@ const ChatIcon = () => {
   const [supportMessage, setSupportMessage] = useState('');
   const [supportLoading, setSupportLoading] = useState(false);
   const [helpTopics, setHelpTopics] = useState([]);
-  const [selectedHelpTopic, setSelectedHelpTopic] = useState(null);
+
   const [helpCategories, setHelpCategories] = useState([]);
-  const [workProofImage, setWorkProofImage] = useState(null);
-  const [completingWork, setCompletingWork] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
   // Functions used in useEffect
 
-  const scrollToBottom = () => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
-  const fetchChatList = async () => {
+  const fetchChatList = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -101,16 +99,16 @@ const ChatIcon = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const markMessagesAsSeen = async (appointmentId) => {
+  const markMessagesAsSeen = useCallback(async (appointmentId) => {
     try {
       await api.put(`/user/chat/${appointmentId}/mark-seen`);
       setUnreadCounts(prev => ({ ...prev, [appointmentId]: 0 }));
     } catch (err) {
       console.error('Error marking messages as seen:', err);
     }
-  };
+  }, []);
 
   // Socket event listeners
 
@@ -209,12 +207,12 @@ const ChatIcon = () => {
       socket.off('message-notification', handleMessageNotification);
       socket.off('error', handleError);
     };
-  }, [selectedChat, user, isOpen, isAuthorized, tokenType]);
+  }, [selectedChat, user, isOpen, isAuthorized, tokenType, fetchChatList, markMessagesAsSeen, scrollToBottom]);
 
   useEffect(() => {
     if (!isAuthorized || tokenType !== 'user' || !user) return;
     scrollToBottom();
-  }, [messages, isAuthorized, tokenType, user]);
+  }, [messages, isAuthorized, tokenType, user, scrollToBottom]);
 
   // Fetch help topics
   const fetchHelpTopics = () => {
@@ -289,6 +287,30 @@ const ChatIcon = () => {
     }
   };
 
+  const openChat = useCallback(async (chat, specificAppointmentId = null) => {
+    const appointmentId = specificAppointmentId || chat.appointmentId;
+    let selectedChatData = { ...chat, appointmentId };
+
+    // Fetch latest booking details to ensure accurate status
+    if (appointmentId) {
+      try {
+        const booking = await fetchBookingDetails(appointmentId);
+        if (booking) {
+          selectedChatData.status = booking.status;
+          selectedChatData.serviceRequest = booking.serviceRequest;
+          selectedChatData.canComplete = booking.provider.toString() === user._id.toString() && booking.status === 'Working';
+        }
+      } catch (err) {
+        console.error('Error fetching booking details:', err);
+      }
+    }
+
+    setSelectedChat(selectedChatData);
+    setView('chat');
+    setError(null);
+    fetchMessages(appointmentId);
+  }, [user, fetchMessages]);
+
   // Effect to handle opening chat from external trigger
   useEffect(() => {
     if (openChatAppointmentId && chatList.length > 0) {
@@ -329,7 +351,7 @@ const ChatIcon = () => {
         });
       }
     }
-  }, [openChatAppointmentId, chatList, user]);
+  }, [openChatAppointmentId, chatList, user, openChat, setOpenChatAppointmentId]);
 
   // Organize help topics by categories
   useEffect(() => {
@@ -351,16 +373,11 @@ const ChatIcon = () => {
     if (view === 'help' && helpTopics.length === 0) {
       fetchHelpTopics();
     }
-  }, [view]);
+  }, [view, helpTopics.length]);
 
-  // Only show for authenticated users (both regular users and admins)
-  if (!isAuthorized || (!user && !admin)) {
-    return null;
-  }
+  // Functions used in useEffect
 
-  // Remaining functions
-
-  const fetchMessages = async (appointmentId) => {
+  const fetchMessages = useCallback(async (appointmentId) => {
     try {
       // Fetch chat history and filter for this appointment
       const response = await api.get('/user/chat-history');
@@ -381,7 +398,14 @@ const ChatIcon = () => {
       console.error('Error fetching chat history:', err);
       setError('Failed to load chat history');
     }
-  };
+  }, [scrollToBottom]);
+
+  // Only show for authenticated users (both regular users and admins)
+  if (!isAuthorized || (!user && !admin)) {
+    return null;
+  }
+
+  // Remaining functions
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
@@ -464,30 +488,6 @@ const ChatIcon = () => {
     }
   };
 
-  const openChat = async (chat, specificAppointmentId = null) => {
-    const appointmentId = specificAppointmentId || chat.appointmentId;
-    let selectedChatData = { ...chat, appointmentId };
-
-    // Fetch latest booking details to ensure accurate status
-    if (appointmentId) {
-      try {
-        const booking = await fetchBookingDetails(appointmentId);
-        if (booking) {
-          selectedChatData.status = booking.status;
-          selectedChatData.serviceRequest = booking.serviceRequest;
-          selectedChatData.canComplete = booking.provider.toString() === user._id.toString() && booking.status === 'Working';
-        }
-      } catch (err) {
-        console.error('Error fetching booking details:', err);
-      }
-    }
-
-    setSelectedChat(selectedChatData);
-    setView('chat');
-    setError(null);
-    fetchMessages(appointmentId);
-  };
-
   const backToList = () => {
     setView('list');
     setSelectedChat(null);
@@ -551,40 +551,7 @@ const ChatIcon = () => {
     }, 1000);
   };
 
-  const handleCompleteWork = async () => {
-    if (!selectedChat || !workProofImage) return;
 
-    setCompletingWork(true);
-    try {
-      const formData = new FormData();
-      formData.append('proofImage', workProofImage);
-      formData.append('appointmentId', selectedChat.appointmentId);
-
-      await api.put(`/user/booking/${selectedChat.appointmentId}/complete`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      // Update the chat status locally
-      setSelectedChat(prev => prev ? { ...prev, status: 'Complete' } : null);
-
-      // Update chat list
-      setChatList(prev => prev.map(chat =>
-        chat.appointments.includes(selectedChat.appointmentId)
-          ? { ...chat, status: 'Complete' }
-          : chat
-      ));
-
-      setWorkProofImage(null);
-      alert('Work completed successfully!');
-    } catch (err) {
-      console.error('Error completing work:', err);
-      alert('Failed to complete work. Please try again.');
-    } finally {
-      setCompletingWork(false);
-    }
-  };
 
   // User menu handlers
   const handleReportUser = async () => {
@@ -916,7 +883,6 @@ const ChatIcon = () => {
                         key={topic.id}
                         className="help-topic-item"
                         onClick={() => {
-                          setSelectedHelpTopic(topic);
                           setView('help');
                           // Add user message about the selected topic
                           const userMsg = { sender: 'user', message: `I need help with: ${topic.title}`, timestamp: new Date() };

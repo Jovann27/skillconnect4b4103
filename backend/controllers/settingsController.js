@@ -3,7 +3,6 @@ import JobFair from "../models/jobFairSchema.js";
 import ServiceRequest from "../models/serviceRequest.js";
 import Settings from "../models/settings.js";
 import { catchAsyncError } from "../middlewares/catchAsyncError.js";
-import ErrorHandler from "../middlewares/error.js";
 
 export const getSkilledUsers = async (req, res) => {
   try {
@@ -232,24 +231,24 @@ export const completeServiceRequest = async (req, res) => {
 
     // Handle file uploads
     const proofOfWorkUrls = [];
-    if (req.files && req.files.proofImages) {
-      const cloudinary = (await import("../config/cloudinaryConfig.js")).default;
-      const files = Array.isArray(req.files.proofImages) ? req.files.proofImages : [req.files.proofImages];
+    // if (req.files && req.files.proofImages) {
+    //   const cloudinary = (await import("../config/cloudinaryConfig.js")).default;
+    //   const files = Array.isArray(req.files.proofImages) ? req.files.proofImages : [req.files.proofImages];
 
-      for (const file of files) {
-        try {
-          // Upload to cloudinary
-          const result = await cloudinary.uploader.upload(file.tempFilePath, {
-            folder: 'proof-of-work',
-            resource_type: 'auto'
-          });
-          proofOfWorkUrls.push(result.secure_url);
-        } catch (uploadError) {
-          console.error("Error uploading proof image:", uploadError);
-          // Continue with other files, don't fail the whole request
-        }
-      }
-    }
+    //   for (const file of files) {
+    //     try {
+    //       // Upload to cloudinary
+    //       const result = await cloudinary.uploader.upload(file.tempFilePath, {
+    //     folder: 'proof-of-work',
+    //     resource_type: 'auto'
+    //   });
+    //   proofOfWorkUrls.push(result.secure_url);
+    //     } catch (uploadError) {
+    //       console.error("Error uploading proof image:", uploadError);
+    //       // Continue with other files, don't fail the whole request
+    //     }
+    //   }
+    // }
 
     // Update request with completion data
     request.status = "Complete";
@@ -264,7 +263,7 @@ export const completeServiceRequest = async (req, res) => {
   }
 };
 
-export const getSettings = catchAsyncError(async (req, res, next) => {
+export const getSettings = catchAsyncError(async (req, res) => {
   const settings = await Settings.findOne();
   if (!settings) {
     // Return default settings if none exist
@@ -275,7 +274,7 @@ export const getSettings = catchAsyncError(async (req, res, next) => {
   res.json({ success: true, settings });
 });
 
-export const updateSettings = catchAsyncError(async (req, res, next) => {
+export const updateSettings = catchAsyncError(async (req, res) => {
   const updated = await Settings.findOneAndUpdate({}, req.body, { 
     new: true, 
     upsert: true,

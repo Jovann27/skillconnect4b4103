@@ -9,7 +9,7 @@ import { sendNotification } from "../utils/socketNotify.js";
 // Create Job Fair
 export const createJobFair = async (req, res) => {
   try {
-    const { title, description, date, startTime,endTime, location } = req.body;
+    const { title, description, date, startTime, endTime, location } = req.body;
 
     const jobfair = await JobFair.create({
       title,
@@ -33,18 +33,7 @@ export const adminGetAllServiceRequests = async (req, res) => {
     const { skill, status, sort } = req.query;
 
     let filter = {};
-    if (skill) {
-      const regex = new RegExp(skill, 'i');
-
-      // find users who have a matching skill via regex
-      const usersWithSkill = await User.find({ skills: { $regex: regex } }).select("_id");
-      const userIds = usersWithSkill.map(u => u._id);
-
-      const orClauses = [{ title: regex }, { description: regex }];
-      if (userIds.length) orClauses.push({ requester: { $in: userIds } });
-
-      filter = { $or: orClauses };
-    }
+    // skill filter commented out
 
     if (status) {
       // normalize to capitalized enum
@@ -75,7 +64,7 @@ export const adminGetAllServiceRequests = async (req, res) => {
     res.json({
       count: totalRequests,
       totalPages,
-      requests,
+      requests
     });
   } catch (err) {
     console.error(err);
@@ -103,35 +92,30 @@ export const verifyUser = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Admin authentication required", 401));
   }
 
-  try {
-    const user = await User.findById(id);
+  const user = await User.findById(id);
 
-    if (!user) return next(new ErrorHandler("User not found", 404));
-    if (user.verified) return next(new ErrorHandler("User is already verified", 400));
+  if (!user) return next(new ErrorHandler("User not found", 404));
+  if (user.verified) return next(new ErrorHandler("User is already verified", 400));
 
-    user.verified = true;
-    user.verifiedBy = req.admin._id; // Admin who verified the user
-    await user.save();
+  user.verified = true;
+  user.verifiedBy = req.admin._id; // Admin who verified the user
+  await user.save();
 
-    console.log(`User ${id} verified successfully by admin ${req.admin._id}`);
+  console.log(`User ${id} verified successfully by admin ${req.admin._id}`);
 
-    // Send notification to the user (won't fail if socket not available)
-    await sendNotification(
-      user._id,
-      "Account Verified",
-      "Your account has been verified by an administrator. You can now log in to the system.",
-      { type: "account-verified" }
-    );
+  // Send notification to the user (won't fail if socket not available)
+  await sendNotification(
+    user._id,
+    "Account Verified",
+    "Your account has been verified by an administrator. You can now log in to the system.",
+    { type: "account-verified" }
+  );
 
-    res.status(200).json({
-      success: true,
-      message: `User (${user.firstName} ${user.lastName}) has been verified successfully`,
-      user
-    });
-  } catch (error) {
-    console.error("Error verifying user:", error.message, error.stack);
-    return next(new ErrorHandler(`Failed to verify user: ${error.message}`, 500));
-  }
+  res.status(200).json({
+    success: true,
+    message: `User (${user.firstName} ${user.lastName}) has been verified successfully`,
+    user
+  });
 });
 
 // Get all users
@@ -148,7 +132,7 @@ export const getAllUsers = async (req, res) => {
 // Get service providers
 export const getServiceProviders = async (req, res) => {
   try {
-    const workers = await User.find({ role: "Service Provider" })
+    const workers = await User.find({ "role": "Service Provider" })
       .select("firstName lastName skills availability profilePic createdAt");
     res.json({ success: true, count: workers.length, workers });
   } catch (err) {
@@ -187,16 +171,21 @@ export const rejectServiceProvider = catchAsyncError(async (req, res, next) => {
   user.availability = "Not Available"; // Set to not available
   await user.save();
 
+  let message = `Service Provider (${user.firstName} ${user.lastName}) has been rejected`;
+  if (reason) {
+    message += ` Reason: ${reason}`;
+  }
+
   res.status(200).json({
     success: true,
-    message: `Service Provider (${user.firstName} ${user.lastName}) has been rejected.${reason ? ` Reason: ${reason}` : ''}`,
+    message,
     user
   });
 });
 
 // Get Service Providers
 export const getServiceProviderApplicants = catchAsyncError(async (req, res, next) => {
-  const providers = await User.find({ role: "Service Provider" })
+  const providers = await User.find({ "role": "Service Provider" })
     .select("-password")
     .sort({ createdAt: -1 });
 
@@ -208,19 +197,19 @@ export const getServiceProviderApplicants = catchAsyncError(async (req, res, nex
 });
 
 //Ban User
-export const banUser = catchAsyncError(async (req, res, next) => {
+export const banUser = async (req, res) => {
   const { id } = req.params;
-  
+
   if (!id) {
-    return next(new ErrorHandler("User ID is required", 400));
+    return res.status(400).json({ success: false, message: "User ID is required" });
   }
 
   try {
     const user = await User.findById(id);
 
-    if (!user) return next(new ErrorHandler("User not found", 404));
-    if (user.role === "Admin") return next(new ErrorHandler("Cannot ban another admin", 403));
-    if (user.banned) return next(new ErrorHandler("User is already banned", 400));
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    if (user.role === "Admin") return res.status(403).json({ success: false, message: "Cannot ban another admin" });
+    if (user.banned) return res.status(400).json({ success: false, message: "User is already banned" });
 
     user.availability = "Not Available";
     user.banned = true;
@@ -243,9 +232,9 @@ export const banUser = catchAsyncError(async (req, res, next) => {
     });
   } catch (error) {
     console.error("Error banning user:", error.message, error.stack);
-    return next(new ErrorHandler(`Failed to ban user: ${error.message}`, 500));
+    return res.status(500).json({ success: false, message: `Failed to ban user: ${error.message}` });
   }
-});
+};
 
 // Update user service profile
 export const updateUserServiceProfile = catchAsyncError(async (req, res, next) => {
@@ -293,34 +282,9 @@ export const updateUserServiceProfile = catchAsyncError(async (req, res, next) =
 export const getDashboardMetrics = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
-    const totalProviders = await User.countDocuments({ role: "Service Provider" });
-    const activeBookings = await Booking.countDocuments({ status: { $in: ["Pending", "Confirmed", "InProgress"] } });
+    const totalProviders = await User.countDocuments({ "role": "Service Provider" });
+    const activeBookings = await Booking.countDocuments();
     const totalBookings = await Booking.countDocuments();
-
-    // Bookings per week (last 4 weeks)
-    const lastMonth = new Date();
-    lastMonth.setDate(lastMonth.getDate() - 28);
-    const bookingsOverTime = await Booking.aggregate([
-      { $match: { createdAt: { $gte: lastMonth } } },
-      {
-        $group: {
-          _id: {
-            week: { $isoWeek: "$createdAt" },
-            year: { $year: "$createdAt" },
-          },
-          count: { $sum: 1 },
-        },
-      },
-      { $sort: { "_id.year": 1, "_id.week": 1 } },
-      { $limit: 4 },
-    ]);
-
-    // Most booked categories (assuming from service requests)
-    const mostBooked = await ServiceRequest.aggregate([
-      { $group: { _id: "$category", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 5 },
-    ]);
 
     res.json({
       success: true,
@@ -328,10 +292,8 @@ export const getDashboardMetrics = async (req, res) => {
         totalUsers,
         totalProviders,
         activeBookings,
-        totalBookings,
-        bookingsOverTime,
-        mostBooked,
-      },
+        totalBookings
+      }
     });
   } catch (err) {
     console.error(err);

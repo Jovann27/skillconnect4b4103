@@ -9,9 +9,6 @@ const MyRequests = ({
   filterServiceType,
   filterBudgetRange,
   handleRequestClick,
-  handleChatRequest,
-  handleEditRequest,
-  handleCancelRequest,
   getStatusClass,
 }) => {
   const navigate = useNavigate();
@@ -124,8 +121,6 @@ const MyRequests = ({
 
           <tbody>
             {filteredMyRequests.map((request) => {
-              const normalizedStatus = normalizeStatus(request.status);
-
               return (
                 <tr
                   key={request._id}

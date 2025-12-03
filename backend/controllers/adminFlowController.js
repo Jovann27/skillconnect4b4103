@@ -97,27 +97,32 @@ export const getPendingProviderApplications = catchAsyncError(async (req, res, n
 
 
 // Get all services
-export const getServices = catchAsyncError(async (req, res, next) => {
+export const getServices = catchAsyncError(async (req, res) => {
   const services = await Service.find().sort({ createdAt: -1 });
   res.json({ success: true, services });
 });
 
 // Add service to user (admin only)
-export const addUserService = catchAsyncError(async (req, res, next) => {
-  if (!req.admin) return next(new ErrorHandler("Admin only", 401));
+export const addUserService = async (req, res) => {
+  if (!req.admin) return res.status(401).json({ success: false, message: "Admin only" });
   const { userId, service } = req.body;
-  if (!userId || !service) return next(new ErrorHandler("Missing required fields", 400));
+  if (!userId || !service) return res.status(400).json({ success: false, message: "Missing required fields" });
 
-  const user = await User.findById(userId);
-  if (!user) return next(new ErrorHandler("User not found", 404));
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
-  if (!user.services.includes(service)) {
-    user.services.push(service);
-    await user.save();
+    if (!user.services.includes(service)) {
+      user.services.push(service);
+      await user.save();
+    }
+
+    res.json({ success: true, services: user.services });
+  } catch (error) {
+    console.error("addUserService error:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
-
-  res.json({ success: true, services: user.services });
-});
+};
 
 // Edit user service (admin only)
 export const editUserService = catchAsyncError(async (req, res, next) => {

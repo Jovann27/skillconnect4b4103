@@ -79,7 +79,7 @@ const SystemAnalytics = () => {
     const totalGrowth = values.length > 1 ? ((latest - values[0]) / (values[0] || 1) * 100).toFixed(1) : 0;
     const avgMonthly = values.reduce((a, b) => a + b, 0) / values.length;
 
-    return `User registration shows ${growth >= 0 ? 'positive' : 'negative'} momentum with ${Math.abs(growth)}% ${growth >= 0 ? 'growth' : 'decline'} from last month. Overall ${totalGrowth}% increase over ${timeRange} months. Average monthly registrations: ${Math.round(avgMonthly)}.`;
+    return `User registration shows ${growth >= 0 ? 'positive' : 'negative'} momentum with ${Math.abs(growth)}% ${growth >= 0 ? 'growth' : 'decline'} from last month. Overall ${totalGrowth}% increase over ${timeRange} months. Average monthly registrations: ${Math.round(avgMonthly)}.`; // timeRange is used in template
   };
 
   const generateAgeInsights = (analyticsData) => {
@@ -171,6 +171,7 @@ const SystemAnalytics = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeRange]);
 
   const fetchAnalyticsData = async () => {
@@ -211,7 +212,7 @@ const SystemAnalytics = () => {
       
       const popularServices = typeof mostBookedData === 'object' && mostBookedData !== null
         ? Object.entries(mostBookedData)
-            .filter(([service, count]) => typeof count === 'number')
+            .filter(([, count]) => typeof count === 'number')
             .map(([service, count]) => ({ service, count }))
             .sort((a, b) => b.count - a.count)
             .slice(0, 10)

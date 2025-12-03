@@ -27,8 +27,6 @@ const UserWorkRecord = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editRequest, setEditRequest] = useState(null);
   const [myRequests, setMyRequests] = useState([]);
-  const [records, setRecords] = useState([]);
-  const [requests, setRequests] = useState([]);
 
   const fetchMyRequests = async () => {
     try {
@@ -39,28 +37,8 @@ const UserWorkRecord = () => {
     }
   };
 
-  const fetchWorkRecords = async () => {
-    try {
-      const { data } = await api.get("/user/service-requests");
-      setRecords(data.serviceRequests || []);
-    } catch (err) {
-      console.error("Error fetching records:", err);
-    }
-  };
-
-  const fetchCurrentRequests = async () => {
-    try {
-      const { data } = await api.get("/user/service-requests", { withCredentials: true });
-      setRequests(data.requests || []);
-    } catch (err) {
-      console.error("Error fetching requests:", err);
-    }
-  };
-
   useEffect(() => {
     fetchMyRequests();
-    fetchWorkRecords();
-    fetchCurrentRequests();
   }, []);
 
   const getStatusClass = (status) => {
@@ -207,7 +185,6 @@ const UserWorkRecord = () => {
       const response = await api.post(`/user/service-request/${request._id}/accept`);
       if (response.data.success) {
         showNotification("Request accepted successfully!", "success", 3000, "Success");
-        fetchCurrentRequests();
         handleClosePopup();
       }
     } catch (err) {
@@ -216,7 +193,7 @@ const UserWorkRecord = () => {
     }
   };
 
-  const handleDeclineRequest = async (request, e) => {
+  const handleDeclineRequest = async (e) => {
     e.stopPropagation();
     // For decline, just close the popup or remove from view
     showNotification("Request declined.", "info", 3000, "Info");
@@ -280,7 +257,7 @@ const UserWorkRecord = () => {
     }
   };
 
-  const handleDeleteRequest = async (request) => {
+  const handleDeleteRequest = async () => {
     showNotification("Request declined.", "info", 3000, "Info");
     handleClosePopup();
   };

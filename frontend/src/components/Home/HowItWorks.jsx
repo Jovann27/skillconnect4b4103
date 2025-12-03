@@ -36,7 +36,6 @@ const HowItWorks = () => {
       <div className="how-it-works-container">
         {/* Header */}
         <div className="how-it-works-header">
-          <div className="how-it-works-badge">🚀 GET STARTED</div>
           <h2 className="how-it-works-title">How SkillConnect Works</h2>
           <p className="how-it-works-subtitle">
             Three simple steps to connect with skilled professionals or find your next opportunity in your local community
@@ -53,16 +52,16 @@ const HowItWorks = () => {
                 {index < steps.length - 1 && (
                   <div className="how-it-works-connector">
                     <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#e11d48" />
+                          <stop offset="50%" stopColor="#6366f1" />
+                          <stop offset="100%" stopColor="#10b981" />
+                        </linearGradient>
+                      </defs>
                       <line x1="0" y1="50" x2="100" y2="50" stroke="url(#gradient)" strokeWidth="3" />
                       <circle cx="100" cy="50" r="5" fill="url(#gradient)" />
                     </svg>
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#e11d48" />
-                        <stop offset="50%" stopColor="#6366f1" />
-                        <stop offset="100%" stopColor="#10b981" />
-                      </linearGradient>
-                    </defs>
                   </div>
                 )}
 
@@ -99,20 +98,13 @@ const HowItWorks = () => {
           <p>Join thousands of community members and skilled professionals already connected on SkillConnect</p>
           <div className="how-it-works-cta-buttons">
             <button className="how-it-works-btn how-it-works-btn-primary">
-              Create Account Now
-            </button>
-            <button className="how-it-works-btn how-it-works-btn-secondary">
-              Learn More
+              <a href="/register">Create an Account</a>
             </button>
           </div>
         </div>
       </div>
 
       <style>{`
-        /* ========================================
-           HOW IT WORKS SECTION
-           ======================================== */
-
         .how-it-works-section {
           position: relative;
           padding: 5rem 1.5rem;

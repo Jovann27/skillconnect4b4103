@@ -4,7 +4,7 @@ dotenv.config();
 
 import app from "./app.js";
 import { dbConnection } from "./database/dbConnection.js";
-import "./config/cloudinaryConfig.js";
+// import "./config/cloudinaryConfig.js";
 import { checkAndUpdateExpiredRequests } from "./utils/expirationHandler.js";
 
 // Initialize database connection

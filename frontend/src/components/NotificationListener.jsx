@@ -83,7 +83,7 @@ export default function NotificationListener({ user }) {
             }
         });
 
-        socket.on("request-accepted", (data) => {
+        socket.on("request-accepted", () => {
             toast.success("A service request has been accepted.", {
                 position: "top-right",
                 autoClose: 8000,

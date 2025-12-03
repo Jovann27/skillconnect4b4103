@@ -157,7 +157,7 @@ const styles = `
   }
 `;
 
-const TeamMember = ({ name, role, imageUrl }) => (
+const TeamMember = ({ role, imageUrl }) => (
   <div className="team-member">
     <div className="team-member-container">
       <div className="team-member-image-container">

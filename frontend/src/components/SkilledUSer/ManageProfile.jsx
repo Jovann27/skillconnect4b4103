@@ -3,10 +3,8 @@ import { FaStar, FaRegStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import './dashboard-content.css';
-import { useMainContext } from '../../mainContext';
 
 const ManageProfile = () => {
-  const { user: contextUser } = useMainContext();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

@@ -125,7 +125,7 @@ router.get('/dashboard/recent-activity', isUserAuthenticated, isUserVerified, as
     const activities = [];
 
     // Format service requests as activities
-    recentRequests.forEach((request, index) => {
+    recentRequests.forEach((request) => {
       const customerName = request.requester ? `${request.requester.firstName} ${request.requester.lastName}` : 'Unknown';
       activities.push({
         id: `request_${request._id}`,
@@ -138,7 +138,7 @@ router.get('/dashboard/recent-activity', isUserAuthenticated, isUserVerified, as
     });
 
     // Format reviews as activities
-    recentReviews.forEach((review, index) => {
+    recentReviews.forEach((review) => {
       const reviewerName = review.reviewer ? `${review.reviewer.firstName} ${review.reviewer.lastName}` : 'Anonymous';
       activities.push({
         id: `review_${review._id}`,

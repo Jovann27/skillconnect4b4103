@@ -9,7 +9,9 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useMainContext } from "./mainContext";
+import useNavigateWithLoader from "./hooks/useNavigateWithLoader";
 import NotificationListener from "./components/NotificationListener";
+import Loader from "./components/Layout/Loader";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -58,7 +60,7 @@ import VerificationPending from "./components/VerificationPending";
 import AccountBanned from "./components/AccountBanned";
 
 import ErrorBoundary from "./components/Layout/ErrorBoundary";
-import { PopupProvider } from "./components/Layout/PopupContext";
+import PopupProvider from "./components/Layout/PopupContext";
 
 // Role-based access guard component
 const RoleGuard = ({ allowedRoles, children, fallback = null }) => {
@@ -98,16 +100,15 @@ const AccountStatusGuard = ({ children }) => {
 };
 
 const AppContent = () => {
-  const { isAuthorized, tokenType, authLoaded, user, admin } = useMainContext();
+  const { isAuthorized, tokenType, authLoaded, user, admin, navigationLoading } = useMainContext();
   const location = useLocation();
   const navigate = useNavigate();
+  const navigateWithLoader = useNavigateWithLoader();
   const isAdmin = isAuthorized && tokenType === "admin";
   const isUser = isAuthorized && tokenType === "user";
 
   // Role-based access helpers
   const userRole = user?.role;
-  const isCommunityMember = userRole === "Community Member";
-  const isServiceProvider = userRole === "Service Provider";
 
 
 
@@ -133,26 +134,26 @@ const AppContent = () => {
       if (isAdmin && !location.pathname.startsWith("/admin")) {
         const lastPath = localStorage.getItem("adminLastPath");
         if (lastPath && lastPath.startsWith("/admin/")) {
-          navigate(lastPath, { replace: true });
+          navigateWithLoader(lastPath, { replace: true });
         } else {
-          navigate("/admin/analytics", { replace: true });
+          navigateWithLoader("/admin/analytics", { replace: true });
         }
       } else if (isUser) {
         // Redirect if on home page or invalid route
         if (location.pathname === "/" || location.pathname === "/home") {
           const lastPath = localStorage.getItem("userLastPath");
           if (lastPath && lastPath.startsWith("/user/")) {
-            navigate(lastPath, { replace: true });
+            navigateWithLoader(lastPath, { replace: true });
           } else {
             // Navigate based on user role
             // Service Provider → /user/my-service
             // Community Member → /user/service-request
             if (userRole === "Service Provider") {
-              navigate("/user/my-service", { replace: true });
+              navigateWithLoader("/user/my-service", { replace: true });
               localStorage.setItem("userLastPath", "/user/my-service");
             } else {
               // Community Member
-              navigate("/user/service-request", { replace: true });
+              navigateWithLoader("/user/service-request", { replace: true });
               localStorage.setItem("userLastPath", "/user/service-request");
             }
           }
@@ -160,12 +161,20 @@ const AppContent = () => {
       }
     } else if (!isAuthorized && !isOnAuthPage && location.pathname.startsWith("/user/")) {
       // Redirect to login if trying to access user routes without auth
-      navigate("/login", { replace: true });
+      navigateWithLoader("/login", { replace: true });
     } else if (!isAuthorized && !isOnAuthPage && location.pathname.startsWith("/admin/")) {
       // Redirect to admin login if trying to access admin routes without auth
-      navigate("/admin/login", { replace: true });
+      navigateWithLoader("/admin/login", { replace: true });
     }
-  }, [isAuthorized, location.pathname, navigate, isAdmin, isUser, authLoaded, userRole]);
+  }, [isAuthorized, location.pathname, navigateWithLoader, isAdmin, isUser, authLoaded, userRole]);
+
+  if (navigationLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <>

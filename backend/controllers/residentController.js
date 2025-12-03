@@ -3,7 +3,7 @@ import { catchAsyncError } from '../middlewares/catchAsyncError.js';
 import ErrorHandler from '../middlewares/error.js';
 
 // Get all residents
-export const getAllResidents = catchAsyncError(async (req, res, next) => {
+export const getAllResidents = catchAsyncError(async (req, res) => {
   const residents = await Resident.find().sort({ createdAt: -1 });
 
   res.status(200).json({
@@ -27,7 +27,7 @@ export const getResident = catchAsyncError(async (req, res, next) => {
 });
 
 // Create new resident
-export const createResident = catchAsyncError(async (req, res, next) => {
+export const createResident = catchAsyncError(async (req, res) => {
   const { name, address, phoneNumber, email } = req.body;
 
   const resident = await Resident.create({

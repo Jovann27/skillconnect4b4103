@@ -3,16 +3,12 @@ import dotenv from "dotenv";
 import Admin from "./models/adminSchema.js";
 import User from "./models/userSchema.js";
 import Booking from "./models/booking.js";
-import Chat from "./models/chat.js";
-import Help from "./models/helpSchema.js";
-import JobFair from "./models/jobFairSchema.js";
 import Notification from "./models/notification.js";
 import Report from "./models/report.js";
 import Resident from "./models/residentSchema.js";
 import Review from "./models/review.js";
 import Service from "./models/service.js";
 import ServiceRequest from "./models/serviceRequest.js";
-import Settings from "./models/settings.js";
 import VerificationAppointment from "./models/verificationSchema.js";
 
 dotenv.config();
@@ -40,11 +36,13 @@ if (!passwordToUse) {
   passwordToUse = "AdminPass123";
 }
 
+let admin = null;
 const existingAdmin = await Admin.findOne({ email: "skillconnect@gmail.com" });
 if (existingAdmin) {
   console.log("Admin already exists, skipping admin creation.");
+  admin = existingAdmin;
 } else {
-  const admin = await Admin.create({
+  admin = await Admin.create({
     name: "Admin",
     profilePic: "",
     email: "skillconnect@gmail.com",
@@ -199,7 +197,7 @@ const srStatuses = ["Waiting", "Working", "Complete", "Cancelled", "No Longer Av
 const bookingStatuses = ["Available", "Working", "Complete", "Cancelled"];
 
 // Create ServiceRequests (connected to members and assign providers)
-const serviceRequestsData = members.slice(0, 20).map((member, index) => {
+const serviceRequestsData = members.slice(0, 20).map((member) => {
   const assignedProvider = providers[Math.floor(Math.random() * providers.length)];
   return {
     requester: member._id,
@@ -241,7 +239,7 @@ const reviewsData = bookings.slice(0, 10).map(booking => ({
   comments: "Sample review comment"
 }));
 
-await Review.insertMany(reviewsData);
+const reviews = await Review.insertMany(reviewsData);
 console.log("10 reviews created");
 
 // Create Reports (from members to providers)

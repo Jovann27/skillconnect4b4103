@@ -20,63 +20,14 @@ const UserManagement = () => {
   const [error, setError] = useState("");
   const [tab, setTab] = useState("users");
   const [actionLoading, setActionLoading] = useState(null);
-  const [showServiceModal, setShowServiceModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [serviceFormData, setServiceFormData] = useState([]);
   const [showUserModal, setShowUserModal] = useState(false);
   const [modalSource, setModalSource] = useState("");
   const [newRegisteredUsers, setNewRegisteredUsers] = useState([]);
-  const [showDocumentModal, setShowDocumentModal] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState(null);
-  const [documentType, setDocumentType] = useState('');
-  const [zoomLevel, setZoomLevel] = useState(1);
-  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [roleFilter, setRoleFilter] = useState('all');
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const [currentPageNewUsers, setCurrentPageNewUsers] = useState(1);
   const itemsPerPage = 10;
-
-  // Zoom handlers
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.25, 3));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.25, 0.5));
-  };
-
-  const handleZoomReset = () => {
-    setZoomLevel(1);
-    setPanPosition({ x: 0, y: 0 });
-  };
-
-  const handleWheel = (e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setZoomLevel(prev => Math.max(0.5, Math.min(3, prev + delta)));
-  };
-
-  const handleMouseDown = (e) => {
-    if (zoomLevel > 1) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
-    }
-  };
-
-  const handleMouseMove = (e) => {
-    if (isDragging && zoomLevel > 1) {
-      setPanPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      });
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
 
   useEffect(() => {
     fetchData();
@@ -136,39 +87,7 @@ const UserManagement = () => {
     return false;
   };
 
-  const handleSaveService = async () => {
-    if (!selectedUser) return;
 
-    const validServices = serviceFormData
-      .filter(service => service.name && service.name.trim() !== '')
-      .map(service => ({
-        name: service.name.trim(),
-        rate: typeof service.rate === 'number' ? service.rate : (parseFloat(service.rate) || 0),
-        description: service.description ? service.description.trim() : ''
-      }));
-
-    if (validServices.length === 0) {
-      alert("At least one service with a valid name is required");
-      return;
-    }
-
-    setActionLoading('save-service');
-    try {
-      const result = await api.put(`/admin/user/service-profile/${selectedUser._id}`, {
-        services: validServices
-      });
-      if (result.data.success) {
-        alert("User service profile updated successfully");
-        setShowServiceModal(false);
-        fetchData();
-      }
-    } catch (err) {
-      console.error("Error updating service profile:", err);
-      alert(`Error updating service profile: ${err.response?.data?.message || err.message}`);
-    } finally {
-      setActionLoading(null);
-    }
-  };
 
   if (loading) {
     return (
@@ -1245,12 +1164,6 @@ const UserManagement = () => {
                             <img
                               src={cert}
                               alt={`Certificate ${index + 1}`}
-                              onClick={() => {
-                                setSelectedDocument(cert);
-                                setDocumentType('certificate');
-                                handleZoomReset();
-                                setShowDocumentModal(true);
-                              }}
                             />
                           )}
                         </div>
@@ -1273,12 +1186,6 @@ const UserManagement = () => {
                           <img
                             src={selectedUser.validId}
                             alt="Valid ID"
-                            onClick={() => {
-                              setSelectedDocument(selectedUser.validId);
-                              setDocumentType('validId');
-                              handleZoomReset();
-                              setShowDocumentModal(true);
-                            }}
                           />
                         )}
                       </div>
@@ -1318,18 +1225,6 @@ const UserManagement = () => {
                   <p className="um-actions-subtitle">Manage this user's account status and permissions</p>
                 </div>
                 <div className="um-action-buttons">
-                  {selectedUser.role === 'Service Provider' && (
-                    <button
-                      className="um-action-btn edit"
-                      onClick={() => {
-                        setServiceFormData(selectedUser.services && selectedUser.services.length > 0 ? selectedUser.services : [{ name: '', rate: 0, description: '' }]);
-                        setShowServiceModal(true);
-                        setShowUserModal(false);
-                      }}
-                    >
-                      ✏️ Edit Services
-                    </button>
-                  )}
                   {!selectedUser.banned && (
                     <button
                       className="um-action-btn ban"

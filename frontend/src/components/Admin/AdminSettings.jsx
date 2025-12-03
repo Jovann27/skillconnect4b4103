@@ -149,7 +149,7 @@ const AdminSettings = () => {
       await new Promise(resolve => setTimeout(resolve, 2000));
       toast.dismiss();
       toast.success('Backup created successfully!');
-    } catch (error) {
+    } catch {
       toast.dismiss();
       toast.error('Backup failed');
     }

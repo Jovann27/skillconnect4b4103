@@ -13,9 +13,6 @@ const Residents = () => {
   const [filteredResidents, setFilteredResidents] = useState([]);
   const [importing, setImporting] = useState(false);
 
-  // Check if user is authenticated as admin
-  const isAdmin = isAuthorized && tokenType === "admin" && admin;
-
   useEffect(() => {
     // Wait for authentication to be fully loaded
     if (isAuthorized === null || isAuthorized === undefined) {

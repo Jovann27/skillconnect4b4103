@@ -3,7 +3,7 @@ import { catchAsyncError } from "../middlewares/catchAsyncError.js";
 import ErrorHandler from "../middlewares/error.js";
 
 // Get all reviews for a specific user (reviewee)
-export const getUserReviews = catchAsyncError(async (req, res, next) => {
+export const getUserReviews = catchAsyncError(async (req, res) => {
   const { userId } = req.params;
 
   const reviews = await Review.find({ reviewee: userId })
@@ -62,7 +62,7 @@ export const createReview = catchAsyncError(async (req, res, next) => {
 });
 
 // Get review statistics for a user
-export const getUserReviewStats = catchAsyncError(async (req, res, next) => {
+export const getUserReviewStats = catchAsyncError(async (req, res) => {
   const { userId } = req.params;
 
   const stats = await Review.aggregate([

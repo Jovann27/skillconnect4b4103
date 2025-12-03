@@ -2,7 +2,7 @@ import { generateAIRecommendations } from '../utils/aiService.js';
 import { catchAsyncError } from '../middlewares/catchAsyncError.js';
 import { io } from '../server.js';
 
-export const getAIRecommendations = catchAsyncError(async (req, res, next) => {
+export const getAIRecommendations = catchAsyncError(async (req, res) => {
   try {
     // Get analytics data from request body
     const analyticsData = req.body;

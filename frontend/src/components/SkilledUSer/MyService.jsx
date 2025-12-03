@@ -24,14 +24,6 @@ const MyService = () => {
   const [predefinedServices, setPredefinedServices] = useState([]);
   const [selectedService, setSelectedService] = useState('');
   const [serviceUpdating, setServiceUpdating] = useState(false);
-  const [clientData, setClientData] = useState({
-    name: '',
-    phone: '',
-    service: '',
-    cost: 0,
-    date: '',
-    address: ''
-  });
   const [currentRequests, setCurrentRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState('');
@@ -74,7 +66,7 @@ const MyService = () => {
           }
           setIsOnline(data.isOnline !== false); // Default to true
         }
-      } catch (error) {
+      } catch {
         setIsOnline(true);
       } finally {
         setLoading(false);
@@ -460,8 +452,6 @@ const MyService = () => {
     }
   };
 
-
-
   const handleAccept = async (requestId) => {
     if (acceptingRequest === requestId) return; // Prevent double-clicks
 
@@ -507,7 +497,7 @@ const MyService = () => {
         }
       } catch (apiError) {
         // If endpoint doesn't exist, just remove locally (silent decline)
-        console.log('Decline endpoint not available, removing locally');
+        console.log('Decline endpoint not available, removing locally:', apiError.message);
         declinedSuccessfully = true; // Still consider it successful for UI purposes
       }
       

@@ -55,7 +55,7 @@ const AcceptedRequest = () => {
       await api.post(`/user/service-request/${requestData._id}/accept`, {}, { withCredentials: true });
       toast.success('Request accepted successfully!');
       navigate('/user/dashboard');
-    } catch (error) {
+    } catch {
       toast.error('Failed to accept request.');
     } finally {
       setAccepting(false);
@@ -69,7 +69,7 @@ const AcceptedRequest = () => {
       await api.put(`/user/service-request/${requestData._id}/cancel`, {}, { withCredentials: true });
       toast.success('Request cancelled successfully.');
       navigate('/user/service-requests');
-    } catch (error) {
+    } catch {
       toast.error('Failed to cancel request.');
     } finally {
       setLoading(false);
