@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { subscribeToUserDataChange } from "../utils/storageEvents";
 import { useMainContext } from "../contexts/MainContext";
+import { getImageUrl } from "../utils/imageUtils";
 
 const { width } = Dimensions.get("window");
 
@@ -121,7 +122,7 @@ export default function CustomDrawer({ children }) {
               <Image
                 source={
                   userData?.profilePic
-                    ? { uri: userData.profilePic }
+                    ? { uri: getImageUrl(userData.profilePic) }
                     : require("../assets/default-profile.png")
                 }
                 style={styles.profileImage}

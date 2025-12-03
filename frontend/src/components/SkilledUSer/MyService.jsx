@@ -8,6 +8,18 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import socket from '../../utils/socket';
 import './MyService.css';
 
+const maskPhone = (phone) => {
+  if (!phone) return "N/A";
+  return phone.replace(/\d(?=\d{3})/g, "*");
+};
+
+const maskEmail = (email) => {
+  if (!email || !email.includes("@")) return "N/A";
+  const [user, domain] = email.split("@");
+  const maskedUser = user[0] + "*".repeat(Math.max(user.length - 2, 1)) + user.slice(-1);
+  return `${maskedUser}@${domain}`;
+};
+
 const MyService = () => {
   const { user, isAuthorized } = useMainContext();
   const navigate = useNavigate();
@@ -569,7 +581,8 @@ const MyService = () => {
       <div className="main-layout">
         <div className="left-column">
           <div className="services-section">
-            <h3>Your Services:</h3>
+            <h3>My Status</h3>
+            <h4>Your Services:</h4>
             <div className="service-controls">
               <select 
                 value={selectedService} 
@@ -648,7 +661,8 @@ const MyService = () => {
                     </div>
                     <div className="request-details">
                       <p><strong>Name:</strong> {request.requester?.firstName} {request.requester?.lastName}</p>
-                      <p><strong>Phone:</strong> {request.requester?.phone}</p>
+                      <p><strong>Email:</strong> {maskEmail(request.requester?.email)}</p>
+                      <p><strong>Phone:</strong> {maskPhone(request.requester?.phone)}</p>
                       <p><strong>Service Needed:</strong> {request.typeOfWork}</p>
                       <p><strong>Budget:</strong> ₱{request.budget}</p>
                       <p><strong>Address:</strong> {request.address}</p>

@@ -8,6 +8,7 @@ import MapView, { Marker } from "react-native-maps";
 import { serviceRequestAPI, serviceProfileAPI, userServicesAPI } from "../api";
 import { useMainContext } from "../contexts/MainContext";
 import { socket } from "../utils/socket";
+import { getImageUrl } from "../utils/imageUtils";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -353,16 +354,6 @@ export default function MyServiceScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
         {/* STATUS CARD */}
         <View style={styles.card}>
-          <View style={styles.statusHeader}>
-            <Text style={styles.label}>My Status</Text>
-            <TouchableOpacity
-              style={styles.chatButton}
-              onPress={() => navigation.navigate('ChatList')}
-            >
-              <Ionicons name="chatbox-ellipses-outline" size={20} color="#c20884" />
-              <Text style={styles.chatButtonText}>Chats</Text>
-            </TouchableOpacity>
-          </View>
           <View style={styles.statusRow}>
             <Text style={[styles.statusText, { color: isOnline ? "#2E7D32" : "#777" }]}>
               {isOnline ? "Online" : "Offline"}
@@ -527,7 +518,7 @@ export default function MyServiceScreen({ navigation }) {
               <View key={item.id} style={styles.clientCard}>
                 <View style={styles.profileHeader}>
                   <Image
-                    source={item.profilePic ? { uri: item.profilePic } : require("../assets/default-profile.png")}
+                    source={item.profilePic ? { uri: getImageUrl(item.profilePic) } : require("../assets/default-profile.png")}
                     style={styles.avatar}
                   />
                   <View style={{ flex: 1 }}>
@@ -664,10 +655,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
 
-  statusHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  chatButton: { flexDirection: "row", alignItems: "center", backgroundColor: "#f0f0f0", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4 },
-  chatButtonText: { fontSize: 14, color: "#c20884", fontWeight: "600" },
-  statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 },
+  statusRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   statusText: { fontSize: 16, fontWeight: "500" },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: "#333", marginBottom: 10 },
   label: { fontSize: 14, color: "#444", fontWeight: "600", marginTop: 14, marginBottom: 5 },

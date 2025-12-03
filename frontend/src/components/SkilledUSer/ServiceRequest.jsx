@@ -127,18 +127,25 @@ const ServiceRequestForm = () => {
       });
       newMap.on('load', () => {
         setMap(newMap);
-        // Add initial marker
-        markerRef.current = new maplibregl.Marker({ color: '#ff0000' })
-          .setLngLat([markerPosition.lng, markerPosition.lat])
-          .addTo(newMap);
+        // Add initial marker - ensure it's always visible
+        if (!markerRef.current) {
+          markerRef.current = new maplibregl.Marker({ color: '#ff0000' })
+            .setLngLat([markerPosition.lng, markerPosition.lat])
+            .addTo(newMap);
+        }
       });
       newMap.on('click', async (e) => {
         const { lng, lat } = e.lngLat;
         setMarkerPosition({ lat, lng });
 
-        // Update marker
+        // Ensure marker exists and update position
         if (markerRef.current) {
           markerRef.current.setLngLat([lng, lat]);
+        } else if (newMap) {
+          // Recreate marker if it was somehow removed
+          markerRef.current = new maplibregl.Marker({ color: '#ff0000' })
+            .setLngLat([lng, lat])
+            .addTo(newMap);
         }
 
         // Reverse geocode to get address using backend API
@@ -184,14 +191,19 @@ const ServiceRequestForm = () => {
         markerRef.current = null;
       }
     };
-  }, [markerPosition, map]); // Include markerPosition and map dependencies
+  }, []); // Remove markerPosition and map dependencies to prevent marker recreation
 
   // Separate effect to update marker when markerPosition changes
   useEffect(() => {
-    if (markerRef.current) {
+    if (markerRef.current && map) {
       markerRef.current.setLngLat([markerPosition.lng, markerPosition.lat]);
+    } else if (map && !markerRef.current) {
+      // Recreate marker if it was removed but map exists
+      markerRef.current = new maplibregl.Marker({ color: '#ff0000' })
+        .setLngLat([markerPosition.lng, markerPosition.lat])
+        .addTo(map);
     }
-  }, [markerPosition]);
+  }, [markerPosition, map]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

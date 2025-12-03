@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { notifyUserDataChange } from "../../utils/storageEvents";
 import apiClient from "../../api";
+import { getImageUrl } from "../../utils/imageUtils";
 
 
 export default function Profile({ navigation }) {
@@ -121,7 +122,7 @@ export default function Profile({ navigation }) {
           <Image
             source={
               user.profilePic
-                ? { uri: user.profilePic }
+                ? { uri: getImageUrl(user.profilePic) }
                 : require("../../assets/default-profile.png")
             }
             style={styles.profileImage}
