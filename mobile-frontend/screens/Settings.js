@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Updates from "expo-updates";
 import { useMainContext } from "../contexts/MainContext";
+import { commonStyles } from "../utils/commonStyles";
 
 export default function Settings({ navigation }) {
   const { logout, setIsAuthorized, setUser, setTokenType, setIsUserVerified } = useMainContext();
@@ -33,7 +34,7 @@ export default function Settings({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={commonStyles.screenContainer} contentContainerStyle={commonStyles.scrollContainer}>
       {/* Account Section */}
       <Text style={styles.sectionHeader}>Account</Text>
 
