@@ -16,8 +16,7 @@ const HeroSection = () => {
           <h6 className="hero-welcome">Welcome to</h6>
           <div className="hero-title-container">
             <h1 className="hero-title">
-              SkillConnect
-              <span className="hero-title-highlight">4B410</span>
+              SkillConnect 4B410
             </h1>
             <div className="hero-title-underline"></div>
           </div>

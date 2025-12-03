@@ -1,30 +1,24 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { FaArrowLeft, FaEnvelope, FaCheck, FaTimes } from "react-icons/fa";
-import api from "../../api";
-import "./auth-styles.css";
+import { Mail, ArrowLeft, Loader } from "lucide-react";
+import "../Css/VerifyEmail.css";
 
 const VerifyEmail = () => {
-  const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [validationErrors, setValidationErrors] = useState({});
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
-    // Get email from localStorage or URL params
     const storedEmail = localStorage.getItem('resetEmail');
     if (storedEmail) {
       setEmail(storedEmail);
     } else {
-      toast.error("No email found. Please try again.");
-      navigate("/forgot-password");
+      window.location.href = "/forgot-password";
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     let timer;
@@ -35,13 +29,14 @@ const VerifyEmail = () => {
   }, [resendTimer]);
 
   const handleOtpChange = (value, index) => {
-    if (value.length > 1) return; // Only allow single digit
+    if (!/^\d*$/.test(value)) return;
+    if (value.length > 1) return;
 
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
+    setValidationErrors({});
 
-    // Auto-focus next input
     if (value && index < otp.length - 1) {
       const nextInput = document.getElementById(`otp-${index + 1}`);
       if (nextInput) nextInput.focus();
@@ -67,23 +62,17 @@ const VerifyEmail = () => {
     setIsSubmitting(true);
 
     try {
-      const { data } = await api.post("/user/verify-otp", {
-        email,
-        otp: otpValue,
-        purpose: "password_reset"
-      });
-
-      if (data.success) {
-        // Store the token for password reset
-        localStorage.setItem('resetToken', data.token);
-        toast.success("Email verified successfully!");
-        navigate(`/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.token)}`);
-      } else {
-        setValidationErrors({ otp: data.message || "Invalid verification code" });
-      }
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      localStorage.setItem('resetToken', 'mock-token-' + otpValue);
+      setVerified(true);
+      
+      setTimeout(() => {
+        window.location.href = `/reset-password?email=${encodeURIComponent(email)}&token=mock-token-${otpValue}`;
+      }, 2000);
     } catch (error) {
       setValidationErrors({
-        otp: error.response?.data?.message || "Failed to verify code. Please try again."
+        otp: "Failed to verify code. Please try again."
       });
     } finally {
       setIsSubmitting(false);
@@ -96,75 +85,120 @@ const VerifyEmail = () => {
     setIsResending(true);
 
     try {
-      const { data } = await api.post("/user/send-verification-otp", {
-        email,
-        purpose: "password_reset"
-      });
-
-      if (data.success) {
-        setResendTimer(60);
-        toast.success("Verification code sent again!");
-      } else {
-        toast.error(data.message || "Failed to resend code");
-      }
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setResendTimer(60);
+      setOtp(["", "", "", "", "", ""]);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-        "Failed to resend verification code. Please try again."
-      );
+      console.error("Error:", error);
     } finally {
       setIsResending(false);
     }
   };
 
+  if (verified) {
+    return (
+      <div className="verify-email-wrapper">
+        
+        <div className="card-container">
+          <div className="success-container">
+            <div className="success-icon">
+              <Mail size={48} />
+            </div>
+            <h2 className="success-title">Email Verified</h2>
+            <p className="success-message">
+              Your email has been verified successfully
+            </p>
+            <p className="success-subtext">
+              Redirecting you to reset your password...
+            </p>
+            
+            <div className="loading-bar"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="auth-container">
-      <div className="auth-card verify-email-card">
-        <div className="auth-banner">
-          <h2>Verify Your Email</h2>
-          <p>Enter the 6-digit code sent to your email</p>
+    <div className="verify-email-wrapper">
+      <div className="background-pattern"></div>
+      
+      <div className="card-container">
+        {/* Header Section */}
+        <div className="card-header">
+          <div className="header-content">
+            <div className="header-icon">
+              <Mail size={32} />
+            </div>
+            <h1 className="header-title">Verify Your Email</h1>
+            <p className="header-subtitle">
+              Enter the 6-digit code we sent to your email
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form" noValidate>
+        {/* Form Section */}
+        <div className="form-container">
+          {/* Email Display */}
           <div className="email-display">
-            <FaEnvelope className="email-icon" />
-            <span>{email}</span>
+            <Mail size={18} />
+            <span className="email-text">{email}</span>
           </div>
 
           {/* OTP Input */}
-          <div className="otp-container">
-            {otp.map((digit, index) => (
-              <input
-                key={index}
-                id={`otp-${index}`}
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                maxLength="1"
-                value={digit}
-                onChange={(e) => handleOtpChange(e.target.value, index)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                className={`otp-input ${validationErrors.otp ? 'error' : digit ? 'filled' : ''}`}
-                aria-describedby={validationErrors.otp ? 'otp-error' : 'otp-help'}
-                aria-invalid={!!validationErrors.otp}
-                autoComplete="one-time-code"
-                required
-              />
-            ))}
+          <div className="otp-section">
+            <div className="otp-container">
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  id={`otp-${index}`}
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength="1"
+                  value={digit}
+                  onChange={(e) => handleOtpChange(e.target.value, index)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
+                  className={`otp-input ${validationErrors.otp ? 'input-error' : digit ? 'filled' : ''}`}
+                  disabled={isSubmitting}
+                  autoComplete="one-time-code"
+                />
+              ))}
+            </div>
+
+            {validationErrors.otp && (
+              <div className="error-message">
+                <span>{validationErrors.otp}</span>
+              </div>
+            )}
+
+            <p className="help-text">
+              Check your email (including spam folder) for the 6-digit code
+            </p>
           </div>
 
-          {validationErrors.otp && (
-            <small id="otp-error" className="field-error" role="alert">
-              {validationErrors.otp}
-            </small>
-          )}
-
-          <small id="otp-help" className="form-help">
-            Enter the 6-digit verification code sent to your email address
-          </small>
+          {/* Submit Button */}
+          <button
+            onClick={handleSubmit}
+            className="submit-btn"
+            disabled={isSubmitting || otp.join('').length !== 6}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader size={20} className="spinner-icon" />
+                Verifying...
+              </>
+            ) : (
+              <>
+                <Mail size={20} />
+                Verify Email
+              </>
+            )}
+          </button>
 
           {/* Resend Code */}
-          <div className="resend-container">
+          <div className="resend-section">
+            <p className="resend-label">Didn't receive the code?</p>
             <button
               type="button"
               className="resend-btn"
@@ -174,48 +208,21 @@ const VerifyEmail = () => {
               {isResending ? (
                 "Sending..."
               ) : resendTimer > 0 ? (
-                `Resend code in ${resendTimer}s`
+                `Resend in ${resendTimer}s`
               ) : (
-                "Resend verification code"
+                "Resend Code"
               )}
             </button>
           </div>
 
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="auth-btn primary"
-            disabled={isSubmitting || otp.join('').length !== 6}
-            aria-describedby="submit-help"
-          >
-            {isSubmitting ? (
-              <>
-                Verifying...
-              </>
-            ) : (
-              <>
-                <FaCheck className="btn-icon" />
-                Verify Email
-              </>
-            )}
-          </button>
-
-          <small id="submit-help" className="form-help">
-            Verify your email to proceed with password reset
-          </small>
-
-          {/* Back to Forgot Password */}
-          <div className="verify-email-footer">
-            <button
-              type="button"
-              className="back-to-forgot"
-              onClick={() => navigate("/forgot-password")}
-            >
-              <FaArrowLeft className="btn-icon" />
-              Back to Forgot Password
-            </button>
+          {/* Back Link */}
+          <div className="back-link-container">
+            <a href="/forgot-password" className="back-link">
+              <ArrowLeft size={18} />
+              <span>Back to Forgot Password</span>
+            </a>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

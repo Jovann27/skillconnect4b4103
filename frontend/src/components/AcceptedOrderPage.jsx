@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../api";
 import socket from "../utils/socket";
-import "./SkilledUSer/WaitingForWorker.css";
 
 const AcceptedOrderPage = ({ requestData }) => {
   const [workerData, setWorkerData] = useState(null);

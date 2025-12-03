@@ -17,7 +17,7 @@ const Home = () => {
         <Announcement />
         <Mission />
         <HowItWorks />
-        <TeamSection />
+       <TeamSection id="#about" />
         <DevelopmentCards />
         <ContactForm />
       </section>

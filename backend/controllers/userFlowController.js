@@ -880,12 +880,65 @@ export const getServiceProviders = catchAsyncError(async (req, res, next) => {
   if (!req.user) return next(new ErrorHandler("Unauthorized", 401));
 
   try {
-    const workers = await User.find({
+    const { typeOfWork, budget, limit } = req.query;
+
+    // Build query with base filters for service providers (including inactive/offline)
+    let query = {
       role: "Service Provider",
       banned: { $ne: true }
-    })
+    };
+
+    // Apply service type filter if provided
+    if (typeOfWork) {
+      // Normalize skills for matching
+      const searchSkills = typeOfWork.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+
+      // Build skills match condition
+      const skillMatchConditions = searchSkills.map(word => ({
+        skills: {
+          $elemMatch: {
+            $regex: word,
+            $options: 'i'
+          }
+        }
+      }));
+
+      query.$or = skillMatchConditions;
+    }
+
+    // Apply budget filter if provided
+    if (budget) {
+      const budgetNum = parseFloat(budget);
+      if (!isNaN(budgetNum)) {
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { serviceRate: { $exists: false } },
+            { serviceRate: null },
+            {
+              serviceRate: {
+                $gte: budgetNum - 200,
+                $lte: budgetNum + 200
+              }
+            }
+          ]
+        });
+      }
+    }
+
+    let workersQuery = User.find(query)
       .select("firstName lastName skills availability profilePic service serviceRate serviceDescription createdAt certificates services isOnline")
       .sort({ createdAt: -1 });
+
+    // Apply limit if specified
+    if (limit) {
+      const limitNum = parseInt(limit);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        workersQuery = workersQuery.limit(limitNum);
+      }
+    }
+
+    const workers = await workersQuery;
 
     res.json({ success: true, count: workers.length, workers });
   } catch (err) {

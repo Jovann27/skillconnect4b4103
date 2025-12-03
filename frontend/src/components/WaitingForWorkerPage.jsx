@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import api from "../api";
 import socket from "../utils/socket";
-import "./SkilledUSer/WaitingForWorker.css";
+import "./Css/WaitingForWorker.css";
 
 const WaitingForWorkerPage = ({ requestData }) => {
   const location = useLocation();
@@ -19,151 +19,66 @@ const WaitingForWorkerPage = ({ requestData }) => {
 
   // Fetch matched providers
   const fetchMatchedProviders = async (request) => {
-    if (!request || !request.typeOfWork || !request.budget) {
-      console.warn("Request data incomplete for provider matching");
-      return;
-    }
-
+    if (!request || !request.typeOfWork) return;
     try {
-      const response = await api.get('/user/service-providers');
-      const allProviders = response.data?.workers || [];
-
-      if (!Array.isArray(allProviders)) {
-        console.error("Invalid providers data format");
-        return;
-      }
-
-      // Filter providers based on request criteria
-      const matched = allProviders.filter(provider => {
-        if (!provider || !provider.skills || !Array.isArray(provider.skills)) {
-          return false;
+      const response = await api.get('/user/service-providers', {
+        params: {
+          typeOfWork: request.typeOfWork
         }
-
-        // Check if provider has matching skills
-        const hasMatchingSkill = provider.skills.some(skill =>
-          skill && typeof skill === 'string' &&
-          (skill.toLowerCase().includes(request.typeOfWork.toLowerCase()) ||
-           request.typeOfWork.toLowerCase().includes(skill.toLowerCase()))
-        );
-
-        // Check budget compatibility (within 200 tolerance)
-        const providerRate = provider.serviceRate || 0;
-        const tolerance = 200;
-        const minBudget = providerRate - tolerance;
-        const maxBudget = providerRate + tolerance;
-        const budgetMatch = request.budget >= minBudget && request.budget <= maxBudget;
-
-        return hasMatchingSkill && budgetMatch;
       });
-
-      setMatchedProviders(matched);
+      const matchedProviders = response.data?.workers || [];
+      setMatchedProviders(matchedProviders);
     } catch (err) {
       console.error("Failed to fetch matched providers:", err);
-      setMatchedProviders([]); // Set empty array on error
+      setMatchedProviders([]);
     }
   };
 
   // Fetch reviews and stats for providers
   const fetchProviderData = async (providers) => {
-    if (!Array.isArray(providers) || providers.length === 0) {
-      console.warn("No providers to fetch data for");
-      return;
-    }
-
+    if (!providers?.length) return;
     const reviews = {};
     const stats = {};
-
-    // Process providers in batches to avoid overwhelming the API
     const batchSize = 5;
     for (let i = 0; i < providers.length; i += batchSize) {
       const batch = providers.slice(i, i + batchSize);
-
-      await Promise.all(
-        batch.map(async (provider) => {
-          if (!provider || !provider._id) {
-            console.warn("Invalid provider data:", provider);
-            return;
-          }
-
-          try {
-            // Fetch review stats
-            const statsResponse = await api.get(`/reviews/stats/${provider._id}`);
-            stats[provider._id] = statsResponse.data?.stats || { totalReviews: 0, averageRating: 0 };
-
-            // Fetch recent reviews (limit to 3)
-            const reviewsResponse = await api.get(`/reviews/user/${provider._id}`);
-            const reviewData = reviewsResponse.data?.reviews || [];
-            reviews[provider._id] = Array.isArray(reviewData) ? reviewData.slice(0, 3) : [];
-          } catch (err) {
-            console.error(`Failed to fetch data for provider ${provider._id}:`, err);
-            stats[provider._id] = { totalReviews: 0, averageRating: 0 };
-            reviews[provider._id] = [];
-          }
-        })
-      );
+      await Promise.all(batch.map(async (provider) => {
+        if (!provider?._id) return;
+        try {
+          const statsResponse = await api.get(`/reviews/stats/${provider._id}`);
+          stats[provider._id] = statsResponse.data?.stats || { totalReviews: 0, averageRating: 0 };
+          const reviewsResponse = await api.get(`/reviews/user/${provider._id}`);
+          const reviewData = reviewsResponse.data?.reviews || [];
+          reviews[provider._id] = Array.isArray(reviewData) ? reviewData.slice(0, 3) : [];
+        } catch (err) {
+          stats[provider._id] = { totalReviews: 0, averageRating: 0 };
+          reviews[provider._id] = [];
+        }
+      }));
     }
-
     setProviderStats(stats);
     setProviderReviews(reviews);
   };
 
   // Offer request to specific provider
   const offerRequestToProvider = async (providerId) => {
-    if (!currentRequest || !currentRequest._id) {
-      console.error("No current request available");
-      alert("Unable to process request. Please try again.");
-      return;
-    }
-
-    if (!providerId) {
-      console.error("No provider ID provided");
-      alert("Invalid provider selection. Please try again.");
-      return;
-    }
-
-    // Find provider details for confirmation message
+    if (!currentRequest?._id || !providerId) return alert("Unable to process request.");
     const selectedProvider = matchedProviders.find(p => p._id === providerId);
-    if (!selectedProvider) {
-      console.error("Provider not found in matched providers list");
-      alert("Provider not found. Please refresh and try again.");
-      return;
-    }
+    if (!selectedProvider) return alert("Provider not found.");
 
     setOfferingTo(providerId);
-
     try {
-      // Update the service request with target provider
-      const updateResponse = await api.put(`/user/service-request/${currentRequest._id}/update`, {
-        targetProvider: providerId
-      });
-
-      if (!updateResponse.data || !updateResponse.data.success) {
-        throw new Error("Failed to update service request");
-      }
-
-      // Send notification to the provider
-      const notifyResponse = await api.post('/user/notify-provider', {
+      await api.put(`/user/service-request/${currentRequest._id}/update`, { targetProvider: providerId });
+      await api.post('/user/notify-provider', {
         providerId,
         requestId: currentRequest._id,
-        message: `You have received a targeted service request for "${currentRequest.typeOfWork || 'service'}"`
+        message: `You have a targeted request for "${currentRequest.typeOfWork || 'service'}"`
       });
-
-      // Show success message
       const providerName = `${selectedProvider.firstName || ''} ${selectedProvider.lastName || ''}`.trim();
-      alert(`Request successfully offered to ${providerName || 'the selected provider'}!`);
-
-      // Optionally refresh the request data
-      try {
-        const refreshResponse = await api.get(`/user/service-request/${currentRequest._id}`);
-        if (refreshResponse.data?.request) {
-          setCurrentRequest(refreshResponse.data.request);
-        }
-      } catch (refreshErr) {
-        console.warn("Failed to refresh request data:", refreshErr);
-      }
-
+      alert(`Request offered to ${providerName || 'provider'}!`);
+      const refreshResponse = await api.get(`/user/service-request/${currentRequest._id}`);
+      if (refreshResponse.data?.request) setCurrentRequest(refreshResponse.data.request);
     } catch (err) {
-      console.error("Failed to offer request:", err);
       const errorMessage = err.response?.data?.message || err.message || "Failed to offer request";
       alert(`${errorMessage}. Please try again.`);
     } finally {
@@ -178,390 +93,306 @@ const WaitingForWorkerPage = ({ requestData }) => {
       return;
     }
 
-    const initializeComponent = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        setCurrentRequest(data);
-
-        // Fetch matched providers
-        await fetchMatchedProviders(data);
-
-        // If already working, populate worker
-        if (data.status === "Working") {
-          setStatus("Found");
-          setWorkerData({
-            name:
-              data.serviceProvider
-                ? `${data.serviceProvider.firstName} ${data.serviceProvider.lastName}`
-                : "Worker",
-            skill: data.typeOfWork || "Service",
-            phone: data.serviceProvider?.phone || "09123456789",
-            image: data.serviceProvider?.profilePic || "/default-profile.png",
-            eta: data.eta || null,
-          });
+    const initialize = async () => {
+      setIsLoading(true);
+      setError(null);
+      setCurrentRequest(data);
+      await fetchMatchedProviders(data);
+      if (data.status === "Working") {
+        setStatus("Found");
+        if (data.serviceProvider) {
+            setWorkerData({
+                name: `${data.serviceProvider.firstName} ${data.serviceProvider.lastName}`,
+                skill: data.typeOfWork,
+                phone: data.serviceProvider.phone,
+                image: data.serviceProvider.profilePic || "/default-profile.png",
+                eta: data.eta,
+            });
         }
-
-        // Join room for real-time updates
-        if (socket && data._id) {
-          socket.emit("join-service-request", data._id);
-
-          // Handle socket updates
-          const handleUpdate = async (updateData) => {
-            if (!updateData || updateData.requestId !== data._id) return;
-
-            console.log("Received socket update:", updateData);
-
-            try {
-              const response = await api.get(`/user/service-request/${data._id}`);
-              const updatedRequest = response.data?.request;
-
-              if (updatedRequest) {
-                setCurrentRequest(updatedRequest);
-
-                // Update status based on request status
-                if (updatedRequest.status === "Working" || updatedRequest.status === "Completed") {
-                  setStatus("Found");
-
-                  // Update worker data if provider is assigned
-                  if (updatedRequest.serviceProvider) {
-                    setWorkerData({
-                      name: `${updatedRequest.serviceProvider.firstName || ''} ${updatedRequest.serviceProvider.lastName || ''}`.trim() || "Worker",
-                      skill: updatedRequest.typeOfWork || "Service",
-                      phone: updatedRequest.serviceProvider.phone || "09123456789",
-                      image: updatedRequest.serviceProvider.profilePic || "/default-profile.png",
-                      eta: updatedRequest.eta || null,
-                    });
-                  }
-                } else if (updatedRequest.status === "Pending") {
-                  setStatus("Searching");
-                }
-
-                // Refresh providers list if needed
-                if (updateData.action === "provider-unavailable" || updateData.action === "new-provider") {
-                  fetchMatchedProviders(updatedRequest);
-                }
-              }
-            } catch (err) {
-              console.error("Failed to update request via socket:", err);
-            }
-          };
-
-          socket.on("service-request-updated", handleUpdate);
-
-          return () => {
-            if (socket) {
-              socket.off("service-request-updated", handleUpdate);
-              socket.emit("leave-service-request", data._id);
-            }
-          };
-        }
-      } catch (err) {
-        console.error("Failed to initialize component:", err);
-        setError("Failed to load request data. Please refresh the page.");
-      } finally {
-        setIsLoading(false);
       }
+      setIsLoading(false);
     };
 
-    initializeComponent();
+    initialize();
+
+    if (socket && data._id) {
+      socket.emit("join-service-request", data._id);
+      const handleUpdate = async (updateData) => {
+        if (updateData?.requestId !== data._id) return;
+        try {
+          const response = await api.get(`/user/service-request/${data._id}`);
+          const updatedRequest = response.data?.request;
+          if (updatedRequest) {
+            setCurrentRequest(updatedRequest);
+            if (["Working", "Completed"].includes(updatedRequest.status)) {
+              setStatus("Found");
+              if (updatedRequest.serviceProvider) {
+                setWorkerData({
+                  name: `${updatedRequest.serviceProvider.firstName || ''} ${updatedRequest.serviceProvider.lastName || ''}`.trim(),
+                  skill: updatedRequest.typeOfWork,
+                  phone: updatedRequest.serviceProvider.phone,
+                  image: updatedRequest.serviceProvider.profilePic || "/default-profile.png",
+                  eta: updatedRequest.eta,
+                });
+              }
+            } else if (updatedRequest.status === "Pending") {
+              setStatus("Searching");
+            }
+          }
+        } catch (err) {
+          console.error("Failed to update request via socket:", err);
+        }
+      };
+      socket.on("service-request-updated", handleUpdate);
+      return () => {
+        socket.off("service-request-updated", handleUpdate);
+        socket.emit("leave-service-request", data._id);
+      };
+    }
   }, [data]);
 
-  // Fetch provider data when matched providers change
   useEffect(() => {
     if (matchedProviders.length > 0) {
       fetchProviderData(matchedProviders);
     }
   }, [matchedProviders]);
 
-  const customerDetails = [
-    { label: "Name", value: currentRequest?.name || "N/A" },
-    { label: "Address", value: currentRequest?.address || "N/A" },
-    { label: "Phone", value: currentRequest?.phone || "N/A" },
-  ];
+  const renderStars = (rating) => {
+    return "★".repeat(Math.round(rating)) + "☆".repeat(5 - Math.round(rating));
+  };
 
-  const orderDetails = [
-    { label: "Service Type", value: currentRequest?.typeOfWork || "N/A" },
-    {
-      label: "Priority",
-      value: currentRequest?.targetProvider ? "Favorite Worker" : "Any Available",
-    },
-    { label: "Budget", value: `₱${currentRequest?.budget || "N/A"}` },
-    {
-      label: "Date",
-      value: currentRequest?.createdAt
-        ? new Date(currentRequest.createdAt).toLocaleDateString()
-        : "N/A",
-    },
-    { label: "Note", value: currentRequest?.notes || "None" },
-  ];
+  const getStatusBadgeClass = () => {
+    if (status === "Found") return "status-found";
+    if (currentRequest?.status === "No Longer Available") return "status-expired";
+    return "status-searching";
+  };
 
-  // Show loading state
+  const getStatusText = () => {
+    if (status === "Found") return "Provider Found";
+    if (currentRequest?.status === "No Longer Available") return "Expired";
+    return "Searching";
+  };
+
   if (isLoading) {
     return (
-      <div className="tab-screen-container">
-        <div className="tab-screen-content">
-          <div className="popup-body">
-            <div className="waiting-section">
-              <div className="pulse-circle">
-                <span className="location-icon">⏳</span>
-              </div>
-              <h3>Loading your request...</h3>
-              <p>Please wait while we prepare your service request.</p>
-            </div>
-          </div>
+      <div className="loading-container">
+        <div className="loading-content">
+          <div className="spinner"></div>
+          <h3>Loading your request</h3>
+          <p>Please wait a moment...</p>
         </div>
       </div>
     );
   }
 
-  // Show error state
   if (error) {
     return (
-      <div className="tab-screen-container">
-        <div className="tab-screen-content">
-          <div className="popup-body">
-            <div className="content-card">
-              <h2 className="section-header">❌ Error</h2>
-              <p style={{ color: '#e53e3e', textAlign: 'center', padding: '20px' }}>
-                {error}
-              </p>
-              <div className="popup-actions">
-                <button
-                  className="action-button chat-button"
-                  onClick={() => window.location.reload()}
-                >
-                  🔄 Refresh Page
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="error-container">
+        <h2>❌ Error</h2>
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>🔄 Refresh Page</button>
       </div>
     );
   }
 
   return (
-    <div className="tab-screen-container">
-      <div className="tab-screen-content">
-        <div className="popup-body">
-          {/* Header */}
-          <div className="accepted-order-header">
-            <h1 className="header-title">Find Your Service Provider</h1>
-            <p className="header-subtitle">
-              Request #{currentRequest?._id?.slice(-8) || "N/A"}
-            </p>
-
-            <span
-              className={`status-badge ${
-                status === "Found" ? "available" :
-                currentRequest?.status === "No Longer Available" ? "expired" : "searching"
-              }`}
-            >
-              {status === "Found" ? "Provider Assigned" :
-               currentRequest?.status === "No Longer Available" ? "No Longer Available" : "Finding Matches"}
-            </span>
-          </div>
-
-          {/* My Request Details */}
-          <div className="content-card request-details-card">
-            <h2 className="section-header">📋 My Request Details</h2>
-            <div className="request-details-grid">
-              <div className="request-detail-item">
-                <span className="detail-label">Needed by:</span>
-                <span className="detail-value">
-                  {currentRequest?.expiresAt
-                    ? new Date(currentRequest.expiresAt).toLocaleDateString()
-                    : "N/A"}
-                </span>
+    <div className="page-wrapper">
+      <div className="container">
+        <div className="grid-layout">
+          
+          {/* LEFT COLUMN - Request Details & Cancel */}
+          <div className="main-content">
+            
+            {/* Header Card */}
+            <div className="card header-card">
+              <div className="header-left">
+                <h2>Finding Your Provider</h2>
+                <p>Request #{currentRequest?._id?.slice(-6) || "N/A"}</p>
               </div>
-              <div className="request-detail-item">
-                <span className="detail-label">Location:</span>
-                <span className="detail-value">{currentRequest?.address || "N/A"}</span>
-              </div>
-              <div className="request-detail-item">
-                <span className="detail-label">Notes:</span>
-                <span className="detail-value">{currentRequest?.notes || "No additional details"}</span>
+              <div className={`status-badge ${getStatusBadgeClass()}`}>
+                {getStatusText()}
               </div>
             </div>
-          </div>
 
-          {/* Worker Found */}
-          {status === "Found" && workerData && (
-            <div className="content-card worker-assigned-card">
-              <h2 className="section-header">✅ Provider Assigned</h2>
-              <div className="worker-content">
-                <img
-                  src={workerData.image}
-                  alt="Worker"
-                  className="worker-avatar"
-                />
-                <div className="worker-info">
-                  <h3>{workerData.name}</h3>
-                  <p className="worker-detail">{workerData.skill}</p>
-                  <p className="worker-detail">{workerData.phone}</p>
-                  {workerData.eta && (
-                    <p className="worker-detail">
-                      ETA:{" "}
-                      {new Date(workerData.eta).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  )}
+            {/* Request Details */}
+            <div className="card">
+              <h3 className="card-title">Request Details</h3>
+              <div className="details-grid">
+                <div className="detail-row">
+                  <svg className="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <div className="detail-content">
+                    <p>Needed by</p>
+                    <p>{currentRequest?.expiresAt ? new Date(currentRequest.expiresAt).toLocaleDateString() : "N/A"}</p>
+                  </div>
+                </div>
+                <div className="detail-row">
+                  <svg className="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                  </svg>
+                  <div className="detail-content">
+                    <p>Location</p>
+                    <p>{currentRequest?.address || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="detail-row detail-notes">
+                <svg className="detail-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <div className="detail-content">
+                  <p>Notes</p>
+                  <p>{currentRequest?.notes || "None"}</p>
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Matched Providers List - Always Visible */}
-          <div className="content-card providers-list-section">
-            <div className="providers-list-header">
-              <h2 className="section-header">
-                {status === "Found" ? "📋 Other Available Providers" : "🎯 Matched Providers"}
-              </h2>
-              <div className="providers-count">
-                {matchedProviders.length > 0 ? (
-                  <span className="count-badge">{matchedProviders.length} provider{matchedProviders.length !== 1 ? 's' : ''} found</span>
-                ) : (
-                  <span className="count-badge searching">Searching...</span>
-                )}
+            {/* Cancel Button */}
+            {currentRequest?.status === "Pending" && (
+              <button className="action-button action-cancel" onClick={() => {
+                if (window.confirm("Are you sure you want to cancel this request?")) {
+                  alert("Request cancelled");
+                }
+              }}>
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                Cancel Request
+              </button>
+            )}
+
+          </div>
+
+          {/* CENTER COLUMN - Assigned Provider & Providers List */}
+          <div className="center-content">
+
+            {/* Assigned Provider */}
+            {status === "Found" && workerData && (
+              <div className="card assigned-card">
+                <div className="assigned-header">
+                  <div className="assigned-icon">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                  </div>
+                  <div className="assigned-info">
+                    <h3>Provider Assigned</h3>
+                    <p>Your service provider is on the way</p>
+                  </div>
+                </div>
+                <div className="assigned-body">
+                  <img src={workerData.image} alt={workerData.name} className="assigned-image" />
+                  <div className="assigned-details">
+                    <h4>{workerData.name}</h4>
+                    <p>{workerData.skill}</p>
+                    <p className="phone">{workerData.phone}</p>
+                    {workerData.eta && <p>{new Date(workerData.eta).toLocaleTimeString()}</p>}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
-            {matchedProviders.length > 0 ? (
-              <div className="providers-column-list">
-                {matchedProviders.map((provider) => {
-                  const stats = providerStats[provider._id] || { totalReviews: 0, averageRating: 0 };
-                  const reviews = providerReviews[provider._id] || [];
-                  const experience = provider.createdAt ? Math.floor((new Date() - new Date(provider.createdAt)) / (1000 * 60 * 60 * 24 * 365)) : 0;
-
-                  return (
-                    <div key={provider._id} className="provider-column-card">
-                      <div className="provider-column-header">
-                        <img
-                          src={provider.profilePic || "/default-profile.png"}
-                          alt={`${provider.firstName} ${provider.lastName}`}
-                          className="provider-column-avatar"
-                        />
-                        <div className="provider-column-info">
-                          <h4 className="provider-column-name">{`${provider.firstName} ${provider.lastName}`}</h4>
-                          <div className="provider-column-rating">
-                            <span className="rating-stars">
-                              {"★".repeat(Math.round(stats.averageRating))}{"☆".repeat(5 - Math.round(stats.averageRating))}
-                            </span>
-                            <span className="rating-score">{stats.averageRating.toFixed(1)}</span>
-                            <span className="review-count">({stats.totalReviews} reviews)</span>
+            {/* Providers List */}
+            <div className="card">
+              <h3 className="card-title">
+                {status === "Found" ? "Other Available Providers" : `${matchedProviders.length} Matched Providers`}
+              </h3>
+              
+              {matchedProviders.length > 0 ? (
+                <div className="providers-list">
+                  {matchedProviders.map((provider) => {
+                    const stats = providerStats[provider._id] || { totalReviews: 0, averageRating: 0 };
+                    const reviews = providerReviews[provider._id] || [];
+                    return (
+                      <div key={provider._id} className="provider-item">
+                        <div className="provider-summary">
+                          <img src={provider.profilePic || "/default-profile.png"} alt={`${provider.firstName} ${provider.lastName}`} className="provider-image" />
+                          <div className="provider-info">
+                            <h4>{provider.firstName} {provider.lastName}</h4>
+                            <div className="provider-rating">
+                              <span>{renderStars(stats.averageRating)}</span>
+                              <span>({stats.totalReviews})</span>
+                            </div>
+                            <div className="provider-stats">
+                              <span className="provider-price">₱{provider.serviceRate || "N/A"}</span>
+                              <span className={`provider-status ${provider.isOnline ? "online" : "offline"}`}>
+                                {provider.isOnline ? "● Online" : "● Offline"}
+                              </span>
+                            </div>
                           </div>
-                          <div className="provider-column-meta">
-                            <span className="meta-item">💰 ₱{provider.serviceRate || "N/A"}</span>
-                            <span className={`meta-item status ${provider.isOnline ? 'online' : 'offline'}`}>
-                              ● {provider.isOnline ? 'Online' : 'Offline'}
-                            </span>
-                            <span className="meta-item">📅 {experience} years</span>
-                          </div>
-                        </div>
-                        <div className="provider-column-actions">
                           <button
-                            className="offer-button"
                             onClick={() => offerRequestToProvider(provider._id)}
                             disabled={offeringTo === provider._id || status === "Found"}
+                            className="provider-button"
                           >
-                            {offeringTo === provider._id ? "Offering..." :
-                             status === "Found" ? "📞 Contact Provider" : "🎯 Offer Request"}
+                            {offeringTo === provider._id ? "Offering..." : status === "Found" ? "View" : "Offer"}
                           </button>
                         </div>
-                      </div>
-
-                      <div className="provider-column-details">
-                        {/* Skills & Services */}
-                        <div className="detail-column-group">
-                          <h5 className="detail-column-title">🛠️ Skills & Services</h5>
-                          <p className="provider-skills">
-                            {provider.skills?.join(", ") || "No skills listed"}
-                          </p>
-                          {provider.services && provider.services.length > 0 && (
-                            <div className="provider-services">
-                              <ul>
-                                {provider.services.map((service, idx) => (
-                                  <li key={idx}>
-                                    {service.name} - ₱{service.rate} ({service.description})
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* About Provider */}
-                        <div className="detail-column-group">
-                          <h5 className="detail-column-title">📋 About Provider</h5>
-                          <p className="provider-description">
-                            {provider.serviceDescription || "No description available"}
-                          </p>
-                          {provider.certificates && provider.certificates.length > 0 && (
-                            <p className="provider-certificates">
-                              <strong>Certificates:</strong> {provider.certificates.join(", ")}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Reviews */}
-                        {reviews.length > 0 && (
-                          <div className="detail-column-group">
-                            <h5 className="detail-column-title">⭐ Recent Reviews</h5>
-                            <div className="reviews-column-list">
-                              {reviews.map((review, idx) => (
-                                <div key={idx} className="review-column-item">
-                                  <div className="review-column-header">
-                                    <span className="review-rating">{"★".repeat(review.rating)}</span>
-                                    <span className="review-client">{review.clientName}</span>
-                                    <span className="review-date">
-                                      {new Date(review.createdAt).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  <p className="review-comment">{review.comment}</p>
-                                </div>
-                              ))}
-                            </div>
+                        <div className="provider-details">
+                          <div className="detail-section">
+                            <div className="section-label">Skills</div>
+                            <div className="section-text">{provider.skills?.join(", ") || "No skills listed"}</div>
                           </div>
-                        )}
+                          <div className="detail-section">
+                            <div className="section-label">About</div>
+                            <div className="section-text">{provider.serviceDescription || "No description available"}</div>
+                          </div>
+                          {reviews.length > 0 && (
+                            <div className="detail-section">
+                              <div className="section-label">Recent Reviews</div>
+                              <div className="reviews-list">
+                                {reviews.map((review) => (
+                                  <div key={review._id} className="review-item">
+                                    <div className="review-author">{review.clientName}</div>
+                                    <div className="review-text">{review.comment}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="waiting-section">
-                <div className="pulse-circle">
-                  <span className="location-icon">🔍</span>
+                    );
+                  })}
                 </div>
-                <h3>Finding the perfect providers for you...</h3>
-                <p>We're matching your request with skilled professionals in your area.</p>
-              </div>
-            )}
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-icon">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                  </div>
+                  <h4 className="empty-title">Finding providers</h4>
+                  <p className="empty-text">We're matching your request with skilled professionals</p>
+                </div>
+              )}
+            </div>
+
           </div>
 
-          {/* Actions */}
-          <div className="popup-actions">
-            {status === "Found" && (
-              <>
-                <button
-                  className="action-button chat-button"
-                  onClick={() => window.open(`tel:${workerData.phone}`)}
-                >
-                  📞 Call Provider
-                </button>
+          {/* RIGHT COLUMN - Actions */}
+          <div className="sidebar">
 
-                <button className="action-button chat-button">
-                  💬 Chat with Provider
-                </button>
-              </>
-            )}
-
-            <button className="action-button cancel-button">
-              ❌ Cancel Request
-            </button>
+              <div className="actions-card">
+                {status === "Found" && (
+                  <>
+                    <button className="action-button action-call" onClick={() => window.open(`tel:${workerData.phone}`)}>
+                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path>
+                      </svg>
+                      Call Provider
+                    </button>
+                    <button className="action-button action-chat">
+                      <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                      </svg>
+                      Chat
+                    </button>
+                  </>
+                )}
+              </div>
           </div>
         </div>
       </div>

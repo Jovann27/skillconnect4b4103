@@ -65,16 +65,7 @@
   color: #2c3e50;
   line-height: 1.1;
   margin: 0;
-  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.5);
-}
-
-.hero-title-highlight {
-  background: linear-gradient(45deg, #ffd700, #ff6b6b);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
-  margin-left: 0.3em;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 .hero-title-underline {
@@ -293,114 +284,7 @@
 }
 
 
-/* How It Works Section */
-.howitworks {
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  padding: 5rem 0;
-  position: relative;
-}
 
-.howitworks::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
-}
-
-.howitworks .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-}
-
-.howitworks h3 {
-  text-align: center;
-  font-size: clamp(2rem, 4vw, 2.75rem);
-  font-weight: 800;
-  color: #1e293b;
-  margin-bottom: 1rem;
-  position: relative;
-}
-
-.howitworks h3::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 4px;
-  background: linear-gradient(90deg, #d6355d, #2c3e50);
-  border-radius: 2px;
-}
-
-.howitworks .banner {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  margin-top: 3rem;
-}
-
-.howitworks .card {
-  background: white;
-  padding: 2.5rem 2rem;
-  border-radius: 1rem;
-  text-align: center;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  transition: all 300ms ease-in-out;
-  position: relative;
-  overflow: hidden;
-  border: 1px solid #f1f5f9;
-}
-
-.howitworks .card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #d6355d, #2c3e50);
-  transform: scaleX(0);
-  transition: transform 300ms ease-in-out;
-}
-
-.howitworks .card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-}
-
-.howitworks .card:hover::before {
-  transform: scaleX(1);
-}
-
-.howitworks .card svg {
-  font-size: 3rem;
-  color: #d6355d;
-  margin-bottom: 1.5rem;
-  transition: all 300ms ease-in-out;
-}
-
-.howitworks .card:hover svg {
-  transform: scale(1.1);
-  color: #2c3e50;
-}
-
-.howitworks .card-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 1rem;
-}
-
-.howitworks .card p:not(.card-title) {
-  color: #64748b;
-  line-height: 1.6;
-  font-size: 0.95rem;
-}
 
 /* Mission & Vision Section */
 .mission,
@@ -469,19 +353,7 @@
 
 /* Enhanced Responsiveness */
 @media (max-width: 768px) {
-  .howitworks {
-    padding: 3rem 0;
-  }
-
-  .howitworks .banner {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-    margin-top: 2rem;
-  }
-
-  .howitworks .card {
-    padding: 2rem 1.5rem;
-  }
+  
 
   .mission,
   .vision {
@@ -495,18 +367,7 @@
 }
 
 @media (max-width: 480px) {
-  .howitworks h3 {
-    font-size: 1.75rem;
-  }
-
-  .howitworks .card {
-    padding: 1.5rem 1rem;
-  }
-
-  .howitworks .card svg {
-    font-size: 2.5rem;
-  }
-
+ 
   .mission h3,
   .vision h3 {
     font-size: 1.25rem;
@@ -519,10 +380,6 @@
 }
 
 /* Focus and Accessibility Improvements */
-.howitworks .card:focus-within {
-  outline: 2px solid #d6355d;
-  outline-offset: 2px;
-}
 
 .mission:focus-within,
 .vision:focus-within {
@@ -542,17 +399,6 @@
   }
 }
 
-.howitworks .card {
-  animation: fadeInUp 600ms ease-out;
-}
-
-.howitworks .card:nth-child(2) {
-  animation-delay: 200ms;
-}
-
-.howitworks .card:nth-child(3) {
-  animation-delay: 400ms;
-}
 
 .mission {
   animation: fadeInUp 600ms ease-out;

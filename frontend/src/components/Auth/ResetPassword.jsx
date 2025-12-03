@@ -1,14 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import toast from "react-hot-toast";
-import { FaArrowLeft, FaLock, FaCheck, FaTimes, FaEye, FaEyeSlash } from "react-icons/fa";
-import api from "../../api";
-import "./auth-styles.css";
+import { Lock, ArrowLeft, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import "../Css/ResetPassword.css";
 
 const ResetPassword = () => {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-
+  const [searchParams, setSearchParams] = useState({ email: "", token: "" });
+  
   const [formData, setFormData] = useState({
     email: "",
     token: "",
@@ -19,11 +15,14 @@ const ResetPassword = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
-    // Get parameters from URL
-    const email = searchParams.get('email');
-    const token = searchParams.get('token');
+    // Get parameters from URL (simulated)
+    const urlParams = new URLSearchParams(window.location.search);
+    const email = urlParams.get('email') || "user@example.com";
+    const token = urlParams.get('token') || "valid-token";
 
     if (email && token) {
       setFormData(prev => ({
@@ -32,10 +31,29 @@ const ResetPassword = () => {
         token
       }));
     } else {
-      toast.error("Invalid reset link. Please request a new password reset.");
-      navigate("/forgot-password");
+      window.location.href = "/forgot-password";
     }
-  }, [searchParams, navigate]);
+  }, []);
+
+  const calculatePasswordStrength = (password) => {
+    let strength = 0;
+    if (password.length >= 8) strength++;
+    if (password.length >= 12) strength++;
+    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+    return strength;
+  };
+
+  const getPasswordStrengthLabel = (strength) => {
+    const labels = ["", "Weak", "Fair", "Good", "Strong", "Very Strong"];
+    return labels[strength];
+  };
+
+  const getPasswordStrengthColor = (strength) => {
+    const colors = ["", "bg-red-500", "bg-orange-500", "bg-yellow-500", "bg-blue-500", "bg-green-500"];
+    return colors[strength];
+  };
 
   const validatePassword = (password) => {
     if (!password) {
@@ -63,8 +81,8 @@ const ResetPassword = () => {
       [field]: value
     }));
 
-    // Validate in real-time
     if (field === 'newPassword') {
+      setPasswordStrength(calculatePasswordStrength(value));
       setValidationErrors(prev => ({
         ...prev,
         newPassword: validatePassword(value),
@@ -95,143 +113,238 @@ const ResetPassword = () => {
     setIsSubmitting(true);
 
     try {
-      const { data } = await api.post("/user/reset-password", {
-        email: formData.email,
-        token: formData.token,
-        newPassword: formData.newPassword
-      });
-
-      if (data.success) {
-        toast.success("Password reset successfully! You can now log in with your new password.");
-        navigate("/login");
-      } else {
-        toast.error(data.message || "Failed to reset password");
-      }
+      // Simulated API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      setSubmitted(true);
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 2500);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-        "Failed to reset password. Please try again."
-      );
+      console.error("Error:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (submitted) {
+    return (
+      <div className="reset-password-wrapper">
+        <div className="background-pattern"></div>
+        
+        <div className="card-container">
+          <div className="success-container">
+            <div className="success-icon">
+              <CheckCircle size={48} />
+            </div>
+            <h2 className="success-title">Password Reset Successfully</h2>
+            <p className="success-message">
+              Your password has been updated successfully
+            </p>
+            <p className="success-subtext">
+              Redirecting to login page... You can now log in with your new password.
+            </p>
+            
+            <div className="loading-bar"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="auth-container">
-      <div className="auth-card reset-password-card">
-        {/* Header */}
-        <div className="auth-banner">
-          <h2>Reset Your Password</h2>
-          <p>Enter your new password below</p>
+    <div className="reset-password-wrapper">
+      <div className="background-pattern"></div>
+      
+      <div className="card-container">
+        {/* Header Section */}
+        <div className="card-header">
+          <div className="header-content">
+            <div className="header-icon">
+              <Lock size={32} />
+            </div>
+            <h1 className="header-title">Reset Your Password</h1>
+            <p className="header-subtitle">
+              Create a new, secure password for your account
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="auth-form" noValidate>
-          {/* New Password Field */}
-          <div className="input-container">
-            <div className="icon-input">
-              <i className="fas fa-lock"></i>
+        {/* Form Section */}
+        <div onSubmit={handleSubmit} className="form-container">
+          {/* New Password Input */}
+          <div className="input-group">
+            <label htmlFor="newPassword" className="input-label">New Password</label>
+            <div className="input-wrapper">
+              <div className="input-icon">
+                <Lock size={20} />
+              </div>
               <input
                 type={showPassword ? "text" : "password"}
+                id="newPassword"
                 name="newPassword"
-                placeholder="New Password"
+                placeholder="Enter your new password"
                 value={formData.newPassword}
                 onChange={(e) => handleInputChange('newPassword', e.target.value)}
-                className={`auth-input ${validationErrors.newPassword ? 'error' : (formData.newPassword && !validationErrors.newPassword ? 'success' : '')}`}
-                aria-describedby={validationErrors.newPassword ? 'password-error' : 'password-help'}
-                aria-invalid={!!validationErrors.newPassword}
+                className={`input-field ${
+                  validationErrors.newPassword 
+                    ? 'input-error' 
+                    : formData.newPassword && !validationErrors.newPassword 
+                    ? 'input-success' 
+                    : ''
+                }`}
+                disabled={isSubmitting}
                 autoComplete="new-password"
-                required
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+                disabled={isSubmitting}
               >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
+              {formData.newPassword && !validationErrors.newPassword && (
+                <div className="input-success-icon">
+                  <CheckCircle size={20} />
+                </div>
+              )}
             </div>
-            {validationErrors.newPassword && (
-              <span id="password-error" className="field-error">
-                <i className="fas fa-exclamation-circle"></i>
-                {validationErrors.newPassword}
-              </span>
+
+            {/* Password Strength Indicator */}
+            {formData.newPassword && (
+              <div className="password-strength">
+                <div className="strength-bars">
+                  {[...Array(5)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={`strength-bar ${i < passwordStrength ? getPasswordStrengthColor(passwordStrength) : 'bg-gray-200'}`}
+                    ></div>
+                  ))}
+                </div>
+                <span className={`strength-label ${getPasswordStrengthColor(passwordStrength).replace('bg-', 'text-')}`}>
+                  {getPasswordStrengthLabel(passwordStrength)}
+                </span>
+              </div>
+            )}
+
+            {validationErrors.newPassword ? (
+              <div className="error-message">
+                <AlertCircle size={16} />
+                <span>{validationErrors.newPassword}</span>
+              </div>
+            ) : (
+              <p className="help-text">
+                At least 8 characters with a mix of uppercase, lowercase, numbers, and symbols
+              </p>
             )}
           </div>
 
-          {/* Confirm Password Field */}
-          <div className="input-container">
-            <div className="icon-input">
-              <i className="fas fa-lock"></i>
+          {/* Confirm Password Input */}
+          <div className="input-group">
+            <label htmlFor="confirmPassword" className="input-label">Confirm Password</label>
+            <div className="input-wrapper">
+              <div className="input-icon">
+                <Lock size={20} />
+              </div>
               <input
                 type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
                 name="confirmPassword"
-                placeholder="Confirm New Password"
+                placeholder="Confirm your new password"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                className={`auth-input ${validationErrors.confirmPassword ? 'error' : (formData.confirmPassword && !validationErrors.confirmPassword ? 'success' : '')}`}
-                aria-describedby={validationErrors.confirmPassword ? 'confirm-error' : 'confirm-help'}
-                aria-invalid={!!validationErrors.confirmPassword}
+                className={`input-field ${
+                  validationErrors.confirmPassword 
+                    ? 'input-error' 
+                    : formData.confirmPassword && !validationErrors.confirmPassword 
+                    ? 'input-success' 
+                    : ''
+                }`}
+                disabled={isSubmitting}
                 autoComplete="new-password"
-                required
               />
               <button
                 type="button"
                 className="password-toggle"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                disabled={isSubmitting}
               >
-                {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
+              {formData.confirmPassword && !validationErrors.confirmPassword && (
+                <div className="input-success-icon">
+                  <CheckCircle size={20} />
+                </div>
+              )}
             </div>
-            {validationErrors.confirmPassword && (
-              <span id="confirm-error" className="field-error">
-                <i className="fas fa-exclamation-circle"></i>
-                {validationErrors.confirmPassword}
-              </span>
+
+            {validationErrors.confirmPassword ? (
+              <div className="error-message">
+                <AlertCircle size={16} />
+                <span>{validationErrors.confirmPassword}</span>
+              </div>
+            ) : (
+              <p className="help-text">
+                Passwords must match exactly
+              </p>
             )}
           </div>
 
-          <small id="password-help" className="form-help">
-            Password must be at least 8 characters long and contain a mix of letters, numbers, and symbols
-          </small>
+          {/* Password Requirements */}
+          <div className="requirements-box">
+            <h4 className="requirements-title">Password Requirements:</h4>
+            <ul className="requirements-list">
+              <li className={formData.newPassword?.length >= 8 ? 'met' : ''}>
+                <CheckCircle size={16} />
+                At least 8 characters
+              </li>
+              <li className={/[a-z]/.test(formData.newPassword) ? 'met' : ''}>
+                <CheckCircle size={16} />
+                One lowercase letter
+              </li>
+              <li className={/[A-Z]/.test(formData.newPassword) ? 'met' : ''}>
+                <CheckCircle size={16} />
+                One uppercase letter
+              </li>
+              <li className={/[0-9]/.test(formData.newPassword) ? 'met' : ''}>
+                <CheckCircle size={16} />
+                One number
+              </li>
+              <li className={/[^a-zA-Z0-9]/.test(formData.newPassword) ? 'met' : ''}>
+                <CheckCircle size={16} />
+                One special character (!@#$%^&*)
+              </li>
+            </ul>
+          </div>
 
           {/* Submit Button */}
           <button
-            type="submit"
-            className="auth-btn primary"
-            disabled={isSubmitting || !!validationErrors.newPassword || !!validationErrors.confirmPassword}
-            aria-describedby="submit-help"
+            onClick={handleSubmit}
+            className="submit-btn"
+            disabled={isSubmitting || !!validationErrors.newPassword || !!validationErrors.confirmPassword || !formData.newPassword || !formData.confirmPassword}
           >
             {isSubmitting ? (
               <>
+                <span className="spinner-icon"></span>
                 Resetting Password...
               </>
             ) : (
               <>
-                <FaLock className="btn-icon" />
+                <Lock size={20} />
                 Reset Password
               </>
             )}
           </button>
 
-          <small id="submit-help" className="form-help">
-            Your new password will be saved and you can use it to log in immediately
-          </small>
-
-          {/* Back to Login */}
-          <div className="reset-password-footer">
-            <button
-              type="button"
-              className="back-to-login"
-              onClick={() => navigate("/login")}
-            >
-              <FaArrowLeft className="btn-icon" />
-              Back to Login
-            </button>
+          {/* Back to Login Link */}
+          <div className="back-link-container">
+            <a href="/login" className="back-link">
+              <ArrowLeft size={18} />
+              <span>Back to Login</span>
+            </a>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

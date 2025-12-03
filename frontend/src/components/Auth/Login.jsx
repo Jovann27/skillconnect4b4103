@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import toast from "react-hot-toast";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { FaEye, FaEyeSlash, FaEnvelope, FaLock, FaCheckCircle, FaExclamationCircle } from "react-icons/fa";
+import { toast } from "react-toastify";
+import "./auth-styles.css";
 import { useMainContext } from "../../mainContext";
 import api from "../../api";
 import { updateSocketToken } from "../../utils/socket";
-import "./auth-styles.css";
+import skillconnectLogo from "../Home/images/1000205778-removebg-preview.png";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -50,6 +52,23 @@ const Login = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  // Get field status for styling
+  const getFieldStatus = (fieldName) => {
+    if (errors[fieldName]) return "error";
+    if (formData[fieldName] && !errors[fieldName]) return "success";
+    return "";
+  };
+
+  // Handle blur events
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
   };
 
   useEffect(() => {
@@ -109,7 +128,6 @@ const Login = () => {
         password: formData.password
       });
 
-
       setUser(data.user);
       setIsAuthorized(true);
       setTokenType("user");
@@ -120,7 +138,6 @@ const Login = () => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("isAuthorized", "true");
       localStorage.setItem("tokenType", "user");
-
 
       if (rememberMe) {
         localStorage.setItem("rememberedEmail", formData.email);
@@ -163,141 +180,180 @@ const Login = () => {
   };
 
   return (
-    <div className="auth-container">
-      <div className="auth-card">
-        <div className="auth-banner">
-          <h2>Welcome Back</h2>
-          <p>Sign in to your account</p>
+  <div className="login-container">
+    <div className="login-background-pattern"></div>
+
+    <div className="login-wrapper">
+      {/* LEFT SIDE */}
+      <div className="login-left-side">
+        <img
+          src={skillconnectLogo}
+          alt="SkillConnect Logo"
+          className="login-left-logo"
+        />
+        <h1 className="login-left-title">Welcome Back to Skillconnect 4b410</h1>
+        <p className="login-left-subtitle">
+          Continue to connect with skilled workers and community members
+        </p>
+        <Link to="/home#About" className="login-left-button">
+          About Us
+        </Link>
+      </div>
+
+      {/* RIGHT SIDE */}
+      <div className="login-right-side">
+        <div className="login-card">
+
+          <div className="login-form-container">
+            {errors.general && (
+              <div className="general-error">
+                <FaExclamationCircle className="general-error-icon" />
+                <p className="general-error-text">{errors.general}</p>
+              </div>
+            )}
+
+            <form className="login-form" onSubmit={handleLogin}>
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">
+                  Email Address
+                </label>
+                <div className="input-wrapper">
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="your.email@example.com"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`form-input ${getFieldStatus('email')}`}
+                    disabled={isLoading}
+                    autoComplete="email"
+                    aria-invalid={!!errors.email}
+                    aria-describedby={errors.email ? "email-error" : "email-help"}
+                  />
+                  {getFieldStatus('email') === 'success' && (
+                    <div className="input-icon-right">
+                      <FaCheckCircle className="icon-success" />
+                    </div>
+                  )}
+                  {getFieldStatus('email') === 'error' && (
+                    <div className="input-icon-right">
+                      <FaExclamationCircle className="icon-error" />
+                    </div>
+                  )}
+                </div>
+                {errors.email ? (
+                  <p id="email-error" className="field-error-message">
+                    <FaExclamationCircle className="error-icon-inline" />
+                    {errors.email}
+                  </p>
+                ) : (
+                  <p id="email-help" className="field-help-text">
+                    Enter the email address you used to register
+                  </p>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">
+                  Password
+                </label>
+                <div className="input-wrapper">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={`form-input ${getFieldStatus('password')}`}
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                    aria-invalid={!!errors.password}
+                    aria-describedby={errors.password ? "password-error" : "password-help"}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="password-toggle-btn"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <FaEyeSlash className="toggle-icon" /> : <FaEye className="toggle-icon" />}
+                  </button>
+                </div>
+                {errors.password ? (
+                  <p id="password-error" className="field-error-message">
+                    <FaExclamationCircle className="error-icon-inline" />
+                    {errors.password}
+                  </p>
+                ) : (
+                  <p id="password-help" className="field-help-text">
+                    Must be at least 6 characters long
+                  </p>
+                )}
+              </div>
+
+              <div className="form-options">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="checkbox-input"
+                    disabled={isLoading}
+                  />
+                  <span className="checkbox-text">Remember me</span>
+                </label>
+                <a href="/forgot-password" className="forgot-link">
+                  Forgot password?
+                </a>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="submit-btn"
+              >
+                {isLoading ? (
+                  <span className="btn-loading">
+                    <svg className="spinner" viewBox="0 0 24 24">
+                      <circle className="spinner-circle" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Signing In...
+                  </span>
+                ) : (
+                  'Sign In'
+                )}
+              </button>
+            </form>
+
+            <div className="login-footer">
+              <p className="footer-text">
+                Don't have an account?{" "}
+                <a href="/register" className="footer-link">
+                  Create one here
+                </a>
+              </p>
+              <p className="footer-subtext">
+                Admin?{" "}
+                <a href="/admin/login" className="footer-sublink">
+                  Login as Administrator
+                </a>
+              </p>
+            </div>
+          </div>
         </div>
 
-        {errors.general && (
-          <div className="error-message">
-            <i className="fas fa-exclamation-circle"></i>
-            {errors.general}
-          </div>
-        )}
-
-        <form onSubmit={handleLogin} className="auth-form">
-          {/* Email Field */}
-          <div className="input-container">
-            <label htmlFor="email" className="field-label">Email Address</label>
-            <div className="icon-input">
-              <i className="fas fa-envelope"></i>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                placeholder="your.email@example.com"
-                value={formData.email}
-                onChange={handleInputChange}
-                className={`auth-input ${errors.email ? 'error' : (formData.email && !errors.email ? 'success' : '')}`}
-                disabled={isLoading}
-                aria-describedby={errors.email ? "email-error" : "email-help"}
-                aria-invalid={!!errors.email}
-                autoComplete="email"
-                required
-              />
-            </div>
-            {errors.email && (
-              <span id="email-error" className="field-error">
-                <i className="fas fa-exclamation-circle"></i>
-                {errors.email}
-              </span>
-            )}
-            <small id="email-help" className="form-help">
-              Enter the email address associated with your account
-            </small>
-          </div>
-
-          {/* Password Field */}
-          <div className="input-container">
-            <label htmlFor="password" className="field-label">Password</label>
-            <div className="icon-input">
-              <i className="fas fa-lock"></i>
-              <input
-                type={showPassword ? "text" : "password"}
-                id="password"
-                name="password"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleInputChange}
-                className={`auth-input ${errors.password ? 'error' : (formData.password && !errors.password ? 'success' : '')}`}
-                disabled={isLoading}
-                aria-describedby={errors.password ? "password-error" : "password-help"}
-                aria-invalid={!!errors.password}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
-            </div>
-            {errors.password && (
-              <span id="password-error" className="field-error">
-                <i className="fas fa-exclamation-circle"></i>
-                {errors.password}
-              </span>
-            )}
-            <small id="password-help" className="form-help">
-              Minimum 6 characters required
-            </small>
-          </div>
-
-          {/* Remember Me & Forgot Password */}
-          <div className="form-options">
-            <label className="checkbox-container">
-              <input
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                disabled={isLoading}
-              />
-              Remember me
-            </label>
-            <Link to="/forgot-password" className="forgot-password">
-              Forgot password?
-            </Link>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            className="auth-btn"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                Signing In...
-              </>
-            ) : (
-              'Sign In'
-            )}
-          </button>
-
-          {/* Sign Up Link */}
-          <div className="auth-links">
-            <p>
-              Don't have an account?{" "}
-              <Link to="/register" className="auth-link-text">
-                Create one here
-              </Link>
-            </p>
-            <p className="admin-link">
-              Admin?{" "}
-              <Link to="/admin/login" className="admin-link-text">
-                Login as Administrator
-              </Link>
-            </p>
-          </div>
-        </form>
+        <p className="login-terms">
+          By signing in, you agree to our Terms of Service and Privacy Policy
+        </p>
       </div>
     </div>
-  );
-};
-
+  </div>
+);
+}
 export default Login;

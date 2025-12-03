@@ -68,20 +68,20 @@ export default function CustomDrawer({ children }) {
     if (!userRole) return [];
     if (userRole === "Community Member") {
       return [
-        { name: "Place Order", icon: "cart-outline", screen: "PlaceOrder" },
-        { name: "Records", icon: "document-outline", screen: "Records" },
+        { name: "Request Service", icon: "cart-outline", screen: "PlaceOrder" },
+        { name: "My Records", icon: "document-outline", screen: "Records" },
         { name: "Chat", icon: "chatbubble-outline", screen: "Chat" },
         { name: "Workers", icon: "people-outline", screen: "Workers" },
-        { name: "ProfileReviews", icon: "settings-outline", screen: "ProfileReviews" },
+        { name: "Reviews", icon: "star-outline", screen: "ProfileReviews" },
         { name: "Settings", icon: "settings-outline", screen: "Settings" },
       ];
     } else if (userRole === "Service Provider") {
       return [
         { name: "My Service", icon: "briefcase-outline", screen: "Service" },
-        { name: "Place Order", icon: "cart-outline", screen: "PlaceOrder" },
-        { name: "Records", icon: "document-outline", screen: "Records" },
+        { name: "Request Service", icon: "cart-outline", screen: "PlaceOrder" },
+        { name: "My Records", icon: "document-outline", screen: "Records" },
         { name: "Chat", icon: "chatbubble-outline", screen: "Chat" },
-        { name: "ProfileReviews", icon: "settings-outline", screen: "ProfileReviews" },
+        { name: "Reviews", icon: "settings-outline", screen: "ProfileReviews" },
         { name: "Settings", icon: "settings-outline", screen: "Settings" },
       ];
     }
@@ -179,29 +179,30 @@ export default function CustomDrawer({ children }) {
 
 const styles = StyleSheet.create({
   drawer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: width * 0.75,
-    backgroundColor: "#fff",
-    borderTopRightRadius: 25,
-    borderBottomRightRadius: 25,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
-    zIndex: 1000,
+  position: "absolute",
+  top: 30,
+  left: 0,
+  bottom: 0,
+  width: width * 0.75,
+  backgroundColor: "#fff",
+  borderBottomRightRadius: 25, // Keep only bottom radius
+  shadowColor: "#000",
+  shadowOpacity: 0.2,
+  shadowRadius: 6,
+  elevation: 8,
+  zIndex: 1000,
   },
+
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.4)",
     zIndex: 999,
   },
-  headerRow: {
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-    borderTopRightRadius: 25,
+ headerRow: {
+  paddingVertical: 25,
+  paddingHorizontal: 20,
+  
+
   },
   headerContent: {
     flexDirection: "row",
@@ -213,8 +214,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   profileImage: {
-    width: 60,
-    height: 60,
+    width: 55,
+    height: 55,
     borderRadius: 35,
     borderWidth: 2,
     borderColor: "#fff",
