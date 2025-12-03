@@ -45,9 +45,9 @@ const WaitingForWorkerPage = ({ requestData }) => {
       await Promise.all(batch.map(async (provider) => {
         if (!provider?._id) return;
         try {
-          const statsResponse = await api.get(`/reviews/stats/${provider._id}`);
+          const statsResponse = await api.get(`/review/stats/${provider._id}`);
           stats[provider._id] = statsResponse.data?.stats || { totalReviews: 0, averageRating: 0 };
-          const reviewsResponse = await api.get(`/reviews/user/${provider._id}`);
+          const reviewsResponse = await api.get(`/review/user/${provider._id}`);
           const reviewData = reviewsResponse.data?.reviews || [];
           reviews[provider._id] = Array.isArray(reviewData) ? reviewData.slice(0, 3) : [];
         } catch (err) {

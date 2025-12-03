@@ -24,7 +24,7 @@ export default function ProfileReviews({ route, navigation }) {
 
   const fetchReviews = async () => {
     try {
-      const response = await apiClient.get(`/reviews/user/${userId}`);
+      const response = await apiClient.get(`/review/user/${userId}`);
       setReviews(response.data.reviews);
     } catch (error) {
       console.log("Error fetching reviews:", error);

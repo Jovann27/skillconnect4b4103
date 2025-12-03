@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../../api.js';
 import { useMainContext } from '../../mainContext';
 import toast from 'react-hot-toast';
@@ -8,21 +7,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import socket from '../../utils/socket';
 import './MyService.css';
 
-const maskPhone = (phone) => {
-  if (!phone) return "N/A";
-  return phone.replace(/\d(?=\d{3})/g, "*");
-};
-
-const maskEmail = (email) => {
-  if (!email || !email.includes("@")) return "N/A";
-  const [user, domain] = email.split("@");
-  const maskedUser = user[0] + "*".repeat(Math.max(user.length - 2, 1)) + user.slice(-1);
-  return `${maskedUser}@${domain}`;
-};
-
 const MyService = () => {
   const { user, isAuthorized } = useMainContext();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -36,6 +22,14 @@ const MyService = () => {
   const [predefinedServices, setPredefinedServices] = useState([]);
   const [selectedService, setSelectedService] = useState('');
   const [serviceUpdating, setServiceUpdating] = useState(false);
+  const [clientData, setClientData] = useState({
+    name: '',
+    phone: '',
+    service: '',
+    cost: 0,
+    date: '',
+    address: ''
+  });
   const [currentRequests, setCurrentRequests] = useState([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestsError, setRequestsError] = useState('');
@@ -78,7 +72,7 @@ const MyService = () => {
           }
           setIsOnline(data.isOnline !== false); // Default to true
         }
-      } catch {
+      } catch (error) {
         setIsOnline(true);
       } finally {
         setLoading(false);
@@ -88,7 +82,7 @@ const MyService = () => {
   }, [user, isAuthorized]);
 
   useEffect(() => {
-    if (!isAuthorized || !user) return;
+    if (!isAuthorized || !user || user.role !== "Service Provider") return;
 
     const fetchMatchingRequests = async () => {
       setLoadingRequests(true);
@@ -101,14 +95,14 @@ const MyService = () => {
           setRequestsError('');
         } else {
           setCurrentRequests([]);
-          setRequestsError('No available requests found.');
+          setRequestsError('No matching requests found.');
         }
       } catch (error) {
         console.log('User ID:', user._id); // Log user ID for debugging
         if (error.response && error.response.status === 403) {
           setRequestsError('Access denied. You must be a Service Provider.');
         } else {
-          setRequestsError('No available requests found.');
+          setRequestsError('No matching requests found.');
         }
         setCurrentRequests([]);
       } finally {
@@ -430,7 +424,7 @@ const MyService = () => {
         toast.success(`Status updated to ${newStatus ? 'Online' : 'Offline'}`);
         
         // Refresh requests if going online
-        if (newStatus && user) {
+        if (newStatus && user && user.role === "Service Provider") {
           const fetchMatchingRequests = async () => {
             setLoadingRequests(true);
             try {
@@ -441,7 +435,7 @@ const MyService = () => {
                 setRequestsError('');
               } else {
                 setCurrentRequests([]);
-              setRequestsError('No available requests found.');
+                setRequestsError('No matching requests found.');
               }
             } catch (err) {
               setRequestsError('No matching requests found.');
@@ -464,17 +458,16 @@ const MyService = () => {
     }
   };
 
+
+
   const handleAccept = async (requestId) => {
     if (acceptingRequest === requestId) return; // Prevent double-clicks
-
+    
     setAcceptingRequest(requestId);
     try {
       const response = await api.post(`/user/service-request/${requestId}/accept`);
       if (response.data.success) {
         toast.success('Request accepted successfully!');
-        // Find the accepted request details from current requests
-        const acceptedRequest = currentRequests.find(req => req._id === requestId);
-        // Remove the accepted request from current requests
         setCurrentRequests(prev => prev.filter(req => req._id !== requestId));
         // Remove marker from map
         if (clientMarkers.current[requestId]) {
@@ -483,8 +476,6 @@ const MyService = () => {
         }
         // Update client locations
         setClientLocations(prev => prev.filter(loc => loc.requestId !== requestId));
-        // Redirect to client-accepted page with request details
-        navigate('/user/client-accepted', { state: { request: acceptedRequest || response.data.request, requestId } });
       }
     } catch (error) {
       console.error('Failed to accept request:', error);
@@ -509,7 +500,7 @@ const MyService = () => {
         }
       } catch (apiError) {
         // If endpoint doesn't exist, just remove locally (silent decline)
-        console.log('Decline endpoint not available, removing locally:', apiError.message);
+        console.log('Decline endpoint not available, removing locally');
         declinedSuccessfully = true; // Still consider it successful for UI purposes
       }
       
@@ -573,16 +564,27 @@ const MyService = () => {
     );
   }
 
-  // Role-based access is handled by RoleGuard in App.jsx
-  // Service Providers can access this page via RoleGuard configuration
+  if (user.role !== "Service Provider") {
+    return (
+      <div className="my-service-container">
+        <div className="auth-required">
+          <div className="auth-icon">🚫</div>
+          <h3>Access Denied</h3>
+          <p>You must be a Service Provider to access this page.</p>
+          <button className="btn-primary" onClick={() => window.location.href = '/user/manage-profile'}>
+            Go to Profile
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="my-service-container">
       <div className="main-layout">
         <div className="left-column">
           <div className="services-section">
-            <h3>My Status</h3>
-            <h4>Your Services:</h4>
+            <h3>Your Services:</h3>
             <div className="service-controls">
               <select 
                 value={selectedService} 
@@ -644,7 +646,7 @@ const MyService = () => {
             {loadingRequests ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
-                <p>Loading available requests...</p>
+                <p>Loading matching requests...</p>
               </div>
             ) : !isOnline ? (
               <div className="offline-message">
@@ -652,7 +654,7 @@ const MyService = () => {
               </div>
             ) : currentRequests.length > 0 ? (
               <div className="requests-list">
-                <h4>Available Requests ({currentRequests.length})</h4>
+                <h4>Matching Requests ({currentRequests.length})</h4>
                 {currentRequests.map((request) => (
                   <div key={request._id} className="request-card">
                     <div className="request-header">
@@ -661,8 +663,7 @@ const MyService = () => {
                     </div>
                     <div className="request-details">
                       <p><strong>Name:</strong> {request.requester?.firstName} {request.requester?.lastName}</p>
-                      <p><strong>Email:</strong> {maskEmail(request.requester?.email)}</p>
-                      <p><strong>Phone:</strong> {maskPhone(request.requester?.phone)}</p>
+                      <p><strong>Phone:</strong> {request.requester?.phone}</p>
                       <p><strong>Service Needed:</strong> {request.typeOfWork}</p>
                       <p><strong>Budget:</strong> ₱{request.budget}</p>
                       <p><strong>Address:</strong> {request.address}</p>
@@ -689,7 +690,7 @@ const MyService = () => {
               </div>
             ) : (
               <div className="no-requests">
-                <p>{requestsError || 'No available requests found. Available requests will appear here when clients post service requests.'}</p>
+                <p>{requestsError || 'No matching requests found. Requests will appear here when a client\'s budget matches your service rate.'}</p>
               </div>
             )}
             <div className="orders-note">

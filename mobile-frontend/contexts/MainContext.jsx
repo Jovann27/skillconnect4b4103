@@ -194,8 +194,8 @@ export const MainProvider = ({ children }) => {
     markNotificationRead: (id) => apiClient.put(`/notifications/${id}/read`),
 
     // Reviews
-    getReviews: (userId) => apiClient.get(`/reviews/${userId}`),
-    createReview: (data) => apiClient.post('/reviews', data),
+    getReviews: (userId) => apiClient.get(`/review/user/${userId}`),
+    createReview: (data) => apiClient.post('/review', data),
 
     // Chat
     getChatList: () => apiClient.get('/user/chat-list'),

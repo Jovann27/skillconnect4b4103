@@ -232,24 +232,20 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Not a service provider", 403));
   }
 
-  const providerSkills = provider.skills || [];
-  const providerRate = provider.serviceRate || 0;
-  const providerAvailability = provider.availability || "Not Available";
-
-  // Only show requests if provider is available or currently working
-  if (!["Available", "Currently Working"].includes(providerAvailability)) {
+  // Check if provider is online (using isOnline instead of availability)
+  if (!provider.isOnline) {
     return res.status(200).json({
       success: true,
       requests: [],
-      message: "You must be available to view service requests."
+      message: "You are currently offline and cannot receive new requests."
     });
   }
 
-  const tolerance = 200;
-  const minBudget = providerRate - tolerance;
-  const maxBudget = providerRate + tolerance;
+  const providerSkills = provider.skills || [];
+  const providerRate = provider.serviceRate || 0;
+  const rateTolerance = 200; // Allow ±200 peso tolerance for budget matching
 
-  // First, let's see all available requests (filter out expired ones)
+  // Get all active waiting requests (filter out expired ones)
   const activeRequestsFilter = getActiveRequestsFilter();
   const allRequests = await ServiceRequest.find({
     ...activeRequestsFilter,
@@ -267,35 +263,26 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-  // Filter requests based on Service Needed, Budget, and Time compatibility
-  let filteredRequests = allRequests;
+  // Filter requests based on provider's skills and rate (more lenient matching)
+  let filteredRequests = allRequests.filter(request => {
+    // Service/Skill Match: Check if provider's skills match the requested service
+    const skillMatch = providerSkills.length > 0
+      ? providerSkills.some(skill =>
+          request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
+          skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
+        )
+      : true; // If provider has no skills listed, show all requests
 
-  if (providerSkills.length > 0) {
-    filteredRequests = allRequests.filter(request => {
-      // Check Service Needed compatibility
-      const serviceCompatible = providerSkills.some(skill =>
-        request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
-        skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
-      );
+    // Rate Match: Check if request budget is within provider's rate tolerance
+    const rateMatch = (() => {
+      if (!request.budget || !providerRate) return true; // If no budget specified, consider it a match
+      const minRate = Math.max(0, providerRate - rateTolerance);
+      const maxRate = providerRate + rateTolerance;
+      return request.budget >= minRate && request.budget <= maxRate;
+    })();
 
-      // Check Budget compatibility
-      const budgetCompatible = request.budget >= minBudget && request.budget <= maxBudget;
-
-      // Check Time compatibility - providers with "Available" status can handle any time,
-      // providers with "Currently Working" can only handle flexible times
-      let timeCompatible = false;
-      if (providerAvailability === "Available") {
-        timeCompatible = true; // Available providers can handle any time
-      } else if (providerAvailability === "Currently Working") {
-        // Currently working providers can only handle flexible times
-        timeCompatible = ["ASAP", "Today", "Flexible"].some(flexibleTime =>
-          request.time.toLowerCase().includes(flexibleTime.toLowerCase())
-        );
-      }
-
-      return serviceCompatible && budgetCompatible && timeCompatible;
-    });
-  }
+    return skillMatch && rateMatch;
+  });
 
   // Also include requests specifically targeted to this provider (bypass normal matching)
   const targetedRequests = await ServiceRequest.find({
@@ -316,23 +303,10 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
 
   // Combine filtered requests with targeted requests (avoid duplicates)
   const targetedIds = targetedRequests.map(r => r._id.toString());
-  const combinedRequests = [
+  const finalRequests = [
     ...targetedRequests,
     ...filteredRequests.filter(r => !targetedIds.includes(r._id.toString()))
   ];
-
-  // For testing purposes, if no requests match all criteria, return requests that at least match skills
-  let finalRequests = combinedRequests;
-  if (combinedRequests.length === 0 && allRequests.length > 0 && providerSkills.length > 0) {
-    // Fallback to skill-only matching for better UX during testing
-    const skillOnlyRequests = allRequests.filter(request => {
-      return providerSkills.some(skill =>
-        request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
-        skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
-      );
-    });
-    finalRequests = skillOnlyRequests;
-  }
 
   res.status(200).json({
     success: true,
@@ -346,8 +320,11 @@ export const getServiceRequests = catchAsyncError(async (req, res, next) => {
       userRole: req.user.role,
       userSkills: providerSkills,
       providerRate,
-      providerAvailability,
-      budgetRange: { minBudget, maxBudget },
+      isOnline: provider.isOnline,
+      budgetRange: {
+        minRate: Math.max(0, providerRate - rateTolerance),
+        maxRate: providerRate + rateTolerance
+      },
       sampleRequester: finalRequests[0]?.requester || null
     }
   });
@@ -550,16 +527,8 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
     });
   }
 
-  const providerAvailability = provider.availability || "Not Available";
-
-  // Only show requests if provider is available or currently working
-  if (!["Available", "Currently Working"].includes(providerAvailability)) {
-    return res.status(200).json({
-      success: true,
-      requests: [],
-      message: "You must be available to receive matching requests."
-    });
-  }
+  // Get the selected service from query parameters
+  const selectedService = req.query.service || "";
 
   // Get provider's service information
   const providerService = provider.service || "";
@@ -569,10 +538,17 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
 
   // Get all active waiting requests
   const activeRequestsFilter = getActiveRequestsFilter();
-  const allRequests = await ServiceRequest.find({
+  let query = {
     ...activeRequestsFilter,
     status: "Waiting"
-  })
+  };
+
+  // If a specific service is selected, filter requests by that service
+  if (selectedService) {
+    query.typeOfWork = { $regex: selectedService, $options: 'i' };
+  }
+
+  const allRequests = await ServiceRequest.find(query)
     .populate({
       path: 'requester',
       select: 'firstName lastName username email phone',
@@ -580,46 +556,38 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
     })
     .sort({ createdAt: -1 });
 
-  // Filter requests based on service, location, and rate matching
+  // Filter requests based on provider's skills and rate (more lenient matching)
   let matchingRequests = allRequests.filter(request => {
-    // 1. Service Match: Check if request type matches provider's service or skills
-    const serviceMatch = (() => {
-      // Check against provider's main service
-      if (providerService && request.typeOfWork?.toLowerCase().includes(providerService.toLowerCase())) {
-        return true;
-      }
-      // Check against provider's skills
-      if (providerSkills.length > 0) {
-        return providerSkills.some(skill =>
+    // Service/Skill Match: Check if provider's skills match the requested service
+    const skillMatch = providerSkills.length > 0
+      ? providerSkills.some(skill =>
           request.typeOfWork?.toLowerCase().includes(skill.toLowerCase()) ||
           skill.toLowerCase().includes(request.typeOfWork?.toLowerCase())
-        );
-      }
-      return false;
-    })();
+        )
+      : true; // If provider has no skills listed, show all requests
 
-    // 2. Rate Match: Check if request budget is within provider's rate tolerance
+    // Rate Match: Check if request budget is within provider's rate tolerance
     const rateMatch = (() => {
-      if (!request.budget || !providerRate) return true; // If no budget or rate specified, consider it a match
-      const minRate = providerRate - rateTolerance;
+      if (!request.budget || !providerRate) return true; // If no budget specified, consider it a match
+      const minRate = Math.max(0, providerRate - rateTolerance);
       const maxRate = providerRate + rateTolerance;
       return request.budget >= minRate && request.budget <= maxRate;
     })();
 
-    // 3. Location Match: For now, implement basic location filtering
-    // Since providers don't have stored coordinates, we'll use a simple approach:
-    // - If request has location data, consider it matchable (assume provider can travel)
-    // - Could be enhanced later with proper geocoding and distance calculation
-    const locationMatch = true; // Basic implementation - all requests are considered matchable by location
-
-    return serviceMatch && rateMatch && locationMatch;
+    return skillMatch && rateMatch;
   });
 
-  // Also include requests specifically targeted to this provider
-  const targetedRequests = await ServiceRequest.find({
+  // Also include requests specifically targeted to this provider (only if they match the selected service or no service is selected)
+  let targetedQuery = {
     status: "Waiting",
     targetProvider: req.user._id
-  })
+  };
+
+  if (selectedService) {
+    targetedQuery.typeOfWork = { $regex: selectedService, $options: 'i' };
+  }
+
+  const targetedRequests = await ServiceRequest.find(targetedQuery)
   .populate({
     path: 'requester',
     select: 'firstName lastName username email phone',
@@ -643,11 +611,12 @@ export const getMatchingRequests = catchAsyncError(async (req, res, next) => {
       targetedRequests: targetedRequests.length,
       finalRequests: finalRequests.length,
       userId: req.user._id,
+      selectedService,
       providerService,
       providerSkills,
       providerRate,
       providerAvailability,
-      message: "Returning filtered matching requests"
+      message: selectedService ? `Returning requests filtered by service: ${selectedService}` : "Returning all matching requests"
     }
   });
 });
