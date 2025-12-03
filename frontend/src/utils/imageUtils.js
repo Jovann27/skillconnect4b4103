@@ -4,7 +4,17 @@
 
 // Get the API base URL from environment or fallback to localhost
 const getApiBaseUrl = () => {
-  return import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+  return import.meta.env.VITE_API_BASE_URL;
+};
+
+/**
+ * Get the base URL for static files (without API prefix)
+ * @returns {string} Base URL for static files
+ */
+const getStaticBaseUrl = () => {
+  const apiBaseUrl = getApiBaseUrl();
+  // Remove /api/v1 from the end if present
+  return apiBaseUrl.replace(/\/api\/v1$/, '');
 };
 
 /**
@@ -15,7 +25,7 @@ const getApiBaseUrl = () => {
 export const getImageUrl = (imagePath) => {
   if (!imagePath) return '';
   if (imagePath.startsWith('http')) return imagePath; // Already a full URL
-  const baseUrl = getApiBaseUrl();
+  const baseUrl = getStaticBaseUrl();
   // Remove leading slash from imagePath if present, since baseUrl might not have trailing slash
   const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
   return `${baseUrl}/${cleanPath}`;

@@ -34,7 +34,7 @@ const SkilledWorkers = () => {
   {workers.map((worker) => (
     <div key={worker._id} className="worker-card">
       <img
-        src={worker.profilePic ? getImageUrl(worker.profilePic) : "/default-avatar.png"}
+        src={worker.profilePic ? getImageUrl(worker.profilePic) : "/default-profile.png"}
         alt={`${worker.firstName} ${worker.lastName}`}
         className="profile-pic"
       />

@@ -5,7 +5,7 @@ class ErrorHandler extends Error {
   }
 }
 
-export const errorMiddleware = (err, req, res) => {
+export const errorMiddleware = (err, req, res, next) => {
   // Log error details for debugging (without exposing to client)
   if (process.env.NODE_ENV === "development") {
     console.error("Error:", err);

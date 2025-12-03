@@ -98,7 +98,7 @@ app.use("/api/v1/settings", settingsRouter);
 app.use("/api/v1/reports", reportRoutes);
 app.use("/api/v1/verification", verificationRouter);
 app.use("/api/v1/help", helpRouter);
-app.use("/api/v1/reviews", reviewRouter);
+app.use("/api/v1/review", reviewRouter);
 
 // health
 app.get("/api/v1/ping", (req, res) => res.json({ success: true, message: "pong" }));
